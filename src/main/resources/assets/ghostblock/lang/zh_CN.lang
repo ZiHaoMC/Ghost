@@ -1,0 +1,9 @@
+ghostblock.commands.usage=/cghostblock set <x> <y> <z> <block> 或 /cghostblock fill <x1> <y1> <z1> <x2> <y2> <z2> <block> [-b <批次大小>] [-s]
+ghostblock.commands.error.not_in_world=你不在一个世界中
+ghostblock.commands.error.invalid_block=无效的方块
+ghostblock.commands.error.unloaded=区块未加载
+ghostblock.commands.error.out_of_world=超出世界范围
+ghostblock.commands.set.success=成功设置幽灵方块在 %s, %s, %s
+ghostblock.commands.fill.success=成功填充了 %d 个幽灵方块
+ghostblock.commands.fill.batch_started=开始批量填充 %d 个方块，批次大小 %d
+ghostblock.commands.error.invalid_batch_size=无效的批次大小

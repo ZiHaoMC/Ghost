@@ -1,0 +1,16 @@
+[
+{
+  "modid": "ghostblock",
+  "name": "Ghost Block",
+  "description": "Client-side ghost block command",
+  "version": "0.0.6",
+  "mcversion": "1.8.9",
+  "authors": ["ZiHaoMC"],
+  "url": "",
+  "updateUrl": "",
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

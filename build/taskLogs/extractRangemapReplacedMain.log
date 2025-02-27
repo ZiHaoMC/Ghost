@@ -1,0 +1,9 @@
+Symbol range map extraction starting
+Processing 7 files
+processing com/zihaomc/ghostblock/GhostBlock.java
+processing com/zihaomc/ghostblock/LangUtil.java
+processing com/zihaomc/ghostblock/commands/GhostBlockCommand.java
+processing com/zihaomc/ghostblock/data/GhostBlockData.java
+processing com/zihaomc/ghostblock/proxy/ClientProxy.java
+processing com/zihaomc/ghostblock/proxy/CommonProxy.java
+processing com/zihaomc/ghostblock/proxy/ServerProxy.java
