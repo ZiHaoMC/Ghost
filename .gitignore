@@ -7,11 +7,6 @@ out/
 
 # Gradle
 .gradle/
-# Ignore the entire build directory
-build/*
-
-# But DO NOT ignore the build/libs directory
-!build/libs/
 
 # Compiled class files
 *.class
@@ -19,21 +14,30 @@ build/*
 # Log files
 *.log
 
-# Package Files #
-*.jar
-*.war
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# Mac OS X
-.DS_Store
-
 # Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# Mac OS X
+.DS_Store
+
 # Other
-# (任何你不想提交的本地配置文件或临时文件)
+
+# Default ignore build directory contents
+build/*
+
+# But DO NOT ignore the build/libs directory AND its .jar files
+!build/libs/
+!build/libs/*.jar
+
+# General rule to ignore .jar files elsewhere (THIS MUST COME AFTER the !build/libs/*.jar)
+# Or, be more specific if you only want to ignore jars in certain places.
+# For now, let's comment this out to ensure build/libs/*.jar is kept.
+# If you need to ignore .jar files in other locations, add more specific rules.
+# *.jar
+# *.war
+# *.ear
+# *.zip
+# *.tar.gz
+# *.rar
