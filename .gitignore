@@ -1,6 +1,12 @@
-# 如果你想忽略 .gradle 文件夹
-echo ".gradle/" >> .gitignore
+# Gradle files
+.gradle/
+build/
 
-# 如果你想忽略 gradle 文件夹 (通常是 gradle/wrapper)
-# 再次提醒：通常 gradle/wrapper 是需要提交的
-# echo "gradle/" >> .gitignore
+# IDEA files (if you use IntelliJ IDEA)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# etc..gradle/
+build/
