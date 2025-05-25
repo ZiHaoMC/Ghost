@@ -1,12 +1,35 @@
-# Gradle files
-.gradle/
-build/
-
-# IDEA files (if you use IntelliJ IDEA)
+# IntelliJ IDEA Project Files
 .idea/
 *.iml
 *.ipr
 *.iws
+out/
 
-# etc..gradle/
+# Gradle
+.gradle/
 build/
+
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# Package Files #
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Mac OS X
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Other
+# (任何你不想提交的本地配置文件或临时文件)
