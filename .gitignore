@@ -7,7 +7,11 @@ out/
 
 # Gradle
 .gradle/
-build/
+# Ignore the entire build directory
+build/*
+
+# But DO NOT ignore the build/libs directory
+!build/libs/
 
 # Compiled class files
 *.class
