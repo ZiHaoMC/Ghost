@@ -1,0 +1,15 @@
+{
+  "mappings": {},
+  "data": {
+    "notch": {
+      "com/zihaomc/ghost/mixins/MixinGuiNewChat": {
+        "printChatMessage": "Lavt;a(Leu;)V"
+      }
+    },
+    "searge": {
+      "com/zihaomc/ghost/mixins/MixinGuiNewChat": {
+        "printChatMessage": "Lnet/minecraft/client/gui/GuiNewChat;func_146227_a(Lnet/minecraft/util/IChatComponent;)V"
+      }
+    }
+  }
+}

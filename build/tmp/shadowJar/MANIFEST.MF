@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+MixinConfigs: mixins.ghost.json
+TweakClass: org.spongepowered.asm.launch.MixinTweaker
+ForceLoadAsMod: true
+
