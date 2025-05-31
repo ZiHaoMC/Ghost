@@ -145,9 +145,11 @@ ghostblock.commands.gconfig.extra_usage_toggle=(或使用 '/gconfig toggleSugges
 ghostblock.commands.autosave.activated=提示: 自动保存已激活。
 
 # --- 命令建议功能文本 ---
-ghostblock.commands.suggest.text= ↩
+# 注意后面的空格是为了更好的让玩家点到 不要删除！
+ghostblock.commands.suggest.text= ↩  
 ghostblock.commands.suggest.hovertext=点击重新输入: %s
-ghostblock.commands.suggest.help.text= ?
+# 这个问号同理
+ghostblock.commands.suggest.help.text= ?  
 ghostblock.commands.suggest.help.hovertext=点击查看语法和示例
 
 # --- 新增：帮助信息 ---

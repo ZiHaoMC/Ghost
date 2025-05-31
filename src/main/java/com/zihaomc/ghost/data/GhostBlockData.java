@@ -180,6 +180,29 @@ public static String getWorldBaseIdentifier(World world) {
     return "unknown";
 }
 
+public static int getDimensionFromFileName(String fileName) {
+    if (fileName == null) {
+        System.err.println("[GhostBlockData] getDimensionFromFileName: 文件名为空！");
+        return Integer.MIN_VALUE; // 使用一个明确的错误或无效值
+    }
+    int dimIndex = fileName.lastIndexOf("_dim_");
+    if (dimIndex != -1) {
+        String dimStrWithExtension = fileName.substring(dimIndex + 5); // 例如 "0.json" 或 "-1.json"
+        String dimStr = dimStrWithExtension;
+        if (dimStrWithExtension.toLowerCase().endsWith(".json")) { // 转小写以防万一
+            dimStr = dimStrWithExtension.substring(0, dimStrWithExtension.length() - 5);
+        }
+        try {
+            return Integer.parseInt(dimStr);
+        } catch (NumberFormatException e) {
+            System.err.println("[GhostBlockData ERROR] 解析文件名中的维度时出错: '" + fileName + "' -> 解析出的维度字符串: '" + dimStr + "'");
+        }
+    }
+    // 如果没有找到 "_dim_" 或者解析失败
+    System.err.println("[GhostBlockData WARN] 无法从文件名中找到或解析维度标记 '_dim_': " + fileName);
+    return Integer.MIN_VALUE; // 表示解析失败
+}
+
 // 原方法调整为基于基础标识拼接维度
 public static String getWorldIdentifier(World world) {
     return getWorldBaseIdentifier(world) + "_dim_" + world.provider.getDimensionId();

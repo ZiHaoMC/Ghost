@@ -64,6 +64,17 @@ public class GhostBlockCommand extends CommandBase {
     private static final EnumChatFormatting LABEL_COLOR = EnumChatFormatting.GRAY;    // 标签颜色（如"填充进度"）
     private static final EnumChatFormatting VALUE_COLOR = EnumChatFormatting.YELLOW; // 数值颜色（如百分比）
     private static final EnumChatFormatting FINISH_COLOR = EnumChatFormatting.GREEN; // 完成消息颜色
+        // ========= 新增：用于延迟自动放置的静态成员变量 =========
+    private static GhostBlockData.GhostBlockEntry pendingAutoPlaceEntry = null;
+    private static BlockPos pendingAutoPlaceTargetPos = null;
+    private static File pendingAutoPlaceFileRef = null; // 存储文件引用以便删除
+    private static int autoPlaceTickDelayCounter = 0;
+  //  private static final int AUTO_PLACE_TICKS_TO_WAIT = 40; // 等待2秒 (40 ticks)
+    private static final int AUTO_PLACE_DURATION_TICKS = 40; // 持续放置2秒 (40 ticks)
+    private static final int AUTO_PLACE_MAX_ATTEMPT_TICKS = 100; // 最多等待5秒 (100 ticks)
+    private static boolean autoPlaceInProgress = false; // 标记自动放置过程是否已启动，防止isFirstJoin等逻辑过早执行
+    // ========= 延迟自动放置成员变量结束 =========
+
 
     // ================ 新增的撤销记录类 ================
     private static class UndoRecord {
@@ -103,211 +114,316 @@ public class GhostBlockCommand extends CommandBase {
     // 静态内部类用于处理静态事件和注册命令
     private static class CommandEventHandler {
         public CommandEventHandler() {
-            System.out.println("[GhostBlock-DEBUG] CommandEventHandler 已初始化");
+            System.out.println("[GhostBlock-DEBUG] CommandEventHandler 已初始化 (处理Tick事件)");
         }
 
         @SubscribeEvent
         public void onClientTick(TickEvent.ClientTickEvent event) {
-            // ---- START: 删除或注释掉以下用于注册命令的代码块 ----
-            /*
-            if (event.phase == TickEvent.Phase.END && !registered) {
-                // 注册命令只需一次 (现在移到 Ghost.java 的 init 方法了)
-                ClientCommandHandler.instance.registerCommand(new GhostBlockCommand());
-                registered = true;
-                System.out.println("[GhostBlock-DEBUG] 命令已注册 (通过 Tick)"); // 可以修改或删除日志
+            if (event.phase != TickEvent.Phase.END) {
+                return;
             }
-            */
-            // ---- END: 删除或注释掉的代码块 ----
-
-            // 保留 Tick 事件的其他逻辑 (处理任务、确认等)
-            if (event.phase == TickEvent.Phase.END) {
-                // 清除过期的确认请求
-                Iterator<Map.Entry<String, ClearConfirmation>> iter = pendingConfirmations.entrySet().iterator();
-                while (iter.hasNext()) {
-                    Map.Entry<String, ClearConfirmation> entry = iter.next();
-                    if (System.currentTimeMillis() - entry.getValue().timestamp > CONFIRMATION_TIMEOUT) {
-                        iter.remove();
+            // --- 其他Tick逻辑 (确认请求、任务队列) ---
+            Iterator<Map.Entry<String, ClearConfirmation>> confirmIter = pendingConfirmations.entrySet().iterator();
+            while (confirmIter.hasNext()) {
+                Map.Entry<String, ClearConfirmation> entry = confirmIter.next();
+                if (System.currentTimeMillis() - entry.getValue().timestamp > CONFIRMATION_TIMEOUT) {
+                    confirmIter.remove();
+                }
+            }
+            synchronized (activeTasks) {
+                Iterator<FillTask> taskIter = activeTasks.iterator();
+                while (taskIter.hasNext()) {
+                    FillTask task = taskIter.next();
+                    if (task.processBatch()) {
+                        taskIter.remove();
+                        if (!task.cancelled) System.out.println("[GhostBlock] 填充任务 #" + task.getTaskId() + " 完成");
                     }
                 }
+            }
+            synchronized (activeLoadTasks) {
+                Iterator<LoadTask> taskIter = activeLoadTasks.iterator();
+                while (taskIter.hasNext()) {
+                    LoadTask task = taskIter.next();
+                    if (task.processBatch()) {
+                        taskIter.remove();
+                        if (!task.cancelled) System.out.println("[GhostBlock] 加载任务 #" + task.getTaskId() + " 完成");
+                    }
+                }
+            }
+            synchronized (activeClearTasks) {
+                Iterator<ClearTask> taskIter = activeClearTasks.iterator();
+                while (taskIter.hasNext()) {
+                    ClearTask task = taskIter.next();
+                    if (task.processBatch()) {
+                        taskIter.remove();
+                        if (!task.cancelled) System.out.println("[GhostBlock] 清除任务 #" + task.getTaskId() + " 完成");
+                    }
+                }
+            }
+            // --- 其他Tick逻辑结束 ---
 
-                // 处理批量填充任务
-                synchronized (activeTasks) { // 同步访问
-                    Iterator<FillTask> iterator = activeTasks.iterator();
-                    while (iterator.hasNext()) {
-                        FillTask task = iterator.next();
-                        if (task.processBatch()) { // 如果任务完成或取消
-                            iterator.remove(); // 从活动列表移除
-                            if (!task.cancelled) { // 只有在未取消时才打印完成
-                                System.out.println("[GhostBlock] 填充任务 #" + task.getTaskId() + " 完成");
+
+        // ========= 处理持续自动放置的逻辑 =========
+        if (GhostBlockCommand.autoPlaceInProgress && GhostBlockCommand.pendingAutoPlaceEntry != null) {
+            GhostBlockCommand.autoPlaceTickDelayCounter++;
+            EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+            WorldClient world = Minecraft.getMinecraft().theWorld;
+
+            GhostBlockEntry entryToRestore = GhostBlockCommand.pendingAutoPlaceEntry;
+            BlockPos centerOriginalRecordedPos = GhostBlockCommand.pendingAutoPlaceTargetPos; // 这是文件中记录的原始中心幽灵方块位置
+            File autoPlaceFile = GhostBlockCommand.pendingAutoPlaceFileRef;
+
+            if (player == null || world == null || centerOriginalRecordedPos == null || autoPlaceFile == null) {
+                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 玩家/世界/目标数据不完整，取消。");
+                GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
+                return;
+            }
+
+            int fileDimension = GhostBlockData.getDimensionFromFileName(autoPlaceFile.getName());
+            if (fileDimension == Integer.MIN_VALUE || player.dimension != fileDimension) {
+                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 维度检查失败或不符 (玩家:" + player.dimension + ", 文件:" + fileDimension + ")，取消。");
+                GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
+                return;
+            }
+
+            // 计算3x3平台的中心实际放置坐标 (例如，在原始记录位置下方1格，让玩家正好落在平台上)
+            BlockPos centerActualPlacePos = centerOriginalRecordedPos.down(1); // <--- Y轴偏移量，可以调整为1或2
+
+            if (GhostBlockCommand.autoPlaceTickDelayCounter <= AUTO_PLACE_DURATION_TICKS) {
+                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + "/" + AUTO_PLACE_DURATION_TICKS +
+                                   ": 尝试在以 " + centerActualPlacePos + " 为中心的3x3平台 (原记录中心: " + centerOriginalRecordedPos + ") 放置幽灵方块。");
+
+                BlockPos playerCurrentBlockPos = player.getPosition();
+                BlockPos expectedPlayerStandPos = centerOriginalRecordedPos.up(); // 玩家应该站在原始中心幽灵方块的上面
+
+                // --- 范围检查 ---
+                // 检查玩家当前是否大致在期望站立位置的水平中心附近 (例如 XZ 误差 +/- 1格)
+                // Y轴的检查可以放宽松一点，因为玩家可能正在下落
+                boolean isInHorizontalRange = Math.abs(playerCurrentBlockPos.getX() - expectedPlayerStandPos.getX()) <= 1 &&
+                                            Math.abs(playerCurrentBlockPos.getZ() - expectedPlayerStandPos.getZ()) <= 1;
+                // 并且玩家的Y不能太低 (比如不能低于平台下方太多)
+                boolean isVerticallyReasonable = playerCurrentBlockPos.getY() >= centerActualPlacePos.getY() - 2 && // 不低于平台下方2格
+                                                 playerCurrentBlockPos.getY() <= centerActualPlacePos.getY() + 5;   // 不高于平台上方太多 (允许出生在更高处然后掉下来)
+
+
+                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 玩家当前实体格: " + playerCurrentBlockPos +
+                                   ", 期望站立格(中心): " + expectedPlayerStandPos +
+                                   ", 是否在水平范围: " + isInHorizontalRange + ", 是否在垂直合理范围: " + isVerticallyReasonable);
+
+                if (isInHorizontalRange && isVerticallyReasonable) {
+                    System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 玩家在期望范围内。开始尝试放置3x3平台...");
+                    Block ghostBlockToPlace = Block.getBlockFromName(entryToRestore.blockId);
+                    IBlockState stateToSet = null;
+                    if (ghostBlockToPlace != null && ghostBlockToPlace != Blocks.air) {
+                        stateToSet = ghostBlockToPlace.getStateFromMeta(entryToRestore.metadata);
+                    } else {
+                        System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 文件记录的幽灵方块类型无效或为空气。无法构成平台。");
+                        GhostBlockCommand.cleanupPendingAutoPlaceStatic(true); // 清理并退出
+                        return;
+                    }
+
+                    boolean platformPartiallyPlaced = false;
+                    try {
+                        // 遍历3x3区域
+                        for (int dx = -1; dx <= 1; dx++) {
+                            for (int dz = -1; dz <= 1; dz++) {
+                                BlockPos currentPlatformPos = centerActualPlacePos.add(dx, 0, dz);
+                                IBlockState stateAtPlatformPos = world.getBlockState(currentPlatformPos);
+
+                                if (stateAtPlatformPos.getBlock() == Blocks.air) { // 只在空气位置放置
+                                    boolean successThisBlock = world.setBlockState(currentPlatformPos, stateToSet, 2 | 16);
+                                    if (successThisBlock) {
+                                        platformPartiallyPlaced = true; // 只要有一个方块成功放置，就认为平台部分放置了
+                                        world.markBlockForUpdate(currentPlatformPos);
+                                        // 光照和渲染更新可以对整个区域进行一次，或者每个方块都做
+                                        world.checkLightFor(EnumSkyBlock.BLOCK, currentPlatformPos);
+                                        world.checkLightFor(EnumSkyBlock.SKY, currentPlatformPos);
+                                        Minecraft.getMinecraft().renderGlobal.markBlockRangeForRenderUpdate(
+                                            currentPlatformPos.getX(), currentPlatformPos.getY(), currentPlatformPos.getZ(),
+                                            currentPlatformPos.getX(), currentPlatformPos.getY(), currentPlatformPos.getZ()
+                                        );
+                                    }
+                                    if (GhostBlockCommand.autoPlaceTickDelayCounter == 1 && successThisBlock) {
+                                        System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 平台部分在 " + currentPlatformPos + " 首次尝试成功。");
+                                    }
+                                } else if (GhostBlockCommand.autoPlaceTickDelayCounter == 1){
+                                     System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 平台部分 " + currentPlatformPos + " 非空气 ("+stateAtPlatformPos.getBlock().getRegistryName()+")，跳过。");
+                                }
                             }
                         }
+
+                        if (platformPartiallyPlaced && (GhostBlockCommand.autoPlaceTickDelayCounter == 1 || (GhostBlockCommand.autoPlaceTickDelayCounter == AUTO_PLACE_DURATION_TICKS && GhostBlockCommand.autoPlaceInProgress))) {
+                            player.addChatMessage(GhostBlockCommand.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.autoplace.platform_success", centerActualPlacePos.getX(), centerActualPlacePos.getY(), centerActualPlacePos.getZ()));
+                            // 需要新的语言条目: ghostblock.commands.autoplace.platform_success=幽灵平台已在 (%1$d, %2$d, %3$d) 附近自动放置以接住您！
+                            System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 3x3幽灵平台部分或全部放置 (tick: " + GhostBlockCommand.autoPlaceTickDelayCounter + ")");
+                        }
+                        
+                        // 如果在持续时间内成功放置了部分平台，我们让它持续到结束
+                        if (GhostBlockCommand.autoPlaceTickDelayCounter >= AUTO_PLACE_DURATION_TICKS) {
+                             GhostBlockCommand.cleanupPendingAutoPlaceStatic(true); // 时间到，清理
+                        }
+
+                    } catch (Exception e) {
+                        System.err.println("[GhostBlock-ERROR AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 持续放置3x3平台时发生异常:");
+                        e.printStackTrace();
+                        GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
+                    }
+                } else { // 玩家不在范围内
+                    System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 玩家不在期望的恢复范围内。");
+                    // 如果超时了，即使不在范围内也要清理
+                     if (GhostBlockCommand.autoPlaceTickDelayCounter > AUTO_PLACE_MAX_ATTEMPT_TICKS) {
+                        System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 玩家持续不在范围内且已超时，放弃并清理。");
+                        GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
                     }
                 }
+            }
 
-                // 处理批量加载任务
-                synchronized (activeLoadTasks) { // 同步访问
-                    Iterator<LoadTask> loadIterator = activeLoadTasks.iterator();
-                    while (loadIterator.hasNext()) {
-                        LoadTask task = loadIterator.next();
-                        if (task.processBatch()) { // 如果任务完成或取消
-                            loadIterator.remove(); // 从活动列表移除
-                             if (!task.cancelled) { // 只有在未取消时才打印完成
-                                System.out.println("[GhostBlock] 加载任务 #" + task.getTaskId() + " 完成");
-                             }
-                        }
-                    }
+            // 总超时检查 (如果上面的逻辑没有提前清理)
+            if (GhostBlockCommand.autoPlaceInProgress && GhostBlockCommand.autoPlaceTickDelayCounter > AUTO_PLACE_MAX_ATTEMPT_TICKS) {
+                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 超过最大尝试Tick数 ("+AUTO_PLACE_MAX_ATTEMPT_TICKS+")，强制结束。");
+                GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
+            }
+        }
+    }
+}
+// ========= CommandEventHandler 修改结束 =========
+        
+        /**
+         * 清理待处理的自动放置状态和相关文件引用。
+         * @param deleteFile 如果为true，则尝试删除 pendingAutoPlaceFileRef 指向的文件。
+         */
+        private void cleanupPendingAutoPlace(boolean deleteFile) {
+            if (deleteFile && GhostBlockCommand.pendingAutoPlaceFileRef != null && GhostBlockCommand.pendingAutoPlaceFileRef.exists()) {
+                if (GhostBlockCommand.pendingAutoPlaceFileRef.delete()) {
+                    System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 已成功删除自动放置文件: " + GhostBlockCommand.pendingAutoPlaceFileRef.getName());
+                } else {
+                    System.err.println("[GhostBlock-ERROR AutoPlaceCleanup] 未能删除自动放置文件: " + GhostBlockCommand.pendingAutoPlaceFileRef.getName());
                 }
+            }
+            GhostBlockCommand.pendingAutoPlaceEntry = null;
+            GhostBlockCommand.pendingAutoPlaceTargetPos = null;
+            GhostBlockCommand.pendingAutoPlaceFileRef = null;
+            GhostBlockCommand.autoPlaceTickDelayCounter = 0;
+            boolean wasInProgress = GhostBlockCommand.autoPlaceInProgress; // 记录清理前的状态
+            GhostBlockCommand.autoPlaceInProgress = false; // 标记过程结束
+            System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 已清理待处理的自动放置状态。autoPlaceInProgress 设置为 false。");
 
-                // 处理批量清除任务
-                synchronized (activeClearTasks) { // 同步访问
-                    Iterator<ClearTask> clearIter = activeClearTasks.iterator();
-                    while (clearIter.hasNext()) {
-                        ClearTask task = clearIter.next();
-                        if (task.processBatch()) { // 如果任务完成或取消
-                           clearIter.remove(); // 从活动列表移除
-                            if (!task.cancelled) { // 只有在未取消时才打印完成
-                                System.out.println("[GhostBlock] 清除任务 #" + task.getTaskId() + " 完成");
-                            }
-                        }
+            // 关键：如果自动放置过程（无论成功、失败或超时）结束了，
+            // 并且之前 onEntityJoinWorld 因为 autoPlaceInProgress=true 而提前返回了，
+            // 那么现在需要处理 isFirstJoin 的逻辑，否则玩家会一直卡在 isFirstJoin=true 的状态，
+            // 并且 cleanupAndRestoreOnLoad 可能永远不会在后续的同维度重进时被调用。
+            if (wasInProgress && GhostBlockCommand.isFirstJoin) {
+                WorldClient world = Minecraft.getMinecraft().theWorld;
+                EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+                // 确保我们仍然在有效的游戏环境中
+                if (world != null && player != null) {
+                    // 检查维度是否与当前玩家维度一致，避免在错误的上下文中执行
+                    int fileDim = (GhostBlockCommand.pendingAutoPlaceFileRef != null) ?
+                                  GhostBlockData.getDimensionFromFileName(GhostBlockCommand.pendingAutoPlaceFileRef.getName()) : player.dimension; // Fallback
+                    if (player.dimension == fileDim || fileDim == Integer.MIN_VALUE) { // 如果维度匹配或无法从文件名解析
+                        System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 自动放置处理结束，且仍是 isFirstJoin。处理首次加入逻辑...");
+                        GhostBlockCommand.isFirstJoin = false;
+                        GhostBlockCommand.lastTrackedDimension = player.dimension;
+                        // 调用者 (GhostBlockCommand的实例) 的 cleanupAndRestoreOnLoad
+                        // 由于这是静态内部类，需要获取外部类实例或将 cleanupAndRestoreOnLoad 设为静态
+                        // 为了简单，假设 GhostBlockCommand 的一个实例可以被访问，或者 cleanupAndRestoreOnLoad 是静态的
+                        // 这里我们先假设 cleanupAndRestoreOnLoad 可以被调用。
+                        // 如果 cleanupAndRestoreOnLoad 不是静态的，你可能需要一个 GhostBlockCommand 的实例来调用它，
+                        // 或者更好的做法是将 isFirstJoin 和 lastTrackedDimension 的管理放在 GhostBlockCommand 的非静态方法中，
+                        // 然后由 tick 事件回调到那个非静态方法。
+                        // 但为了保持当前结构，我们先这样：
+                        GhostBlockCommand.cleanupAndRestoreOnLoad(world); // 直接通过类名调用静态方法
+                    } else {
+                        System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 自动放置处理结束，但玩家维度已改变，不执行 isFirstJoin 的 cleanupAndRestoreOnLoad。");
                     }
                 }
             }
         }
+    
+    // 辅助方法：获取自动放置功能专用的保存文件名 (不含 .json 后缀)
+    private static String getAutoPlaceSaveFileName(World world) {
+        if (world == null) return "autoplace_unknown_world"; // 预防性代码
+        return "autoplace_" + GhostBlockData.getWorldIdentifier(world);
     }
 
     // 非静态事件处理器，需要注册 GhostBlockCommand 的实例
+        // ========= onEntityJoinWorld 方法 (混合方案：立即尝试 + 失败则转Tick延迟) =========
     @SubscribeEvent
     public void onEntityJoinWorld(EntityJoinWorldEvent event) {
-        // 仅在客户端处理
-        if (!event.world.isRemote) {
-            return;
-        }
-        // 仅处理玩家实体
-        if (!(event.entity instanceof EntityPlayer)) {
-            return;
-        }
-        // 确保是本地玩家
-        EntityPlayer player = Minecraft.getMinecraft().thePlayer;
-        if (player == null || !event.entity.equals(player)) {
-            return;
-        }
+    if (!event.world.isRemote) return;
+    if (!(event.entity instanceof EntityPlayer)) return;
+    EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+    if (player == null || !event.entity.equals(player)) return;
 
-        WorldClient world = (WorldClient) event.world; // 事件中的世界是正确的
-
-        if (world == null) {
-            System.out.println("[GhostBlock-DEBUG] onEntityJoinWorld: 世界为 null");
-            return;
-        }
-
-        int currentDim = player.dimension;
-        System.out.println("[GhostBlock-DEBUG] 玩家加入世界/切换维度 - 当前维度: " + currentDim + ", 上次跟踪维度: " + lastTrackedDimension);
-
-        // --- 新增：自动放置脚下幽灵方块逻辑 ---
-        if (GhostConfig.enableAutoPlaceOnJoin) {
-            System.out.println("[GhostBlock-DEBUG AutoPlace] 自动放置功能已启用，检查玩家脚下..."); // Log 1
-            BlockPos playerPos = player.getPosition(); // 使用整数坐标
-            BlockPos posBelow = playerPos.down();
-            // 或者尝试更精确的坐标（如果上面那个不行可以试试这个）
-            // BlockPos posBelow = new BlockPos(MathHelper.floor_double(player.posX), MathHelper.floor_double(player.posY - 0.01), MathHelper.floor_double(player.posZ));
-            System.out.println("[GhostBlock-DEBUG AutoPlace] Player Pos: " + playerPos + ", Pos Below: " + posBelow); // Log 2
-
-            String autoClearFileName = getAutoClearFileName(world);
-            System.out.println("[GhostBlock-DEBUG AutoPlace] Auto Clear File Name: " + autoClearFileName); // Log 3
-
-            List<GhostBlockData.GhostBlockEntry> autoClearEntries = GhostBlockData.loadData(world, Collections.singletonList(autoClearFileName));
-            System.out.println("[GhostBlock-DEBUG AutoPlace] Loaded " + autoClearEntries.size() + " entries from auto clear file."); // Log 4
-
-            // 在自动清除记录中查找脚下方块的记录
-            Optional<GhostBlockData.GhostBlockEntry> entryBelowOpt = autoClearEntries.stream()
-                    .filter(entry -> entry.x == posBelow.getX() && entry.y == posBelow.getY() && entry.z == posBelow.getZ())
-                    .findFirst();
-
-            if (entryBelowOpt.isPresent()) {
-                GhostBlockData.GhostBlockEntry entryBelow = entryBelowOpt.get();
-                System.out.println("[GhostBlock-DEBUG AutoPlace] Found entry below: " + // Log 5
-                        "X=" + entryBelow.x + ", Y=" + entryBelow.y + ", Z=" + entryBelow.z +
-                        ", Block=" + entryBelow.blockId + ":" + entryBelow.metadata +
-                        ", Original=" + entryBelow.originalBlockId + ":" + entryBelow.originalMetadata);
-
-                // 检查当前世界中该位置是否为空气
-                IBlockState currentState = world.getBlockState(posBelow);
-                System.out.println("[GhostBlock-DEBUG AutoPlace] Current state at posBelow: " + currentState); // Log 6
-
-                if (currentState.getBlock() == Blocks.air) {
-                    System.out.println("[GhostBlock-DEBUG AutoPlace] Pos below is Air. Attempting to restore ghost block."); // Log 7
-
-                    Block ghostBlock = Block.getBlockFromName(entryBelow.blockId);
-                    System.out.println("[GhostBlock-DEBUG AutoPlace] Ghost block lookup result: " + ghostBlock); // Log 8
-
-                    if (ghostBlock != null && ghostBlock != Blocks.air) {
-                        try {
-                            System.out.println("[GhostBlock-DEBUG AutoPlace] Placing ghost block: " + ghostBlock.getRegistryName() + ":" + entryBelow.metadata); // Log 9
-                            // 使用标记 2 (BLOCK_UPDATE_FLAG) 尝试仅通知客户端，避免不必要的服务器交互或光照更新? (可以试试, 3更保险)
-                            world.setBlockState(posBelow, ghostBlock.getStateFromMeta(entryBelow.metadata), 3); // 先用 3
-                            // 可能需要手动触发渲染更新或光照更新
-                            world.markBlockForUpdate(posBelow);
-                            world.checkLightFor(EnumSkyBlock.BLOCK, posBelow);
-                            world.checkLightFor(EnumSkyBlock.SKY, posBelow);
-                            // world.markBlockRangeForRenderUpdate(posBelow, posBelow); // 强制重绘
-
-                            System.out.println("[GhostBlock-DEBUG AutoPlace] Successfully placed ghost block at " + posBelow + ". Returning."); // Log 10
-                            lastTrackedDimension = currentDim; // 更新跟踪维度
-                            return; // <<<--- 跳过后续处理
-
-                        } catch (Exception e) {
-                            System.err.println("[GhostBlock-ERROR AutoPlace] Exception during ghost block placement: " + posBelow); // Log 11
-                            e.printStackTrace();
-                        }
-                    } else {
-                        System.out.println("[GhostBlock-DEBUG AutoPlace] Ghost block from entry is invalid or air. Won't place."); // Log 12
-                    }
-                } else {
-                    System.out.println("[GhostBlock-DEBUG AutoPlace] Pos below is not Air (" + currentState.getBlock().getRegistryName() + "). Won't place."); // Log 13
-                }
-            } else {
-                System.out.println("[GhostBlock-DEBUG AutoPlace] No entry found for posBelow in auto clear file."); // Log 14
-            }
-            System.out.println("[GhostBlock-DEBUG AutoPlace] AutoPlace logic finished, continuing to normal join logic (if any)."); // Log 15
-        }
-        // --- 自动放置逻辑结束 ---
-
-
-        // --- 原有的维度切换和首次加入逻辑 ---
-        // (如果上面的自动放置逻辑执行成功并 return，则不会执行到这里)
-        if (isFirstJoin) {
-            System.out.println("[GhostBlock-DEBUG] 首次进入世界，初始化维度为 " + currentDim);
-            lastTrackedDimension = currentDim;
-            isFirstJoin = false;
-            // 首次加入时，加载对应维度的自动清除文件并恢复（如果存在）
-             System.out.println("[GhostBlock-DEBUG] Executing cleanupAndRestoreOnLoad for first join."); // Log 16
-             cleanupAndRestoreOnLoad(world); // <- 正常执行恢复/清理
-            return; // <- 首次加入后直接返回
-        }
-
-        if (lastTrackedDimension != currentDim) {
-            System.out.println("[GhostBlock-DEBUG] 检测到维度变化: " + lastTrackedDimension + " → " + currentDim);
-
-            // --- 清理旧维度的文件 ---
-            String baseId = GhostBlockData.getWorldBaseIdentifier(world); // 使用当前世界获取基础ID
-            // ... (删除旧文件逻辑) ...
-
-            // 3. 取消所有正在运行的任务（因为维度变了）
-            System.out.println("[GhostBlock-DEBUG] 维度切换，取消所有活动任务...");
-            cancelAllTasks(player); // 传递玩家以便发送反馈
-
-             // 4. 加载新维度的自动清除文件并恢复（如果存在）
-             System.out.println("[GhostBlock-DEBUG] Executing cleanupAndRestoreOnLoad after dimension change."); // Log 17
-             cleanupAndRestoreOnLoad(world); // <- 正常执行恢复/清理
-
-        } else {
-            // 维度未变化，但可能是重进服务器/单人游戏
-            System.out.println("[GhostBlock-DEBUG] 重新加入相同维度 (" + currentDim + ")，检查并恢复...");
-            System.out.println("[GhostBlock-DEBUG] Executing cleanupAndRestoreOnLoad after rejoin same dimension."); // Log 18
-            cleanupAndRestoreOnLoad(world); // 同样需要清理恢复
-        }
-
-        lastTrackedDimension = currentDim; // 更新跟踪的维度
+    WorldClient world = (WorldClient) event.world;
+    if (world == null) {
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 世界为 null，无法继续。");
+        return;
     }
+
+    int currentDim = player.dimension;
+    System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 玩家加入世界/切换维度 - 当前维度: " + currentDim + ", 上次跟踪维度: " + lastTrackedDimension);
+
+    if (autoPlaceInProgress) {
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 检测到 autoPlaceInProgress 为 true，等待Tick处理完成。");
+        return;
+    }
+    if (pendingAutoPlaceEntry != null) {
+        System.out.println("[GhostBlock-WARN onEntityJoinWorld] 进入时发现残留的 pendingAutoPlaceEntry，强制清理。");
+        cleanupPendingAutoPlaceStatic(true);
+    }
+
+    if (GhostConfig.enableAutoPlaceOnJoin) {
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 自动放置功能已启用。");
+        String autoPlaceFileName = getAutoPlaceSaveFileName(world);
+        File autoPlaceFile = GhostBlockData.getDataFile(world, autoPlaceFileName);
+
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 尝试加载自动放置文件: " + autoPlaceFileName + ".json");
+        List<GhostBlockData.GhostBlockEntry> autoPlaceEntries = GhostBlockData.loadData(world, Collections.singletonList(autoPlaceFileName));
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 从自动放置文件加载了 " + autoPlaceEntries.size() + " 个条目。");
+
+        if (!autoPlaceEntries.isEmpty()) {
+            pendingAutoPlaceEntry = autoPlaceEntries.get(0);
+            pendingAutoPlaceTargetPos = new BlockPos(pendingAutoPlaceEntry.x, pendingAutoPlaceEntry.y, pendingAutoPlaceEntry.z);
+            pendingAutoPlaceFileRef = autoPlaceFile;
+            autoPlaceTickDelayCounter = 0; // 重置计数器
+            autoPlaceInProgress = true;   // 标记开始Tick处理
+
+            System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 已设置待处理的自动放置条目在 " + pendingAutoPlaceTargetPos + "。将由Tick事件持续处理。onEntityJoinWorld 返回。");
+            // 返回，让Tick事件接管后续的放置、isFirstJoin判断等
+            return;
+        } else {
+            System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 未找到自动放置文件或文件为空。不会启动延迟/持续放置。");
+            autoPlaceInProgress = false; // 确保标记为false
+        }
+    } else {
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 自动放置功能被禁用。");
+        autoPlaceInProgress = false; // 确保标记为false
+    }
+
+    // 只有当不进行自动放置时，才执行标准的 isFirstJoin/维度切换逻辑
+    System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 未启动自动放置流程 (autoPlaceInProgress=" + autoPlaceInProgress + ")。继续执行标准的加入世界逻辑...");
+    if (isFirstJoin) {
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 首次进入世界。初始化维度为 " + currentDim);
+        lastTrackedDimension = currentDim;
+        isFirstJoin = false;
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 执行 cleanupAndRestoreOnLoad (首次加入)。");
+        cleanupAndRestoreOnLoad(world);
+        return;
+    }
+    if (lastTrackedDimension != currentDim) {
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 检测到维度变化: " + lastTrackedDimension + " → " + currentDim);
+        cancelAllTasks(player);
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 执行 cleanupAndRestoreOnLoad (维度切换)。");
+        cleanupAndRestoreOnLoad(world);
+    } else {
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 重新加入相同维度 (" + currentDim + ")。");
+        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 执行 cleanupAndRestoreOnLoad (同维度重进)。");
+        cleanupAndRestoreOnLoad(world);
+    }
+    lastTrackedDimension = currentDim;
+}
+// ========= onEntityJoinWorld 方法修改结束 =========
 
     @Override
     public String getCommandName() {
@@ -370,7 +486,7 @@ public class GhostBlockCommand extends CommandBase {
                  throw new WrongUsageException(LangUtil.translate("ghostblock.commands.cghostblock.set.usage")); // set x y z block [-s [filename]]
             }
             // 解析必须参数
-            BlockPos pos = CommandBase.parseBlockPos(sender, args, 1, false);
+            BlockPos pos = parseBlockPosLegacy(sender, args, 1); // 调用你自己的方法
             BlockStateProxy state = parseBlockState(args[4]);
             Block block = Block.getBlockById(state.blockId);
             if (block == null || block == Blocks.air) {
@@ -593,8 +709,8 @@ public class GhostBlockCommand extends CommandBase {
                 throw new WrongUsageException(LangUtil.translate("ghostblock.commands.cghostblock.fill.usage"));
             }
             // 解析必须参数
-            BlockPos from = CommandBase.parseBlockPos(sender, args, 1, false);
-            BlockPos to = CommandBase.parseBlockPos(sender, args, 4, false);
+            BlockPos from = parseBlockPosLegacy(sender, args, 1);
+            BlockPos to = parseBlockPosLegacy(sender, args, 4);
             BlockStateProxy state = parseBlockState(args[7]);
             Block block = Block.getBlockById(state.blockId);
             if (block == null || block == Blocks.air) { // 不允许填充空气
@@ -1236,6 +1352,81 @@ public class GhostBlockCommand extends CommandBase {
              throw new WrongUsageException(getCommandUsage(sender)); // 处理未知子命令
         }
     }
+    
+        // ========= 旧版本坐标解析方法开始 =========
+    /**
+     * 解析命令参数中的坐标，支持相对坐标(~)。
+     * 这是为了更精确地控制基于玩家浮点位置的相对坐标计算。
+     *
+     * @param sender 命令发送者
+     * @param args   命令参数数组
+     * @param index  坐标参数的起始索引
+     * @return 解析后的 BlockPos
+     * @throws CommandException 如果坐标无效
+     */
+    private BlockPos parseBlockPosLegacy(ICommandSender sender, String[] args, int index) throws CommandException {
+        // 检查参数数量是否足够
+        if (args.length < index + 3) {
+            // 通常由调用者在之前检查，但这里也加一层保护
+            throw new WrongUsageException(getCommandUsage(sender)); // 或者更具体的错误消息
+        }
+
+        EntityPlayer player = sender instanceof EntityPlayer ? (EntityPlayer) sender : null;
+        // 获取玩家精确的 double 型坐标作为相对坐标的基准
+        // 如果发送者不是玩家，或者玩家对象不存在，则基准为0,0,0 (虽然此时~坐标会失败)
+        double baseX = (player != null) ? player.posX : 0.0D;
+        double baseY = (player != null) ? player.posY : 0.0D;
+        double baseZ = (player != null) ? player.posZ : 0.0D;
+
+        double x = parseRelativeCoordinateLegacy(sender, args[index], baseX);
+        double y = parseRelativeCoordinateLegacy(sender, args[index + 1], baseY);
+        double z = parseRelativeCoordinateLegacy(sender, args[index + 2], baseZ);
+
+        // 注意：这里使用 Math.floor 来模拟原版命令对浮点坐标转换为整数方块坐标的行为
+        return new BlockPos(
+            Math.floor(x),
+            Math.floor(y),
+            Math.floor(z)
+        );
+    }
+
+    /**
+     * 解析单个相对或绝对坐标值。
+     *
+     * @param sender 命令发送者 (用于检查~坐标的权限/上下文)
+     * @param input  坐标字符串 (如 "10", "~", "~-5")
+     * @param base   相对坐标的基准值 (玩家的精确X, Y, 或 Z)
+     * @return 解析后的 double 型坐标值
+     * @throws CommandException 如果输入无效
+     */
+    private double parseRelativeCoordinateLegacy(ICommandSender sender, String input, double base) throws CommandException {
+        if (input.startsWith("~")) {
+            // 相对坐标必须由玩家执行 (理论上客户端命令总是玩家)
+            // if (!(sender instanceof EntityPlayer)) {
+            //     throw new CommandException("commands.generic.permission"); // 或者其他错误
+            // }
+            String offsetStr = input.substring(1);
+            if (offsetStr.isEmpty()) {
+                return base; // "~" 表示基准值本身
+            } else {
+                try {
+                    return base + Double.parseDouble(offsetStr); // "~offset"
+                } catch (NumberFormatException e) {
+                    // LangUtil.translate("commands.generic.num.invalid", input) // Forge 1.8.9 的键名可能不同
+                    throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_coordinate_format", input)); // 自定义错误键
+                }
+            }
+        } else {
+            // 绝对坐标
+            try {
+                return Double.parseDouble(input);
+            } catch (NumberFormatException e) {
+                // LangUtil.translate("commands.generic.num.invalid", input)
+                throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_coordinate_format", input)); // 自定义错误键
+            }
+        }
+    }
+    // ========= 旧版本坐标解析方法结束 =========
 
     /**
      * 显示 /cgb 命令的帮助信息。
@@ -1292,7 +1483,7 @@ public class GhostBlockCommand extends CommandBase {
     }
 
     // 获取当前世界/维度的自动清除文件名
-    private String getAutoClearFileName(WorldClient world) {
+    private static String getAutoClearFileName(WorldClient world) {
         return "clear_" + GhostBlockData.getWorldIdentifier(world);
     }
 
@@ -3300,9 +3491,55 @@ public class GhostBlockCommand extends CommandBase {
         // 调用清理和恢复逻辑 (仅当自动放置禁用时)
         cleanupAndRestoreOnLoad(world);
     }
+    
+    // 在 GhostBlockCommand.java 类中，作为外部类的一个静态方法
+    private static void cleanupPendingAutoPlaceStatic(boolean deleteFile) {
+        String fileNameForDimCheck = null; // 用于获取维度信息
+        if (GhostBlockCommand.pendingAutoPlaceFileRef != null) {
+            fileNameForDimCheck = GhostBlockCommand.pendingAutoPlaceFileRef.getName();
+        }
+
+        if (deleteFile && GhostBlockCommand.pendingAutoPlaceFileRef != null && GhostBlockCommand.pendingAutoPlaceFileRef.exists()) {
+            if (GhostBlockCommand.pendingAutoPlaceFileRef.delete()) {
+                System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 已成功删除自动放置文件: " + fileNameForDimCheck);
+            } else {
+                System.err.println("[GhostBlock-ERROR AutoPlaceCleanup] 未能删除自动放置文件: " + fileNameForDimCheck);
+            }
+        }
+        GhostBlockCommand.pendingAutoPlaceEntry = null;
+        GhostBlockCommand.pendingAutoPlaceTargetPos = null;
+        GhostBlockCommand.pendingAutoPlaceFileRef = null;
+        GhostBlockCommand.autoPlaceTickDelayCounter = 0;
+        boolean wasInProgress = GhostBlockCommand.autoPlaceInProgress;
+        GhostBlockCommand.autoPlaceInProgress = false;
+        System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 已清理待处理的自动放置状态。autoPlaceInProgress 设置为 false。");
+
+        if (wasInProgress && GhostBlockCommand.isFirstJoin) {
+            WorldClient world = Minecraft.getMinecraft().theWorld;
+            EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+            if (world != null && player != null) {
+                int fileDim = Integer.MIN_VALUE;
+                if (fileNameForDimCheck != null) { // 使用之前保存的文件名来获取维度
+                    fileDim = GhostBlockData.getDimensionFromFileName(fileNameForDimCheck);
+                } else {
+                    fileDim = player.dimension; // Fallback，如果文件名未知
+                    System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 用于维度检查的文件名未知，将使用当前玩家维度。");
+                }
+
+                if (player.dimension == fileDim || fileDim == Integer.MIN_VALUE) {
+                    System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 自动放置处理结束，且仍是 isFirstJoin。处理首次加入逻辑...");
+                    GhostBlockCommand.isFirstJoin = false;
+                    GhostBlockCommand.lastTrackedDimension = player.dimension;
+                    cleanupAndRestoreOnLoad(world); // 调用本类的静态方法
+                } else {
+                     System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 自动放置处理结束，但玩家维度 ("+player.dimension+") 与文件先前维度 ("+fileDim+") 不符，不执行 isFirstJoin 的 cleanupAndRestoreOnLoad。");
+                }
+            }
+        }
+    }
 
     // 封装世界加载时的清理和恢复逻辑
-    private void cleanupAndRestoreOnLoad(WorldClient world) {
+    private static void cleanupAndRestoreOnLoad(WorldClient world) {
          if (world == null) {
              return;
          }
@@ -3354,43 +3591,126 @@ public class GhostBlockCommand extends CommandBase {
     // 非静态事件处理器，处理世界卸载事件
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
-        if (!event.world.isRemote) {
-            return; // 只关心客户端世界卸载
-        }
-        World unloadedWorld = event.world;
-        if (unloadedWorld == null) {
-            return;
-        }
-        // --- 清理与卸载的世界相关的文件 ---
-         String baseId = GhostBlockData.getWorldBaseIdentifier(unloadedWorld); // 获取基础ID
-         int unloadedDim = unloadedWorld.provider.getDimensionId(); // 获取维度ID
-         System.out.println("[GhostBlock] 正在卸载世界: " + baseId + " Dim: " + unloadedDim);
+    if (!event.world.isRemote) return;
+    World unloadedWorld = event.world;
+    if (unloadedWorld == null || !(unloadedWorld instanceof WorldClient)) return;
+    WorldClient clientWorld = (WorldClient) unloadedWorld;
 
-         // 1. 删除该维度的 clear 文件
-         File autoFile = new File( GhostBlockData.SAVES_DIR, "clear_" + baseId + "_dim_" + unloadedDim + ".json");
-         if (autoFile.exists()) {
-             boolean deleted = autoFile.delete();
-             System.out.println("卸载世界时删除 clear 文件 (" + autoFile.getName() + ") 结果: " + deleted);
-         }
+    System.out.println("[GhostBlock onWorldUnload] 世界卸载事件触发。当前 autoPlaceInProgress: " + autoPlaceInProgress);
 
-         // 2. 删除该维度的 undo 文件
-         File[] undoFiles = new File(GhostBlockData.SAVES_DIR).listFiles((dir, name) -> name.startsWith("undo_" + baseId + "_dim_" + unloadedDim + "_") && name.endsWith(".json"));
-         if (undoFiles != null) {
-             for (File file : undoFiles) {
-                 boolean deleted = file.delete();
-                 System.out.println("卸载世界时删除 undo 文件: " + file.getName() + " 结果: " + deleted);
-             }
-         }
-
-        // --- 取消所有活动任务 ---
-        System.out.println("[GhostBlock] 世界卸载，取消所有活动任务...");
-        ICommandSender feedbackSender = Minecraft.getMinecraft().thePlayer;
-        cancelAllTasks(feedbackSender); // 调用辅助方法取消所有任务
-
-        // 重置首次加入标志，以便下次进入新世界时正确处理
-        isFirstJoin = true;
-        System.out.println("[GhostBlock] 重置 isFirstJoin 标志。");
+    // 首先，如果存在任何待处理的自动放置任务，立即清理它
+    if (pendingAutoPlaceEntry != null || autoPlaceInProgress) {
+        System.out.println("[GhostBlock onWorldUnload] 检测到有待处理的自动放置任务，世界正在卸载，将进行清理。");
+        cleanupPendingAutoPlaceStatic(true); // 调用静态清理方法
+        System.out.println("[GhostBlock onWorldUnload] 已调用静态方法清理待处理的自动放置。");
+        // 清理后，autoPlaceInProgress 应该为 false
     }
+
+    // --- 保存脚下幽灵方块信息到新的 autoplace_*.json 文件 (如果适用) ---
+    if (GhostConfig.enableAutoPlaceOnJoin) {
+        EntityPlayer player = Minecraft.getMinecraft().thePlayer;
+        if (player != null && player.worldObj == clientWorld) { // 确保玩家仍在当前卸载的世界
+
+            // 使用与 parseBlockPosLegacy 相同的逻辑来计算玩家“逻辑上”的脚下坐标
+            // 即，如果此时执行 /cgb set ~ ~-1 ~，幽灵方块会放置在哪个坐标
+            BlockPos logicalPlayerFeetPos;
+            double playerExactX = player.posX;
+            double playerExactY = player.posY;
+            double playerExactZ = player.posZ;
+
+            // 计算的是如果执行 set ~ ~-1 ~，方块会放置的位置
+            logicalPlayerFeetPos = new BlockPos(
+                Math.floor(playerExactX),        // ~ 的 X
+                Math.floor(playerExactY - 1.0),  // ~-1 的 Y
+                Math.floor(playerExactZ)         // ~ 的 Z
+            );
+
+            System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 玩家精确坐标: (" + playerExactX + ", " + playerExactY + ", " + playerExactZ + ")");
+            System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 计算出的用于查找的“逻辑脚下”坐标: " + logicalPlayerFeetPos);
+
+            String tempClearFileName = getAutoClearFileName(clientWorld); // 调用静态方法
+            List<GhostBlockData.GhostBlockEntry> clearEntries = GhostBlockData.loadData(clientWorld, Collections.singletonList(tempClearFileName));
+            System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 从 " + tempClearFileName + ".json 加载了 " + clearEntries.size() + " 个条目。");
+
+            // 在 clear_*.json 中查找是否存在一个幽灵方块，其坐标与我们计算出的 logicalPlayerFeetPos 匹配
+            final BlockPos finalLogicalPlayerFeetPos = logicalPlayerFeetPos; // lambda需要final或effectively final
+            Optional<GhostBlockData.GhostBlockEntry> ghostEntryAtLogicalFeet = clearEntries.stream()
+                .filter(entry -> entry.x == finalLogicalPlayerFeetPos.getX() &&
+                                 entry.y == finalLogicalPlayerFeetPos.getY() &&
+                                 entry.z == finalLogicalPlayerFeetPos.getZ())
+                .findFirst();
+
+            String autoPlaceSaveFileName = getAutoPlaceSaveFileName(clientWorld); // 调用静态方法
+            File autoPlaceFileToSaveTo = GhostBlockData.getDataFile(clientWorld, autoPlaceSaveFileName);
+
+            if (ghostEntryAtLogicalFeet.isPresent()) {
+                // 如果玩家的“逻辑脚下”确实是一个已记录的幽灵方块
+                GhostBlockData.GhostBlockEntry entryToSave = ghostEntryAtLogicalFeet.get();
+                // entryToSave 的 x,y,z 就是 logicalPlayerFeetPos
+                // 我们将这个完整的 GhostBlockEntry 保存到 autoplace 文件
+                GhostBlockData.saveData(clientWorld, Collections.singletonList(entryToSave), autoPlaceSaveFileName, true); // 覆盖模式
+                System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 玩家逻辑脚下位置 (" + logicalPlayerFeetPos + ") 是已记录的幽灵方块 (方块: " + entryToSave.blockId + ")。信息已保存到 " + autoPlaceSaveFileName + ".json。");
+            } else {
+                // 如果玩家的“逻辑脚下”不是已知的幽灵方块，则删除任何旧的 autoplace 文件
+                System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 玩家逻辑脚下位置 (" + logicalPlayerFeetPos + ") 不是已记录的幽灵方块 (或clear文件中无记录)。删除旧的 " + autoPlaceSaveFileName + ".json (如果存在)。");
+                if (autoPlaceFileToSaveTo.exists()) {
+                    if (!autoPlaceFileToSaveTo.delete()) {
+                        System.err.println("[GhostBlock onWorldUnload ERROR] (保存逻辑) 未能删除旧的自动放置文件: " + autoPlaceFileToSaveTo.getName());
+                    } else {
+                        System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 成功删除旧的自动放置文件: " + autoPlaceFileToSaveTo.getName());
+                    }
+                }
+            }
+        } else {
+            System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 玩家为空或不在卸载的世界中。尝试清理可能存在的自动放置文件。");
+            String autoPlaceSaveFileName = getAutoPlaceSaveFileName(clientWorld); // 调用静态方法
+            File autoPlaceFileToClean = GhostBlockData.getDataFile(clientWorld, autoPlaceSaveFileName);
+            if (autoPlaceFileToClean.exists()) {
+                if (autoPlaceFileToClean.delete()) {
+                    System.out.println("[GhostBlock onWorldUnload] (保存逻辑，玩家不在) 删除了可能残留的自动放置文件: " + autoPlaceFileToClean.getName());
+                } else {
+                     System.err.println("[GhostBlock onWorldUnload ERROR] (保存逻辑，玩家不在) 未能删除残留的自动放置文件: " + autoPlaceFileToClean.getName());
+                }
+            }
+        }
+    }
+    // --- 自动放置保存逻辑结束 ---
+
+    // --- 原有的清理与卸载的世界相关的文件 ---
+    String baseId = GhostBlockData.getWorldBaseIdentifier(clientWorld);
+    int unloadedDim = clientWorld.provider.getDimensionId();
+    System.out.println("[GhostBlock onWorldUnload] (标准清理) 正在卸载世界: " + baseId + " Dim: " + unloadedDim);
+
+    File tempClearFileObject = GhostBlockData.getDataFile(clientWorld, getAutoClearFileName(clientWorld)); // 调用静态方法
+    if (tempClearFileObject.exists()) {
+        if (tempClearFileObject.delete()) {
+            System.out.println("[GhostBlock onWorldUnload] (标准清理) 删除 clear 文件 (" + tempClearFileObject.getName() + ") 结果: true");
+        } else {
+            System.err.println("[GhostBlock onWorldUnload ERROR] (标准清理) 删除 clear 文件 (" + tempClearFileObject.getName() + ") 失败!");
+        }
+    }
+
+    File savesDir = new File(GhostBlockData.SAVES_DIR);
+    final String undoPrefix = "undo_" + baseId + "_dim_" + unloadedDim + "_";
+    File[] undoFiles = savesDir.listFiles((dir, name) -> name.startsWith(undoPrefix) && name.endsWith(".json"));
+    if (undoFiles != null) {
+        for (File file : undoFiles) {
+            if (file.delete()) {
+                System.out.println("[GhostBlock onWorldUnload] (标准清理) 尝试删除 undo 文件: " + file.getName() + " 结果: true");
+            } else {
+                System.out.println("[GhostBlock onWorldUnload] (标准清理) 尝试删除 undo 文件: " + file.getName() + " 结果: false (注意：已知此删除可能由于bug无效)");
+            }
+        }
+    }
+
+    System.out.println("[GhostBlock onWorldUnload] (标准清理) 世界卸载，取消所有活动任务...");
+    ICommandSender feedbackSender = Minecraft.getMinecraft().thePlayer;
+    cancelAllTasks(feedbackSender); // 调用静态方法
+
+    isFirstJoin = true;
+    autoPlaceInProgress = false; // 再次确保重置，以防万一
+    System.out.println("[GhostBlock onWorldUnload] (标准清理) 重置 isFirstJoin 和 autoPlaceInProgress。");
+}
 
     // 辅助方法：取消所有类型的活动任务
     private void cancelAllTasks(ICommandSender feedbackSender) {
