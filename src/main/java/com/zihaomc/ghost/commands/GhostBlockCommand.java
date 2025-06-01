@@ -254,7 +254,6 @@ public class GhostBlockCommand extends CommandBase {
 
                         if (platformPartiallyPlaced && (GhostBlockCommand.autoPlaceTickDelayCounter == 1 || (GhostBlockCommand.autoPlaceTickDelayCounter == AUTO_PLACE_DURATION_TICKS && GhostBlockCommand.autoPlaceInProgress))) {
                             player.addChatMessage(GhostBlockCommand.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.autoplace.platform_success", centerActualPlacePos.getX(), centerActualPlacePos.getY(), centerActualPlacePos.getZ()));
-                            // 需要新的语言条目: ghostblock.commands.autoplace.platform_success=幽灵平台已在 (%1$d, %2$d, %3$d) 附近自动放置以接住您！
                             System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 3x3幽灵平台部分或全部放置 (tick: " + GhostBlockCommand.autoPlaceTickDelayCounter + ")");
                         }
                         
@@ -3697,7 +3696,7 @@ public class GhostBlockCommand extends CommandBase {
             if (file.delete()) {
                 System.out.println("[GhostBlock onWorldUnload] (标准清理) 尝试删除 undo 文件: " + file.getName() + " 结果: true");
             } else {
-                System.out.println("[GhostBlock onWorldUnload] (标准清理) 尝试删除 undo 文件: " + file.getName() + " 结果: false (注意：已知此删除可能由于bug无效)");
+                System.out.println("[GhostBlock onWorldUnload] (标准清理) 尝试删除 undo 文件: " + file.getName() + " 结果: false");
             }
         }
     }

@@ -105,6 +105,7 @@ ghostblock.commands.undo.record_created_clear=已为文件删除操作创建撤�
 ghostblock.displayname.default_file=默认文件 (%1$s)
 ghostblock.commands.save.success=数据已成功保存到文件: %1$s
 ghostblock.commands.save.warn.no_data=警告: 没有可保存的数据到文件: %1$s
+ghostblock.commands.autoplace.platform_success=幽灵平台已在 (%1$d, %2$d, %3$d) 附近自动放置以接住您。
 
 # 新增/修改的任务相关消息
 ghostblock.commands.task.chunk_aware_notice=提示: 任务将在后台运行。位于未加载区块的方块将在您靠近时自动放置。

@@ -1,20 +1,193 @@
-# Command Usages
-ghostblock.commands.usage=Usage: /cghostblock <set|fill|load> [parameters]
-ghostblock.commands.cghostblock.set.usage=Usage: /cghostblock set <x> <y> <z> <block> [-s]
-ghostblock.commands.cghostblock.fill.usage=Usage: /cghostblock fill <x1> <y1> <z1> <x2> <y2> <z2> <block> [-b [size] -s]
-ghostblock.commands.cghostblock.load.usage=Usage: /cghostblock load [-b [size]]
+# GhostBlock Mod - English Language File
 
-# Success Messages
-ghostblock.commands.cghostblock.set.success=Successfully set ghost block at (%d, %d, %d)
-ghostblock.commands.cghostblock.fill.success=Successfully filled %d blocks
-ghostblock.commands.cghostblock.fill.batch_started=Started batch filling %d blocks (batch size: %d)
-ghostblock.commands.cghostblock.load.batch_started=Loading %d blocks in batches (size: %d)
+# General Commands and Errors
+ghostblock.commands.usage=Usage: /cgb <set|fill|load|clear|cancel|resume|undo|help> [arguments...]
+ghostblock.commands.error.not_in_world=Error: You are not currently in a world.
+ghostblock.commands.error.invalid_block=Error: The specified block is invalid or does not exist.
+ghostblock.commands.error.invalid_batch_size=Error: Invalid batch size. Please enter a positive integer.
+ghostblock.commands.error.batch_size_too_small=Error: Batch size must be greater than 0.
+ghostblock.commands.error.unloaded=Error: The chunk at the target coordinates is not loaded.
+ghostblock.commands.error.out_of_world=Error: Target coordinates are outside world boundaries (Y-axis should be between 0-255).
+ghostblock.commands.task.cancelled_world_change=Warning: All active tasks have been cancelled due to a world change/unload.
 
-# Error Messages
-ghostblock.commands.error.not_in_world=You must be in a world to use this command
-ghostblock.commands.error.invalid_block=Invalid block ID
-ghostblock.commands.error.invalid_batch_size=Invalid batch size
-ghostblock.commands.error.unloaded=Target chunk is not loaded
-ghostblock.commands.error.out_of_world=Coordinate is outside the world
-ghostblock.commands.generic.permission=Relative coordinates require player context
-ghostblock.commands.generic.num.invalid=Invalid number: %s
+# set command
+ghostblock.commands.cghostblock.set.usage=Usage: /cgb set <x> <y> <z> <block[:metadata]> [-s [filename]]
+ghostblock.commands.cghostblock.set.success=Successfully set ghost block at coordinates (%1$d, %2$d, %3$d).
+ghostblock.commands.cghostblock.set.deferred=Block will be automatically set at coordinates (%1$d, %2$d, %3$d) when the corresponding chunk loads.
+
+# fill command
+ghostblock.commands.cghostblock.fill.usage=Usage: /cgb fill <x1> <y1> <z1> <x2> <y2> <z2> <block[:metadata]> [-b [size]] [-s [filename]]
+ghostblock.commands.fill.empty_area=Warning: No blocks to fill in the specified area.
+ghostblock.commands.cghostblock.fill.success=Successfully filled %1$d blocks.
+ghostblock.commands.fill.batch_started=Fill task #%1$d started, total %2$d blocks, processing %3$d per batch.
+ghostblock.commands.fill.progress=Fill progress: {0} {1}
+ghostblock.commands.fill.finish=✔ Fill task completed, successfully placed %1$d blocks.
+ghostblock.commands.fill.finish_single=✔ Ghost block set task completed, successfully placed %1$d block.
+ghostblock.commands.fill.implicit_batch_notice=Detected target area contains unloaded chunks, will automatically switch to batch processing mode.
+
+# load command
+ghostblock.commands.cghostblock.load.usage=Usage: /cgb load [filename...] [-b [size]]
+ghostblock.commands.cghostblock.load.usage.missing_args=Usage: /cgb load [filename...] [-b [size]]. Please provide a filename or use the -b parameter.
+ghostblock.commands.load.ignored_internal_file=Ignored internal file: %1$s
+ghostblock.commands.load.using_default_file=No filename specified, attempting to load default file...
+ghostblock.commands.load.error.default_is_internal=Error: The default filename points to an internal file. Please specify the file to load explicitly.
+ghostblock.commands.load.error.no_valid_files=Error: None of the filenames you provided are valid or they point to internal files.
+ghostblock.commands.load.empty=Error: The specified file is empty or does not exist, or all blocks were filtered.
+ghostblock.commands.load.start=Starting to load %1$d ghost blocks...
+ghostblock.commands.load.complete=Load complete: %1$d / %2$d blocks successful.
+ghostblock.commands.load.failed=%1$d blocks failed to load during the process (possibly invalid block IDs).
+ghostblock.commands.load.batch_started=Load task #%1$d started, total %2$d entries, processing %3$d per batch.
+ghostblock.commands.load.progress=Load progress: {0} {1}
+ghostblock.commands.load.finish=✔ Load task completed, attempted to process %1$d entries.
+ghostblock.commands.load.empty_or_missing=Warning: File [%1$s] does not exist, is empty, or is inaccessible.
+ghostblock.commands.load.implicit_batch_notice=Detected load data contains coordinates in unloaded chunks, will automatically switch to batch processing mode.
+
+# clear command
+ghostblock.commands.clear.usage=Usage: /cgb clear <block|file> [arguments...]
+ghostblock.commands.clear.usage.file=Usage: /cgb clear file <filename...>
+ghostblock.commands.clear.usage.file_missing_args=Usage: /cgb clear file <filename...>. Please provide at least one filename.
+ghostblock.commands.clear.usage.block=Usage: /cgb clear block [-b [size]] [confirm]
+ghostblock.commands.clear.confirm.question=Warning: Are you sure you want to permanently delete the following file(s)? This action can be undone with /cgb undo!
+ghostblock.commands.clear.confirm.button=Confirm Deletion
+ghostblock.commands.clear.success=Successfully deleted file: %1$s
+ghostblock.commands.clear.failed=Failed to delete file: %1$s
+ghostblock.commands.clear.missing_files=Warning: The following files do not exist or were ignored: %1$s
+ghostblock.commands.clear.error.no_valid_files_to_delete=Error: No valid user files found to delete.
+ghostblock.commands.clear.confirm_expired=Error: File deletion confirmation request has timed out or is invalid. Please re-run the clear file command.
+ghostblock.commands.clear.progress_detailed=Clear progress: {0} {1} ({2}/{3})
+ghostblock.commands.clear.finish_complete=✔ Clear task completed, successfully restored %1$d blocks.
+ghostblock.commands.clear.finish_partial=✔ Clear task completed, successfully restored %1$d / %2$d target blocks.
+
+# clear block subcommand
+ghostblock.commands.clear.block.no_blocks=Info: No recorded ghost blocks to clear in the current world/dimension.
+ghostblock.commands.clear.block.confirm.question=Warning: Are you sure you want to clear all ghost blocks in the current world/dimension and restore them to their original state? This action can be undone with /cgb undo.
+ghostblock.commands.clear.block.confirm.button=Confirm Clear All
+ghostblock.commands.clear.block.success=Successfully cleared %1$d ghost blocks and restored their original states.
+ghostblock.commands.clear.block.partial_fail=Cleared %1$d ghost blocks, but %2$d failed to restore.
+ghostblock.commands.clear.block.delete_failed=Error: Failed to delete auto-record file after clearing ghost blocks: %1$s
+ghostblock.commands.clear.batch_started=Clear task #%1$d started, total %2$d blocks, processing %3$d per batch.
+ghostblock.commands.clear.progress=Clear progress: {0} {1}
+ghostblock.commands.clear.finish=✔ Clear task completed, processed %1$d blocks in total.
+
+# cancel command
+ghostblock.commands.cancel.usage=Usage: /cgb cancel <taskID1> [taskID2...]
+ghostblock.commands.cancel.success.multi=Successfully cancelled or paused %1$d tasks: %2$s
+ghostblock.commands.cancel.invalid_ids=Error: The following task IDs are invalid or do not exist: %1$s
+
+# resume command
+ghostblock.commands.resume.usage=Usage: /cgb resume <taskID>
+ghostblock.commands.resume.success=Successfully resumed task #%1$d.
+ghostblock.commands.resume.invalid_id=Error: Task ID %1$s is invalid, completed, or does not exist.
+ghostblock.commands.resume.error.already_running=Error: Task #%1$d is already running and cannot be resumed.
+ghostblock.commands.resume.invalid_type=Error: This type of task (%1$s) does not support resuming.
+
+# undo command
+ghostblock.commands.undo.usage=Usage: /cgb undo
+ghostblock.commands.undo.empty=Error: No operations to undo.
+ghostblock.commands.undo.restoring_user_files=Restoring user files to previous state...
+ghostblock.commands.undo.user_file_restored=Restored user file '%1$s'.
+ghostblock.commands.undo.error.data_file_empty=Warning: Undo data file is empty or not found, cannot restore blocks.
+ghostblock.commands.undo.restoring_blocks=Restoring original blocks...
+ghostblock.commands.undo.error.restore_failed=Error: Failed to restore block at (%1$d, %2$d, %3$d): %4$s
+ghostblock.commands.undo.error_block_lookup=Error: Could not find block ID '%1$s' for restoring position (%2$d, %3$d, %4$d).
+ghostblock.commands.undo.success_set=Successfully undid operation, restored %1$d original blocks.
+ghostblock.commands.undo.success_clear_file=Successfully undid file deletion operation.
+ghostblock.commands.undo.warning.no_files_to_restore=Undo record is valid, but no files needed restoring.
+ghostblock.commands.undo.error.data_file_empty_ghost=Warning: Undo data file is empty or not found, cannot restore ghost blocks.
+ghostblock.commands.undo.restoring_ghost_blocks=Restoring ghost blocks...
+ghostblock.commands.undo.error.restore_ghost_failed=Error: Failed to restore ghost block at (%1$d, %2$d, %3$d): %4$s
+ghostblock.commands.undo.auto_file_restored=Restored %1$d ghost block records to the auto-clear file.
+ghostblock.commands.undo.success_clear=Successfully undid clear operation, restored %1$d ghost blocks.
+ghostblock.commands.undo.record_created_clear=Undo record created for file deletion operation.
+# ghostblock.commands.undo.error.delete_undo_file=Warning: Failed to delete undo data file: %1$s
+
+# Other
+ghostblock.displayname.default_file=Default File (%1$s)
+ghostblock.commands.save.success=Data successfully saved to file: %1$s
+ghostblock.commands.save.warn.no_data=Warning: No data to save to file: %1$s
+ghostblock.commands.autoplace.platform_success=Ghost platform automatically placed near (%1$d, %2$d, %3$d) to catch you.
+
+# New/Modified Task-related Messages
+ghostblock.commands.task.chunk_aware_notice=Hint: Task will run in the background. Blocks in unloaded chunks will be placed automatically as you approach.
+ghostblock.commands.task.sync_skipped=Warning: Sync operation skipped %1$d blocks located in unloaded chunks or that failed to process.
+ghostblock.commands.load.failed_or_skipped=%1$d blocks failed to load or were skipped due to unloaded chunks during the process.
+ghostblock.commands.fill.sync_start=All target chunks are loaded, starting synchronous fill...
+
+# --- Ghost Config ---
+ghostblock.config.category.fill=Fill Command Settings
+ghostblock.config.category.save=Save Options
+ghostblock.config.category.chat=Chat Features
+ghostblock.config.category.auto_place=Auto-Place Feature
+
+ghostblock.config.alwaysBatchFill.tooltip=Whether to force the /cgb fill command to always use batch processing mode (-b). If true, batching will be used even if -b is not in the command. If true and the user doesn't specify a size, it will use forcedBatchSize (if > 0) or the default size (100).
+ghostblock.config.forcedBatchSize.tooltip=The batch size to use when alwaysBatchFill is true and the user executes /cgb fill *without* specifying a batch size. Set to 0 or negative to use the default value of 100.
+ghostblock.config.enableAutoSave.tooltip=Whether to automatically save ghost block data when executing /cgb set or /cgb fill commands, even without the -s parameter.
+ghostblock.config.defaultSaveFileName.tooltip=The default save filename to use when auto-save is enabled (enableAutoSave=true) and -s is not used. Leave empty or enter 'default' to use the current world/server identifier as the filename.
+ghostblock.config.enableChatSuggestions.tooltip=Whether to enable adding suggestion buttons to commands in chat (e.g., after a command succeeds or fails).
+ghostblock.config.enableAutoPlaceOnJoin.tooltip=Whether to automatically re-place previously recorded ghost blocks under the player's feet upon joining a world (if currently air). This can prevent falling when re-entering after logging out mid-air.
+
+# --- Config Command (/gconfig) ---
+ghostblock.commands.gconfig.usage=Usage: /gconfig [optionName] [value] (no arguments displays current settings)
+ghostblock.commands.gconfig.success=Successfully set config option '%1$s' to '%2$s'.
+ghostblock.commands.gconfig.error.invalid_setting=Error: Unknown config option '%1$s'. Available: alwaysBatchFill, forcedBatchSize, enableAutoSave, defaultSaveName, enableChatSuggestions, toggleSuggest. # Old key, may need update or removal
+ghostblock.commands.gconfig.error.invalid_setting.extended=Error: Unknown config option '%1$s'. Available: alwaysBatchFill, forcedBatchSize, enableAutoSave, defaultSaveName, enableChatSuggestions, enableAutoPlaceOnJoin, toggleSuggest. # New key
+ghostblock.commands.gconfig.error.invalid_value.boolean=Error: Invalid boolean value '%1$s'. Please enter 'true' or 'false'.
+ghostblock.commands.gconfig.error.invalid_value.integer=Error: Invalid integer value '%1$s'.
+ghostblock.commands.gconfig.error.invalid_value.integer.positive=Error: Invalid integer value '%1$s'. Please enter an integer greater than 0.
+ghostblock.commands.gconfig.error.generic_set_failed=Error: Failed to set config option '%1$s'.
+ghostblock.commands.gconfig.current_settings.header=--- Current GhostBlock Config ---
+ghostblock.commands.gconfig.current_settings.default_filename_placeholder=(Uses world identifier)
+ghostblock.commands.togglesuggest.enabled=Chat command suggestion feature enabled.
+ghostblock.commands.togglesuggest.disabled=Chat command suggestion feature disabled.
+ghostblock.commands.gconfig.hint_toggle_suggest=Hint: Use '/gconfig toggleSuggest' to quickly toggle the suggestion feature.
+ghostblock.commands.gconfig.extra_usage_toggle=(or use '/gconfig toggleSuggest' to quickly toggle suggestion feature)
+
+# --- Optional: Auto-save activation hint ---
+ghostblock.commands.autosave.activated=Hint: Auto-save has been activated.
+
+# --- Command Suggestion Feature Text ---
+# Note: The trailing space is to make it easier for players to click. Do not delete!
+ghostblock.commands.suggest.text= ↩  
+ghostblock.commands.suggest.hovertext=Click to re-enter: %s
+# Same for this question mark
+ghostblock.commands.suggest.help.text= ?  
+ghostblock.commands.suggest.help.hovertext=Click for syntax and examples
+
+# --- New: Help Information ---
+
+# /cgb help
+ghostblock.commands.cghostblock.help.description=Manage client-side ghost blocks.
+ghostblock.commands.cghostblock.help.usage.main=Main Usage
+ghostblock.commands.cghostblock.help.subcommands.header=Available subcommands:
+ghostblock.commands.cghostblock.help.subcommand.help=Display this help message.
+ghostblock.commands.cghostblock.help.subcommand.set=Set a ghost block at a specified location.
+ghostblock.commands.cghostblock.help.subcommand.fill=Fill an area with ghost blocks.
+ghostblock.commands.cghostblock.help.subcommand.load=Load ghost blocks from a file.
+ghostblock.commands.cghostblock.help.subcommand.clear=Clear ghost blocks (from file or current world).
+ghostblock.commands.cghostblock.help.subcommand.cancel=Cancel running background tasks (fill/load/clear).
+ghostblock.commands.cghostblock.help.subcommand.resume=Resume a paused task.
+ghostblock.commands.cghostblock.help.subcommand.undo=Undo the last set/fill/load/clear operation.
+ghostblock.commands.cghostblock.help.aliases=Aliases
+
+# /gconfig help
+ghostblock.commands.gconfig.help.description=Manage GhostBlock Mod configuration.
+ghostblock.commands.gconfig.help.usage.main=Usage:
+ghostblock.commands.gconfig.help.usage.display=Display all current configuration settings.
+ghostblock.commands.gconfig.help.usage.set=Set the value of a specified config option.
+ghostblock.commands.gconfig.help.usage.help=Display this help message.
+ghostblock.commands.gconfig.help.usage.toggle=Quickly toggle the chat suggestion feature.
+ghostblock.commands.gconfig.help.available_settings=Available settings:
+ghostblock.commands.gconfig.help.setting.alwaysBatchFill=Force fill to use batch processing.
+ghostblock.commands.gconfig.help.setting.forcedBatchSize=Forced batch size (if not specified).
+ghostblock.config.help.setting.enableAutoSave=Automatically save on command execution (no -s needed).
+ghostblock.commands.gconfig.help.setting.defaultSaveName=Default filename for auto-save.
+ghostblock.commands.gconfig.help.setting.enableChatSuggestions=Enable chat command suggestion buttons.
+ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=Auto-place ghost blocks underfoot on world join.
+ghostblock.commands.gconfig.help.examples.header=Examples:
+ghostblock.commands.gconfig.help.example.alwaysBatchFill=/gconfig alwaysBatchFill true
+ghostblock.commands.gconfig.help.example.forcedBatchSize=/gconfig forcedBatchSize 500
+ghostblock.commands.gconfig.help.example.enableAutoSave=/gconfig enableAutoSave true
+ghostblock.commands.gconfig.help.example.defaultSaveName=/gconfig defaultSaveName my_server_ghosts
+ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
+ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true
+ghostblock.commands.gconfig.help.aliases=Aliases
