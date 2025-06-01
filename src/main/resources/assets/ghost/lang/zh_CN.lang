@@ -116,14 +116,14 @@ ghostblock.commands.fill.sync_start=所有目标区块已加载，开始同步�
 ghostblock.config.category.fill=填充命令设置
 ghostblock.config.category.save=保存选项
 ghostblock.config.category.chat=聊天功能
-ghostblock.config.category.auto_place=自动放置功能 # 新增
+ghostblock.config.category.auto_place=自动放置功能
 
 ghostblock.config.alwaysBatchFill.tooltip=是否强制 /cgb fill 命令总是使用批处理模式 (-b)。如果为 true，即使命令中不包含 -b 也会使用批处理。如果为 true 且用户未在命令中指定大小，将使用下面的 forcedBatchSize (如果 > 0) 或默认大小 (100)。
 ghostblock.config.forcedBatchSize.tooltip=当 alwaysBatchFill 为 true 且用户执行 /cgb fill 时 *没有* 指定批次大小时，使用的批次大小。设置为 0 或负数将使用默认值 100。
 ghostblock.config.enableAutoSave.tooltip=是否在执行 /cgb set 或 /cgb fill 命令时，即使不加 -s 参数也自动保存幽灵方块数据。
 ghostblock.config.defaultSaveFileName.tooltip=当启用自动保存 (enableAutoSave=true) 且未使用 -s 时，默认使用的保存文件名。留空或输入 'default' 将使用当前世界/服务器标识符作为文件名。
 ghostblock.config.enableChatSuggestions.tooltip=是否启用在聊天中为命令添加建议按钮的功能 (例如在命令成功或失败后)。
-ghostblock.config.enableAutoPlaceOnJoin.tooltip=是否在玩家加入世界时，自动在脚下重新放置之前记录的幽灵方块（如果脚下当前是空气）。这可以防止在空中退出后重新进入时掉落。 # 新增
+ghostblock.config.enableAutoPlaceOnJoin.tooltip=是否在玩家加入世界时，自动在脚下重新放置之前记录的幽灵方块（如果脚下当前是空气）。这可以防止在空中退出后重新进入时掉落。
 
 # --- 配置命令 (/gconfig) ---
 ghostblock.commands.gconfig.usage=用法: /gconfig [选项名] [值] (无参数则显示当前设置)
@@ -181,12 +181,12 @@ ghostblock.commands.gconfig.help.setting.forcedBatchSize=强制的批处理大�
 ghostblock.commands.gconfig.help.setting.enableAutoSave=命令执行时自动保存 (无需 -s)。
 ghostblock.commands.gconfig.help.setting.defaultSaveName=自动保存时使用的默认文件名。
 ghostblock.commands.gconfig.help.setting.enableChatSuggestions=启用聊天命令建议按钮。
-ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=在加入世界时自动放置脚下的幽灵方块。 # 新增
+ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=在加入世界时自动放置脚下的幽灵方块。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.alwaysBatchFill=/gconfig alwaysBatchFill true
 ghostblock.commands.gconfig.help.example.forcedBatchSize=/gconfig forcedBatchSize 500
 ghostblock.commands.gconfig.help.example.enableAutoSave=/gconfig enableAutoSave true
 ghostblock.commands.gconfig.help.example.defaultSaveName=/gconfig defaultSaveName my_server_ghosts
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
-ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true # 新增
+ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true
 ghostblock.commands.gconfig.help.aliases=别名

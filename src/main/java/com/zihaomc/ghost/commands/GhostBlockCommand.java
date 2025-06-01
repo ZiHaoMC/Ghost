@@ -197,10 +197,10 @@ public class GhostBlockCommand extends CommandBase {
                 BlockPos expectedPlayerStandPos = centerOriginalRecordedPos.up(); // 玩家应该站在原始中心幽灵方块的上面
 
                 // --- 范围检查 ---
-                // 检查玩家当前是否大致在期望站立位置的水平中心附近 (例如 XZ 误差 +/- 1格)
+                // 检查玩家当前是否大致在期望站立位置的水平中心附近 (例如 XZ 误差 +/- 2格)
                 // Y轴的检查可以放宽松一点，因为玩家可能正在下落
-                boolean isInHorizontalRange = Math.abs(playerCurrentBlockPos.getX() - expectedPlayerStandPos.getX()) <= 1 &&
-                                            Math.abs(playerCurrentBlockPos.getZ() - expectedPlayerStandPos.getZ()) <= 1;
+                boolean isInHorizontalRange = Math.abs(playerCurrentBlockPos.getX() - expectedPlayerStandPos.getX()) <= 2 &&
+                                            Math.abs(playerCurrentBlockPos.getZ() - expectedPlayerStandPos.getZ()) <= 2;
                 // 并且玩家的Y不能太低 (比如不能低于平台下方太多)
                 boolean isVerticallyReasonable = playerCurrentBlockPos.getY() >= centerActualPlacePos.getY() - 2 && // 不低于平台下方2格
                                                  playerCurrentBlockPos.getY() <= centerActualPlacePos.getY() + 5;   // 不高于平台上方太多 (允许出生在更高处然后掉下来)
@@ -2952,14 +2952,14 @@ public class GhostBlockCommand extends CommandBase {
     }
 
         // 静态内部类：批量填充任务 (修正自动继续逻辑并移除调试日志)
-    private static class FillTask {
+        private static class FillTask {
         final WorldClient world;
         final BlockStateProxy state;
         final List<BlockPos> remainingBlocks;
         final int batchSize;
         final boolean saveToFile;
         final String saveFileName;
-        final ICommandSender sender;
+        final ICommandSender sender; // 用于获取玩家位置
         private final int totalBlocks;
         private int processedCount = 0;
         private long lastUpdateTime = 0;
@@ -2967,11 +2967,10 @@ public class GhostBlockCommand extends CommandBase {
         private volatile boolean cancelled = false;
         private final int taskId;
         private final List<GhostBlockData.GhostBlockEntry> entriesToSaveForUserFile;
-        private final ChunkProviderClient chunkProvider;
-        // 新增: 跟踪哪些位置之前是未加载的
-        private final Set<BlockPos> previouslyUnloaded = new HashSet<>();
+        // 跟踪哪些位置之前是因为 (isBlockLoaded=false 或 距离远) 而未处理的
+        private final Set<BlockPos> previouslyWaitingForLoadOrProximity = new HashSet<>();
+        private static final double TASK_PLACEMENT_PROXIMITY_SQ = 32.0 * 32.0; // 任务执行时，玩家需要在此距离平方内才放置 (32格)
 
-        // ... (构造函数保持不变)
         public FillTask(WorldClient world, BlockStateProxy state, List<BlockPos> allBlocks, int totalBlocks_unused,
                         int batchSize, boolean saveToFile, String saveFileName, ICommandSender sender, int taskId,
                         List<GhostBlockData.GhostBlockEntry> entriesToSaveForUserFile) {
@@ -2982,98 +2981,124 @@ public class GhostBlockCommand extends CommandBase {
             this.batchSize = Math.max(1, batchSize);
             this.saveToFile = saveToFile;
             this.saveFileName = saveFileName;
-            this.sender = sender;
+            this.sender = sender; // 保存 sender
             this.taskId = taskId;
             this.entriesToSaveForUserFile = entriesToSaveForUserFile != null ? new ArrayList<>(entriesToSaveForUserFile) : new ArrayList<>();
             this.processedCount = 0;
-            this.chunkProvider = (ChunkProviderClient) world.getChunkProvider();
-            System.out.println("[GhostBlock FillTask #" + taskId + "] 初始化: total=" + this.totalBlocks + ", batch=" + this.batchSize + ", save=" + saveToFile + ", userEntries=" + this.entriesToSaveForUserFile.size());
+            System.out.println("[GhostBlock FillTask #" + taskId + "] 初始化 (带距离检查策略): total=" + this.totalBlocks + ", batch=" + this.batchSize);
         }
 
 
         boolean processBatch() {
             if (cancelled) {
-                // System.out.println("[GhostBlock FillTask #" + taskId + "] 已取消，停止处理。"); // 可选日志
-                return true; // 任务结束（已取消）
+                return true;
             }
 
             Block block = Block.getBlockById(state.blockId);
-            if (block == null || block == Blocks.air) { // 也阻止填充空气
-                if (processedCount == 0 && !cancelled) { // 避免重复报错或取消后报错
+            if (block == null || block == Blocks.air) {
+                if (processedCount == 0 && !cancelled) {
                     sender.addChatMessage(formatMessage(EnumChatFormatting.RED, "ghostblock.commands.error.invalid_block"));
-                    System.err.println("[GhostBlock FillTask #" + taskId + "] 错误：无效的方块 ID " + state.blockId + " 或尝试填充空气。任务取消。");
-                    this.cancel(); // 取消任务
+                    System.err.println("[GhostBlock FillTask #" + taskId + "] 错误：无效方块 ID " + state.blockId + " 或尝试填充空气。任务取消。");
+                    this.cancel();
                 }
-                return true;   // 任务结束
+                return true;
             }
 
             int attemptsThisTick = 0;
             int successfullyProcessedThisTick = 0;
             Iterator<BlockPos> iterator = remainingBlocks.iterator();
 
+            // 获取当前玩家实例 (如果 sender 是玩家)
+            EntityPlayer currentPlayer = null;
+            if (sender instanceof EntityPlayer) {
+                EntityPlayer cmdSenderPlayer = (EntityPlayer) sender;
+                // 确保玩家仍然有效且在当前世界
+                if (cmdSenderPlayer.isEntityAlive() && cmdSenderPlayer.worldObj == this.world) {
+                    currentPlayer = cmdSenderPlayer;
+                } else if (!cancelled) { // 如果玩家已不在，且任务未被取消，则取消任务
+                    System.out.println("[GhostBlock FillTask #" + taskId + "] 命令发送者玩家已失效或不在当前世界，取消任务。");
+                    this.cancel();
+                    return true;
+                }
+            }
+
+
             while (iterator.hasNext() && attemptsThisTick < batchSize) {
-                 if (cancelled) {
+                 if (cancelled) { // 在循环内部也检查取消状态
                      break;
                  }
                 BlockPos pos = iterator.next();
                 attemptsThisTick++;
 
-                int chunkX = pos.getX() >> 4;
-                int chunkZ = pos.getZ() >> 4;
-                boolean sectionIsReady = false;
-                boolean chunkExists = this.chunkProvider.chunkExists(chunkX, chunkZ);
+                boolean canPlaceNow = false;
+                String waitReason = "";
 
-                if (chunkExists) {
-                    Chunk chunk = this.chunkProvider.provideChunk(chunkX, chunkZ);
-                    int storageY = pos.getY() >> 4;
-                    if (pos.getY() >= 0 && pos.getY() < 256 && storageY >= 0 && storageY < chunk.getBlockStorageArray().length) {
-                        if (chunk.getBlockStorageArray()[storageY] != null) {
-                            sectionIsReady = true;
+                if (pos.getY() >= 0 && pos.getY() < 256) {
+                    if (world.isBlockLoaded(pos)) {
+                        // 区块已加载，检查距离
+                        if (currentPlayer != null) {
+                            if (currentPlayer.getDistanceSqToCenter(pos) <= TASK_PLACEMENT_PROXIMITY_SQ) {
+                                canPlaceNow = true;
+                            } else {
+                                waitReason = "玩家距离远 (" + String.format("%.1f", Math.sqrt(currentPlayer.getDistanceSqToCenter(pos))) + "m > " + String.format("%.1f", Math.sqrt(TASK_PLACEMENT_PROXIMITY_SQ)) + "m)";
+                            }
+                        } else {
+                            // 没有有效的玩家上下文 (例如命令由控制台发起，或玩家已退出但任务未及时取消)
+                            // 在这种情况下，如果区块已加载，我们允许放置，避免任务卡死。
+                            canPlaceNow = true;
+                            waitReason = "无玩家进行距离检查 (isBlockLoaded=true)";
                         }
+                    } else {
+                        waitReason = "isBlockLoaded=false";
                     }
+                } else {
+                    waitReason = "Y轴无效 (" + pos.getY() + ")";
+                    // 对于Y轴无效的，我们会在下面直接移除
                 }
 
-                if (sectionIsReady) {
-                    // *** 新增日志：如果之前未加载，现在加载了 ***
-                    if (previouslyUnloaded.contains(pos)) {
-                        System.out.println("[GhostBlock FillTask #" + taskId + "] 区块已就绪 (之前未就绪): " + pos + ". 尝试放置...");
-                        previouslyUnloaded.remove(pos); // 不再跟踪
+
+                if (canPlaceNow) {
+                    if (previouslyWaitingForLoadOrProximity.contains(pos)) {
+                        System.out.println("[GhostBlock FillTask #" + taskId + "] 位置现已就绪: " + pos + ". 尝试放置...");
+                        previouslyWaitingForLoadOrProximity.remove(pos);
                     }
 
                     try {
                         if (world.isRemote) {
                             IBlockState blockStateToSet = block.getStateFromMeta(state.metadata);
-                            // 使用标志 3: 更新方块，通知邻居，并尝试重新计算光照
                             world.setBlockState(pos, blockStateToSet, 3);
-                            // 可选：强制渲染更新（通常不需要）
-                            // world.markBlockRangeForRenderUpdate(pos, pos);
                         } else {
                             System.err.println("[GhostBlock FillTask #" + taskId + " WARN] 尝试在非客户端世界执行任务！Pos: " + pos);
                         }
 
-                        iterator.remove(); // 处理成功，从列表移除
+                        iterator.remove();
                         successfullyProcessedThisTick++;
                         processedCount++;
 
                     } catch (Exception e) {
-                        System.err.println("[GhostBlock FillTask #" + taskId + " WARN] 在已加载区块设置方块时出错 " + pos + ": " + e.getMessage());
+                        System.err.println("[GhostBlock FillTask #" + taskId + " WARN] 在位置就绪后设置方块时出错 " + pos + ": " + e.getMessage());
                         e.printStackTrace();
-                        iterator.remove(); // 即使失败也移除，避免死循环
-                        // 失败的不计入 processedCount
+                        iterator.remove(); // 即使失败也移除
                     }
                 } else {
-                    // 区块部分未就绪
-                    // *** 新增日志：记录未加载状态 (只记录一次) ***
-                    if (!previouslyUnloaded.contains(pos)) {
-                        System.out.println("[GhostBlock FillTask #" + taskId + "] 区块未就绪，稍后重试: " + pos + " (ChunkExists=" + chunkExists + ")");
-                        previouslyUnloaded.add(pos);
+                    // 未能放置 (Y无效，或未加载，或加载了但距离远)
+                    if (pos.getY() >= 0 && pos.getY() < 256) { // Y有效，但因其他原因等待
+                        if (!previouslyWaitingForLoadOrProximity.contains(pos)) {
+                            System.out.println("[GhostBlock FillTask #" + taskId + "] 等待放置: " + pos + " (原因: " + waitReason + ")");
+                            previouslyWaitingForLoadOrProximity.add(pos);
+                        }
+                        // 中断当前批次，让其他任务有机会执行或等待玩家移动
+                        // 如果不break，这个批次可能会因为大量远距离方块而空耗ticks
+                        if (attemptsThisTick > 0) break; // 如果本次tick至少尝试了一个，就退出让下一tick重试
+                    } else { // Y轴无效
+                        System.out.println("[GhostBlock FillTask #" + taskId + "] 无效Y坐标 ("+pos.getY()+")，从任务移除: " + pos);
+                        iterator.remove(); // 无效Y坐标，直接从任务中移除
+                        // totalBlocks 保持不变，但这个方块不会被计入 processedCount
                     }
-                    // 不移除，不增加 processedCount，等待下次 tick
                 }
-            } // End of while loop
+            }
 
             if (cancelled) {
-                 // System.out.println("[GhostBlock FillTask #" + taskId + "] 在批处理中检测到取消。"); // 可选日志
                 return true;
             }
 
@@ -3081,180 +3106,164 @@ public class GhostBlockCommand extends CommandBase {
 
             if (finished) {
                 System.out.println("[GhostBlock FillTask #" + taskId + "] 任务完成。成功放置: " + processedCount + " / 初始总数: " + totalBlocks);
-                if (!previouslyUnloaded.isEmpty()) {
-                    System.out.println("[GhostBlock FillTask #" + taskId + "] 注意: 任务完成时仍有 " + previouslyUnloaded.size() + " 个方块记录为从未加载过。");
+                if (!previouslyWaitingForLoadOrProximity.isEmpty()) {
+                    System.out.println("[GhostBlock FillTask #" + taskId + "] 注意: 任务完成时仍有 " + previouslyWaitingForLoadOrProximity.size() + " 个方块在等待列表中 (可能已在最后批次处理)。");
                 }
                 sendFinalProgress();
             } else {
                 float currentPercent = (totalBlocks == 0) ? 100.0f : (processedCount * 100.0f) / totalBlocks;
                 boolean forceUpdate = successfullyProcessedThisTick > 0;
                 sendProgressIfNeeded(currentPercent, forceUpdate);
-                 // 可选调试日志：显示剩余数量
-                 // if (attemptsThisTick > 0 && successfullyProcessedThisTick == 0) { // 如果尝试了但没成功放置
-                 //     System.out.println("[GhostBlock FillTask #" + taskId + "] Tick: 尝试 " + attemptsThisTick + ", 成功 " + successfullyProcessedThisTick + ", 剩余 " + remainingBlocks.size());
-                 // }
             }
             return finished;
         }
 
-        // ... (sendProgressIfNeeded, sendFinalProgress, cancel, getTaskId 方法保持不变)
-        // 根据需要发送进度更新消息
+        // sendProgressIfNeeded, sendFinalProgress, cancel, getTaskId 方法保持不变 (无需修改)
         private void sendProgressIfNeeded(float currentPercent, boolean forceSend) {
-            // 避免 totalBlocks 为 0 导致 NaN 或 Infinity
              if (totalBlocks == 0) {
                  currentPercent = 100.0f;
              } else {
                 currentPercent = (processedCount * 100.0f) / totalBlocks;
              }
-             currentPercent = Math.min(100.0f, Math.max(0.0f, currentPercent)); // 保证在 0-100 之间
-             currentPercent = Math.round(currentPercent * 10) / 10.0f; // 保留一位小数
+             currentPercent = Math.min(100.0f, Math.max(0.0f, currentPercent));
+             currentPercent = Math.round(currentPercent * 10) / 10.0f;
 
             boolean progressChanged = Math.abs(currentPercent - lastReportedPercent) >= 0.1f;
-            // 缩短超时时间，让单方块任务也能快速显示进度
-            boolean timeout = System.currentTimeMillis() - lastUpdateTime > (totalBlocks > 1 ? 1000 : 100); // 多方块1秒，单方块0.1秒
+            boolean timeout = System.currentTimeMillis() - lastUpdateTime > (totalBlocks > 1 ? 1000 : 100);
             boolean shouldSend = forceSend || progressChanged || timeout;
 
             if (shouldSend && currentPercent <= 100.0f) {
-                 //currentPercent = Math.min(currentPercent, 100.0f); // 已在前面处理
-                String progressBar = createProgressBar(currentPercent, 10); // 10 段进度条
+                String progressBar = createProgressBar(currentPercent, 10);
                 IChatComponent message = GhostBlockCommand.createProgressMessage(
-                    "ghostblock.commands.fill.progress", // 使用填充进度翻译键
-                    (int) Math.floor(currentPercent), // 传递整数百分比（向下取整）
+                    "ghostblock.commands.fill.progress",
+                    (int) Math.floor(currentPercent),
                     progressBar
                 );
-                // 只有在强制或百分比确实变化时才发送，避免超时重复发送相同进度
                 if (forceSend || currentPercent != lastReportedPercent) {
-                     // 确保 sender 仍然有效 (例如玩家未退出)
                      if (sender instanceof EntityPlayer) {
-                         // 检查玩家实体是否存在于当前世界
                          EntityPlayer player = (EntityPlayer) sender;
+                         // 确保玩家仍然有效且在当前世界
                          if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
-                             System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，停止发送进度消息。");
-                             this.cancel(); // 如果玩家不在了，可以考虑取消任务
+                             if(!cancelled) System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，停止发送进度消息，并取消任务。");
+                             this.cancel(); // 取消任务
                              return;
                          }
                      }
                      try {
-                        sender.addChatMessage(message); // 发送消息
+                        sender.addChatMessage(message);
                      } catch (Exception e) {
                         System.err.println("[GhostBlock FillTask #" + taskId + "] 发送进度消息失败: " + e.getMessage());
                      }
-                    lastReportedPercent = currentPercent; // 更新上次报告的百分比
+                    lastReportedPercent = currentPercent;
                 }
-                lastUpdateTime = System.currentTimeMillis(); // 总是更新上次尝试发送的时间
+                lastUpdateTime = System.currentTimeMillis();
             }
         }
 
-        // 发送最终进度、执行保存并发送完成消息 (使用 processedCount)
         private void sendFinalProgress() {
-             // 确保最终进度显示为 100%，即使计算有误差
              if (lastReportedPercent < 100.0f && !cancelled) {
-                sendProgressIfNeeded(100.0f, true); // 强制发送 100%
+                sendProgressIfNeeded(100.0f, true);
              }
 
-            // 保存到用户文件逻辑 (保持不变)
+            // 保存文件逻辑 (仅当任务未取消时)
             if (saveToFile && !cancelled) {
                 String actualSaveFileName = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
                  if (this.entriesToSaveForUserFile != null && !this.entriesToSaveForUserFile.isEmpty()) {
                     System.out.println("[GhostBlock FillTask #" + taskId + "] 任务完成，尝试保存 " + this.entriesToSaveForUserFile.size() + " 个条目到用户文件: " + actualSaveFileName);
-                    GhostBlockData.saveData(world, this.entriesToSaveForUserFile, actualSaveFileName, false); // 合并模式
+                    GhostBlockData.saveData(world, this.entriesToSaveForUserFile, actualSaveFileName, false);
                     String displayName = (saveFileName == null) ?
                         LangUtil.translate("ghostblock.displayname.default_file", GhostBlockData.getWorldIdentifier(world))
                         : saveFileName;
-                     // 只有在实际保存了内容后才发送成功消息
-                     // 确保 sender 仍然有效
+
+                    // 检查发送者是否仍然有效
+                     boolean senderStillValid = true;
                      if (sender instanceof EntityPlayer) {
                          EntityPlayer player = (EntityPlayer) sender;
                          if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
-                              System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，跳过发送保存成功消息。");
-                              return; // 玩家退出则不发
+                             senderStillValid = false;
+                             if(!cancelled) System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，跳过发送保存成功消息。");
                          }
                      }
-                     try {
-                        sender.addChatMessage(formatMessage(EnumChatFormatting.GREEN,
-                            "ghostblock.commands.save.success", displayName));
-                     } catch (Exception e) {
-                         System.err.println("[GhostBlock FillTask #" + taskId + "] 发送保存成功消息失败: " + e.getMessage());
+                     if(senderStillValid){
+                         try {
+                            sender.addChatMessage(formatMessage(EnumChatFormatting.GREEN,
+                                "ghostblock.commands.save.success", displayName));
+                         } catch (Exception e) {
+                             System.err.println("[GhostBlock FillTask #" + taskId + "] 发送保存成功消息失败: " + e.getMessage());
+                         }
                      }
                  } else {
                      System.out.println("[GhostBlock FillTask #" + taskId + "] WARN: 任务标记为保存，但没有提供或生成用户文件条目。");
                  }
             }
 
-            // 发送任务完成消息，仅在未取消时
+            // 发送完成消息 (仅当任务未取消时)
             if (!cancelled) {
-                 // 使用实际成功放置的数量 (processedCount)
-                 // 确保 sender 仍然有效
+                 boolean senderStillValid = true;
                  if (sender instanceof EntityPlayer) {
                      EntityPlayer player = (EntityPlayer) sender;
                      if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
-                          System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，跳过发送完成消息。");
-                          return; // 玩家退出则不发
+                         senderStillValid = false;
+                         if(!cancelled) System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，跳过发送完成消息。");
                      }
                  }
-                 try {
-                    // 根据 totalBlocks 判断是 set 还是 fill 的完成消息
-                    String finishKey = (totalBlocks == 1) ? "ghostblock.commands.fill.finish_single" : "ghostblock.commands.fill.finish";
-                    sender.addChatMessage(formatMessage(FINISH_COLOR, finishKey, processedCount));
-
-                 } catch (Exception e) {
-                     System.err.println("[GhostBlock FillTask #" + taskId + "] 发送完成消息失败: " + e.getMessage());
+                 if(senderStillValid){
+                     try {
+                        String finishKey = (totalBlocks == 1 && processedCount <= 1) ? "ghostblock.commands.fill.finish_single" : "ghostblock.commands.fill.finish";
+                        sender.addChatMessage(formatMessage(FINISH_COLOR, finishKey, processedCount));
+                     } catch (Exception e) {
+                         System.err.println("[GhostBlock FillTask #" + taskId + "] 发送完成消息失败: " + e.getMessage());
+                     }
                  }
             } else {
-                 System.out.println("[GhostBlock FillTask #" + taskId + "] 任务已被取消，不发送完成消息。");
+                 System.out.println("[GhostBlock FillTask #" + taskId + "] 任务已被取消，不发送完成或保存消息。");
             }
         }
 
-        // 标记任务为取消
         public void cancel() {
-            if (!this.cancelled) { // 避免重复打印日志
+            if (!this.cancelled) {
                  System.out.println("[GhostBlock FillTask #" + taskId + "] 标记为取消。");
                 this.cancelled = true;
-                 previouslyUnloaded.clear(); // 取消时清空跟踪集合
+                 previouslyWaitingForLoadOrProximity.clear();
             }
         }
-        // 获取任务 ID
         public int getTaskId() {
             return taskId;
         }
-
     }
 
-    // 静态内部类：批量加载任务 (添加日志和确认逻辑)
+    // 静态内部类：批量加载任务
     private static class LoadTask {
         private volatile boolean cancelled = false;
         private final WorldClient world;
         private final List<GhostBlockData.GhostBlockEntry> entries;
-        private int currentIndex;
+        private int currentIndex; // 下一个要尝试处理的条目的索引
         private final int batchSize;
-        private final ICommandSender sender;
+        private final ICommandSender sender; // 用于获取玩家位置
         private long lastUpdateTime = 0;
         private float lastReportedPercent = -1;
         private final int taskId;
-        private final ChunkProviderClient chunkProvider;
-        // 新增: 跟踪哪些索引之前是未加载的
-        private final Set<Integer> previouslyUnloadedIndices = new HashSet<>();
+        // 跟踪哪些索引之前是因为 (isBlockLoaded=false 或 距离远) 而未处理的
+        private final Set<Integer> previouslyWaitingForLoadOrProximityIndices = new HashSet<>();
+        private static final double TASK_PLACEMENT_PROXIMITY_SQ = 32.0 * 32.0; // 任务执行时，玩家需要在此距离平方内才放置 (32格)
 
 
         public LoadTask(WorldClient world, List<GhostBlockData.GhostBlockEntry> entriesToLoad, int batchSize,
                     ICommandSender sender, int taskId) {
             this.world = world;
-            // 防御性拷贝，确保列表可修改且独立
             this.entries = entriesToLoad != null ? new ArrayList<>(entriesToLoad) : new ArrayList<>();
-            this.batchSize = Math.max(1, batchSize); // 保证 batchSize >= 1
-            this.sender = sender;
+            this.batchSize = Math.max(1, batchSize);
+            this.sender = sender; // 保存 sender
             this.currentIndex = 0;
             this.taskId = taskId;
-            this.chunkProvider = (ChunkProviderClient) world.getChunkProvider();
-            System.out.println("[GhostBlock LoadTask #" + taskId + "] 初始化: total=" + this.entries.size() + ", batch=" + this.batchSize);
+            System.out.println("[GhostBlock LoadTask #" + taskId + "] 初始化 (带距离检查策略): total=" + this.entries.size() + ", batch=" + this.batchSize);
         }
 
-        // 标记任务为取消
         public void cancel() {
              if (!this.cancelled) {
                  System.out.println("[GhostBlock LoadTask #" + taskId + "] 标记为取消。");
                  this.cancelled = true;
-                 previouslyUnloadedIndices.clear(); // 清空跟踪
+                 previouslyWaitingForLoadOrProximityIndices.clear();
              }
         }
 
@@ -3262,210 +3271,200 @@ public class GhostBlockCommand extends CommandBase {
             if (cancelled) {
                 return true;
             }
-            if (entries.isEmpty()) {
-                return true; // 空任务直接完成
-            }
-            if (currentIndex >= entries.size()) { // 检查是否已处理完所有条目
-                 // 确保在返回 true 前发送最终消息 (如果尚未发送)
-                 if (lastReportedPercent < 100.0f && !cancelled) {
-                      System.out.println("[GhostBlock Load Task #" + taskId + "] 所有条目处理完毕，发送最终进度。");
-                      sendFinalProgress();
-                 } else if (!cancelled) {
-                      System.out.println("[GhostBlock Load Task #" + taskId + "] 任务已完成。");
+            if (entries.isEmpty() || currentIndex >= entries.size()) {
+                 if (entries.isEmpty() || (lastReportedPercent >= 100.0f || (lastReportedPercent == -1 && entries.isEmpty()) )) {
+                     // 任务开始就为空，或已报告100%
+                 } else if (!cancelled){
+                     System.out.println("[GhostBlock Load Task #" + taskId + "] 所有条目处理完毕或列表为空，发送最终进度。");
+                     sendFinalProgress(); // 确保发送最终消息
                  }
                  return true;
             }
 
-            int attemptsThisTick = 0;
             int successfullyProcessedThisTick = 0;
 
-            // 使用一个临时的当前索引，避免在循环中直接修改 currentIndex 导致跳过检查
-            int tempCurrentIndex = currentIndex;
+            EntityPlayer currentPlayer = null;
+            if (sender instanceof EntityPlayer) {
+                EntityPlayer cmdSenderPlayer = (EntityPlayer) sender;
+                if (cmdSenderPlayer.isEntityAlive() && cmdSenderPlayer.worldObj == this.world) {
+                    currentPlayer = cmdSenderPlayer;
+                } else if(!cancelled) {
+                    System.out.println("[GhostBlock LoadTask #" + taskId + "] 命令发送者玩家已失效或不在当前世界，取消任务。");
+                    this.cancel();
+                    return true;
+                }
+            }
 
-            while (tempCurrentIndex < entries.size() && attemptsThisTick < batchSize) {
-                 if (cancelled) {
-                     break;
-                 }
-                GhostBlockData.GhostBlockEntry entry = entries.get(tempCurrentIndex);
-                BlockPos pos = new BlockPos(entry.x, entry.y, entry.z);
-                attemptsThisTick++;
-
-                int chunkX = pos.getX() >> 4;
-                int chunkZ = pos.getZ() >> 4;
-                boolean sectionIsReady = false;
-                boolean chunkExists = this.chunkProvider.chunkExists(chunkX, chunkZ);
-
-                if (chunkExists) {
-                    Chunk chunk = this.chunkProvider.provideChunk(chunkX, chunkZ);
-                    int storageY = pos.getY() >> 4;
-                    if (pos.getY() >= 0 && pos.getY() < 256 && storageY >= 0 && storageY < chunk.getBlockStorageArray().length) {
-                        if (chunk.getBlockStorageArray()[storageY] != null) {
-                            sectionIsReady = true;
-                        }
-                    }
+            // 批次内迭代
+            for (int i = 0; i < batchSize && currentIndex < entries.size(); /* no direct increment for i here */) {
+                if (cancelled) {
+                    break;
                 }
 
-                if (sectionIsReady) {
-                    // *** 新增日志：如果之前未加载，现在加载了 ***
-                    if (previouslyUnloadedIndices.contains(tempCurrentIndex)) {
-                        System.out.println("[GhostBlock LoadTask #" + taskId + "] 区块已就绪 (之前未就绪): " + pos + " (Index: " + tempCurrentIndex + "). 尝试放置...");
-                        previouslyUnloadedIndices.remove(tempCurrentIndex); // 不再跟踪
+                GhostBlockData.GhostBlockEntry entry = entries.get(currentIndex);
+                BlockPos pos = new BlockPos(entry.x, entry.y, entry.z);
+                
+                boolean canPlaceNow = false;
+                String waitReason = "";
+
+                if (pos.getY() >= 0 && pos.getY() < 256) {
+                    if (world.isBlockLoaded(pos)) {
+                        if (currentPlayer != null) {
+                            if (currentPlayer.getDistanceSqToCenter(pos) <= TASK_PLACEMENT_PROXIMITY_SQ) {
+                                canPlaceNow = true;
+                            } else {
+                                waitReason = "玩家距离远 (" + String.format("%.1f", Math.sqrt(currentPlayer.getDistanceSqToCenter(pos))) + "m > " + String.format("%.1f", Math.sqrt(TASK_PLACEMENT_PROXIMITY_SQ)) + "m)";
+                            }
+                        } else {
+                            canPlaceNow = true;
+                            waitReason = "无玩家进行距离检查 (isBlockLoaded=true)";
+                        }
+                    } else {
+                        waitReason = "isBlockLoaded=false";
+                    }
+                } else {
+                    waitReason = "Y轴无效 (" + pos.getY() + ")";
+                }
+
+                if (canPlaceNow) {
+                    if (previouslyWaitingForLoadOrProximityIndices.contains(currentIndex)) {
+                        System.out.println("[GhostBlock LoadTask #" + taskId + "] 位置现已就绪: " + pos + " (Index: " + currentIndex + "). 尝试放置...");
+                        previouslyWaitingForLoadOrProximityIndices.remove(currentIndex);
                     }
 
                     Block block = Block.getBlockFromName(entry.blockId);
-                    boolean processedThisEntry = false; // 标记此索引是否应前进
-
                     if (block != null && block != Blocks.air) {
                         try {
                             if (world.isRemote) {
                                 IBlockState blockStateToSet = block.getStateFromMeta(entry.metadata);
-                                // 使用标志 3
                                 world.setBlockState(pos, blockStateToSet, 3);
-                                // 可选: 强制渲染更新
-                                // world.markBlockRangeForRenderUpdate(pos, pos);
                             } else {
                                 System.err.println("[GhostBlock LoadTask #" + taskId + " WARN] 尝试在非客户端世界执行任务！Pos: " + pos);
                             }
-
                             successfullyProcessedThisTick++;
-                            processedThisEntry = true; // 标记成功处理
                         } catch (Exception e) {
-                            System.err.println("[GhostBlock LoadTask #" + taskId + " WARN] 在已加载区块设置方块时出错 " + pos + " (Index: " + tempCurrentIndex + "): " + e.getMessage());
+                            System.err.println("[GhostBlock LoadTask #" + taskId + " WARN] 在位置就绪后设置方块时出错 " + pos + " (Index: " + currentIndex + "): " + e.getMessage());
                             e.printStackTrace();
-                            processedThisEntry = true; // 出错也标记处理，避免重试循环
                         }
                     } else {
-                        System.out.println("[GhostBlock LoadTask #" + taskId + " WARN] 加载时发现无效方块ID '" + entry.blockId + "' 或空气方块，位于 " + pos + " (Index: " + tempCurrentIndex + "). 跳过.");
-                        processedThisEntry = true; // 跳过无效方块，标记处理
+                        System.out.println("[GhostBlock LoadTask #" + taskId + " WARN] 加载时发现无效方块ID '" + entry.blockId + "' 或空气方块，位于 " + pos + " (Index: " + currentIndex + "). 跳过.");
                     }
-
-                    // 如果此条目被处理（成功、失败或跳过），则前进到下一个索引
-                    if (processedThisEntry) {
-                        currentIndex = tempCurrentIndex + 1; // *** 关键: 更新真实的 currentIndex ***
-                    }
-                     tempCurrentIndex++; // 无论如何都尝试检查下一个 (因为我们只增加了 currentIndex)
-
+                    currentIndex++; // 无论成功、失败还是跳过无效方块，都前进到下一个条目
+                    i++; // 增加批次内处理计数
                 } else {
-                    // 区块部分未就绪 - 跳过，不前进真实 currentIndex
-                     // *** 新增日志：记录未加载状态 (只记录一次) ***
-                     if (!previouslyUnloadedIndices.contains(tempCurrentIndex)) {
-                         System.out.println("[GhostBlock LoadTask #" + taskId + "] 区块未就绪，稍后重试: " + pos + " (Index: " + tempCurrentIndex + ", ChunkExists=" + chunkExists + ")");
-                         previouslyUnloadedIndices.add(tempCurrentIndex);
-                     }
-                      tempCurrentIndex++; // 尝试检查下一个位置
+                    // 未能放置 (Y无效，或未加载，或加载了但距离远)
+                    if (pos.getY() >= 0 && pos.getY() < 256) { // Y有效，但因其他原因等待
+                        if (!previouslyWaitingForLoadOrProximityIndices.contains(currentIndex)) {
+                            System.out.println("[GhostBlock LoadTask #" + taskId + "] 等待放置: " + pos + " (Index: " + currentIndex + ", 原因: " + waitReason + ")");
+                            previouslyWaitingForLoadOrProximityIndices.add(currentIndex);
+                        }
+                         // 中断当前批次，让其他任务有机会执行或等待玩家移动
+                        if (i > 0 || currentIndex < entries.size()-1 ) break; // 如果本次tick至少尝试了一个，或者后面还有条目，就退出让下一tick重试
+                    } else { // Y轴无效
+                        System.out.println("[GhostBlock LoadTask #" + taskId + "] 无效Y坐标 ("+pos.getY()+")，从任务跳过: " + pos + " (Index: " + currentIndex + ")");
+                        currentIndex++; // 对于无效Y，我们跳过这个条目
+                        i++; // 也计入当前批次，因为它被“处理”了（通过跳过）
+                    }
+                     // 如果是因为等待（Y有效），则中断此批次
+                    if (pos.getY() >= 0 && pos.getY() < 256) {
+                        break; 
+                    }
                 }
-            } // End of while loop
+            }
 
             if (cancelled) {
                 return true;
             }
 
-            // 再次检查是否处理完所有条目
-             boolean finished = currentIndex >= entries.size();
+            boolean finished = currentIndex >= entries.size();
 
             if (finished) {
-                 // 确保发送最终进度
-                 if (lastReportedPercent < 100.0f) {
+                 if (lastReportedPercent < 100.0f && !cancelled) {
                      System.out.println("[GhostBlock Load Task #" + taskId + "] 所有条目处理完毕 (循环结束)，发送最终进度。");
                      sendFinalProgress();
-                 } else {
+                 } else if(!cancelled) {
                       System.out.println("[GhostBlock Load Task #" + taskId + "] 任务已完成 (循环结束)。");
                  }
-
             } else {
-                // 更新进度 (基于 currentIndex)
                 float currentPercent = entries.isEmpty() ? 100.0f : (currentIndex * 100.0f) / entries.size();
                 boolean forceUpdate = successfullyProcessedThisTick > 0;
                 sendProgressIfNeeded(currentPercent, forceUpdate);
-                 // 可选调试日志
-                 // if (attemptsThisTick > 0 && successfullyProcessedThisTick == 0) {
-                 //    System.out.println("[GhostBlock LoadTask #" + taskId + "] Tick: 尝试 " + attemptsThisTick + ", 成功 " + successfullyProcessedThisTick + ", 下次索引 " + currentIndex + "/" + entries.size());
-                 // }
             }
             return finished;
         }
 
-
-        // ... (sendProgressIfNeeded, sendFinalProgress 方法保持不变)
-        // 根据需要发送进度更新消息
+        // sendProgressIfNeeded, sendFinalProgress 方法保持不变 (无需修改)
         private void sendProgressIfNeeded(float currentPercent, boolean forceSend) {
-            // 使用 currentIndex 计算进度
              if (entries.isEmpty()) {
                  currentPercent = 100.0f;
              } else {
                 currentPercent = (currentIndex * 100.0f) / entries.size();
              }
-             currentPercent = Math.min(100.0f, Math.max(0.0f, currentPercent)); // 保证 0-100
-             currentPercent = Math.round(currentPercent * 10) / 10.0f; // 保留一位小数
+             currentPercent = Math.min(100.0f, Math.max(0.0f, currentPercent));
+             currentPercent = Math.round(currentPercent * 10) / 10.0f;
 
 
             boolean progressChanged = Math.abs(currentPercent - lastReportedPercent) >= 0.1f;
-            boolean timeout = System.currentTimeMillis() - lastUpdateTime > 1000; // 1秒超时
+            boolean timeout = System.currentTimeMillis() - lastUpdateTime > 1000;
             boolean shouldSend = forceSend || progressChanged || timeout;
 
 
             if (shouldSend && currentPercent <= 100.0f) {
-                String progressBar = createProgressBar(currentPercent, 10); // 10 段进度条
+                String progressBar = createProgressBar(currentPercent, 10);
                 IChatComponent message = GhostBlockCommand.createProgressMessage(
-                    "ghostblock.commands.load.progress", // 使用加载进度翻译键
-                    (int) Math.floor(currentPercent), // 整数百分比 (向下取整)
+                    "ghostblock.commands.load.progress",
+                    (int) Math.floor(currentPercent),
                     progressBar
                 );
-                // 避免在进度没有实际变化时因为超时而重复发送相同的百分比
-                // 仅当强制发送或百分比确实变化时才发送
                 if (forceSend || currentPercent != lastReportedPercent) {
-                      // 确保 sender 仍然有效
                      if (sender instanceof EntityPlayer) {
                          EntityPlayer player = (EntityPlayer) sender;
                          if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
-                              System.out.println("[GhostBlock LoadTask #" + taskId + "] 玩家已离开或无效，停止发送进度消息。");
+                              if(!cancelled) System.out.println("[GhostBlock LoadTask #" + taskId + "] 玩家已离开或无效，停止发送进度消息，并取消任务。");
                               this.cancel(); // 取消任务
                               return;
                          }
                      }
                     try {
-                         sender.addChatMessage(message); // 发送消息
+                         sender.addChatMessage(message);
                     } catch (Exception e) {
                          System.err.println("[GhostBlock LoadTask #" + taskId + "] 发送进度消息失败: " + e.getMessage());
                     }
-                    lastReportedPercent = currentPercent; // 更新上次报告的百分比
+                    lastReportedPercent = currentPercent;
                 }
-                lastUpdateTime = System.currentTimeMillis(); // 总是更新上次尝试发送的时间
+                lastUpdateTime = System.currentTimeMillis();
             }
         }
 
-        // 发送最终进度和完成消息
         private void sendFinalProgress() {
-             // 确保最终发送 100%
              if (lastReportedPercent < 100.0f && !cancelled) {
-                sendProgressIfNeeded(100.0f, true); // 强制发送 100%
+                sendProgressIfNeeded(100.0f, true);
              }
 
-            // 发送完成消息，仅在未取消时
             if (!cancelled) {
-                 // 确保 sender 仍然有效
+                 boolean senderStillValid = true;
                  if (sender instanceof EntityPlayer) {
                      EntityPlayer player = (EntityPlayer) sender;
                      if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
-                          System.out.println("[GhostBlock LoadTask #" + taskId + "] 玩家已离开或无效，跳过发送完成消息。");
-                          return; // 玩家退出则不发
+                         senderStillValid = false;
+                         if(!cancelled) System.out.println("[GhostBlock LoadTask #" + taskId + "] 玩家已离开或无效，跳过发送完成消息。");
                      }
                  }
-                 try {
-                      // 使用总条目数
-                     sender.addChatMessage(formatMessage(FINISH_COLOR, "ghostblock.commands.load.finish", entries.size()));
-                 } catch (Exception e) {
-                      System.err.println("[GhostBlock LoadTask #" + taskId + "] 发送完成消息失败: " + e.getMessage());
+                 if (senderStillValid) {
+                     try {
+                         sender.addChatMessage(formatMessage(FINISH_COLOR, "ghostblock.commands.load.finish", entries.size()));
+                     } catch (Exception e) {
+                          System.err.println("[GhostBlock LoadTask #" + taskId + "] 发送完成消息失败: " + e.getMessage());
+                     }
                  }
 
-                 if (!previouslyUnloadedIndices.isEmpty()) {
-                    System.out.println("[GhostBlock LoadTask #" + taskId + "] 注意: 任务完成时仍有 " + previouslyUnloadedIndices.size() + " 个索引记录为从未加载过。");
+                 if (!previouslyWaitingForLoadOrProximityIndices.isEmpty()) {
+                    System.out.println("[GhostBlock LoadTask #" + taskId + "] 注意: 任务完成时仍有 " + previouslyWaitingForLoadOrProximityIndices.size() + " 个索引在等待列表中。");
                  }
             } else {
                   System.out.println("[GhostBlock LoadTask #" + taskId + "] 任务已被取消，不发送完成消息。");
             }
         }
-        // 获取任务 ID
         public int getTaskId() {
             return taskId;
         }
