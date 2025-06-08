@@ -118,6 +118,8 @@ ghostblock.config.category.fill=填充命令设置
 ghostblock.config.category.save=保存选项
 ghostblock.config.category.chat=聊天功能
 ghostblock.config.category.auto_place=自动放置功能
+ghostblock.config.category.auto_sneak_feature=自动蹲伏功能
+ghostblock.config.category.player_esp_feature=玩家透视 (ESP) 功能
 
 ghostblock.config.alwaysBatchFill.tooltip=是否强制 /cgb fill 命令总是使用批处理模式 (-b)。如果为 true，即使命令中不包含 -b 也会使用批处理。如果为 true 且用户未在命令中指定大小，将使用下面的 forcedBatchSize (如果 > 0) 或默认大小 (100)。
 ghostblock.config.forcedBatchSize.tooltip=当 alwaysBatchFill 为 true 且用户执行 /cgb fill 时 *没有* 指定批次大小时，使用的批次大小。设置为 0 或负数将使用默认值 100。
@@ -125,9 +127,16 @@ ghostblock.config.enableAutoSave.tooltip=是否在执行 /cgb set 或 /cgb fill 
 ghostblock.config.defaultSaveFileName.tooltip=当启用自动保存 (enableAutoSave=true) 且未使用 -s 时，默认使用的保存文件名。留空或输入 'default' 将使用当前世界/服务器标识符作为文件名。
 ghostblock.config.enableChatSuggestions.tooltip=是否启用在聊天中为命令添加建议按钮的功能 (例如在命令成功或失败后)。
 ghostblock.config.enableAutoPlaceOnJoin.tooltip=是否在玩家加入世界时，自动在脚下重新放置之前记录的幽灵方块（如果脚下当前是空气）。这可以防止在空中退出后重新进入时掉落。
+ghostblock.config.enableAutoSneakAtEdge.tooltip=是否在玩家走到方块边缘，即将掉落时自动蹲下以防止掉落。
+ghostblock.config.autoSneakForwardOffset.tooltip=自动蹲伏时向前检测的偏移量 (0.05-1.0 之间的小数)。值越小，玩家越靠近方块边缘才会触发自动蹲伏。
+ghostblock.config.autoSneakVerticalCheckDepth.tooltip=自动蹲伏时向下检测的深度 (0.1-3.0 之间的小数)。表示从玩家预测的脚下位置开始向下检测多少格来寻找支撑方块。
+ghostblock.config.enablePlayerESP.tooltip=是否启用玩家透视 (Player ESP) 功能，允许隔墙看到其他玩家的名称标签。
 
 # --- 配置命令 (/gconfig) ---
 ghostblock.commands.gconfig.usage=用法: /gconfig [选项名] [值] (无参数则显示当前设置)
+ghostblock.commands.gconfig.usage.extended=用法: /gconfig [选项名] [值] 或 /gconfig 或 /gconfig help
+ghostblock.commands.gconfig.error.invalid_setting.all_options=错误: 未知的配置选项 '%1$s'。可用: help, alwaysBatchFill, forcedBatchSize, enableAutoSave, defaultSaveName, enableChatSuggestions, enableAutoPlaceOnJoin, enableAutoSneakAtEdge, autoSneakForwardOffset, autoSneakVerticalCheckDepth, enablePlayerESP, toggleSuggest。
+ghostblock.commands.gconfig.current_settings.default_filename_placeholder=使用世界标识符
 ghostblock.commands.gconfig.success=成功将配置选项 '%1$s' 设置为 '%2$s'。
 ghostblock.commands.gconfig.error.invalid_setting=错误: 未知的配置选项 '%1$s'。可用: alwaysBatchFill, forcedBatchSize, enableAutoSave, defaultSaveName, enableChatSuggestions, toggleSuggest。 # 旧键，可能需要更新或移除
 ghostblock.commands.gconfig.error.invalid_setting.extended=错误: 未知的配置选项 '%1$s'。可用: alwaysBatchFill, forcedBatchSize, enableAutoSave, defaultSaveName, enableChatSuggestions, enableAutoPlaceOnJoin, toggleSuggest。 # 新键
@@ -137,10 +146,16 @@ ghostblock.commands.gconfig.error.invalid_value.integer.positive=错误: 无效�
 ghostblock.commands.gconfig.error.generic_set_failed=错误: 设置配置选项 '%1$s' 失败。
 ghostblock.commands.gconfig.current_settings.header=--- 当前 GhostBlock 配置 ---
 ghostblock.commands.gconfig.current_settings.default_filename_placeholder=(使用世界标识符)
-ghostblock.commands.togglesuggest.enabled=聊天命令建议功能已启用。
-ghostblock.commands.togglesuggest.disabled=聊天命令建议功能已禁用。
+ghostblock.commands.gconfig.togglesuggest.enabled=聊天命令建议功能已启用。
+ghostblock.commands.gconfig.togglesuggest.disabled=聊天命令建议功能已禁用。
 ghostblock.commands.gconfig.hint_toggle_suggest=提示: 使用 '/gconfig toggleSuggest' 可快速切换建议功能。
 ghostblock.commands.gconfig.extra_usage_toggle=(或使用 '/gconfig toggleSuggest' 快速切换建议功能)
+ghostblock.commands.gconfig.error.invalid_value.double=错误: 无效的浮点数值 '%1$s'。
+ghostblock.commands.gconfig.error.invalid_value.double.range=错误: 无效的浮点数值 '%1$s'。请输入一个在 %2$.2f 和 %3$.2f 之间的小数。
+ghostblock.commands.gconfig.help.type.boolean=(true/false)
+ghostblock.commands.gconfig.help.type.positive_integer=(正整数)
+ghostblock.commands.gconfig.help.type.text=(文本)
+ghostblock.commands.gconfig.help.type.double_range=(小数 %1$s)
 
 # --- 可选：自动保存激活提示 ---
 ghostblock.commands.autosave.activated=提示: 自动保存已激活。
@@ -156,6 +171,7 @@ ghostblock.commands.suggest.help.hovertext=点击查看语法和示例
 # --- 新增：帮助信息 ---
 
 # /cgb help
+ghostblock.commands.cghostblock.help.menu=--- Ghost Config 命令帮助 (/gconfig) ---
 ghostblock.commands.cghostblock.help.description=管理客户端幽灵方块。
 ghostblock.commands.cghostblock.help.usage.main=主要用法
 ghostblock.commands.cghostblock.help.subcommands.header=可用子命令:
@@ -183,6 +199,10 @@ ghostblock.commands.gconfig.help.setting.enableAutoSave=命令执行时自动保
 ghostblock.commands.gconfig.help.setting.defaultSaveName=自动保存时使用的默认文件名。
 ghostblock.commands.gconfig.help.setting.enableChatSuggestions=启用聊天命令建议按钮。
 ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=在加入世界时自动放置脚下的幽灵方块。
+ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge=启用走到方块边缘时自动蹲下。
+ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset=自动蹲伏的向前偏移量 (触发灵敏度)。
+ghostblock.commands.gconfig.help.setting.autoSneakVerticalCheckDepth=自动蹲伏的垂直检测深度 (下方支撑判断距离)。
+ghostblock.commands.gconfig.help.setting.enablePlayerESP=启用玩家透视功能 (隔墙看名称标签)。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.alwaysBatchFill=/gconfig alwaysBatchFill true
 ghostblock.commands.gconfig.help.example.forcedBatchSize=/gconfig forcedBatchSize 500
@@ -190,4 +210,8 @@ ghostblock.commands.gconfig.help.example.enableAutoSave=/gconfig enableAutoSave 
 ghostblock.commands.gconfig.help.example.defaultSaveName=/gconfig defaultSaveName my_server_ghosts
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true
+ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge=/gconfig enableAutoSneakAtEdge true
+ghostblock.commands.gconfig.help.example.autoSneakForwardOffset=/gconfig autoSneakForwardOffset 0.3
+ghostblock.commands.gconfig.help.example.autoSneakVerticalCheckDepth=/gconfig autoSneakVerticalCheckDepth 0.8
+ghostblock.commands.gconfig.help.example.enablePlayerESP=/gconfig enablePlayerESP true
 ghostblock.commands.gconfig.help.aliases=别名
