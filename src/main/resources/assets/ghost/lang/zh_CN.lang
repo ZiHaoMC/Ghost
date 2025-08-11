@@ -168,7 +168,38 @@ ghostblock.commands.suggest.hovertext=点击重新输入: %s
 ghostblock.commands.suggest.help.text= ?  
 ghostblock.commands.suggest.help.hovertext=点击查看语法和示例
 
-# --- 新增：帮助信息 ---
+# --- Bedrock Miner Feature ---
+ghostblock.config.category.bedrock_miner_feature=破基岩功能(未完成/弃用)。
+ghostblock.config.enableBedrockMiner.tooltip=是否启用破基岩功能。启用后，可通过空手右键白名单方块来激活/关闭。
+ghostblock.config.bedrockMinerVertical.tooltip=是否允许使用垂直方向的破坏方案 (例如，从上方破坏)。
+ghostblock.config.bedrockMinerHorizontal.tooltip=是否允许使用水平方向的破坏方案。
+ghostblock.config.bedrockMinerWhitelist.tooltip=允许破坏的方块列表 (格式: minecraft:stone)。
+ghostblock.config.bedrockMinerBlacklist.tooltip=禁止破坏的方块列表。
+
+
+ghostblock.bedrockminer.toggle.on=§a[Ghost]§r 破基岩功能已激活！左键点击白名单中的方块开始作业。
+ghostblock.bedrockminer.toggle.off=§7[Ghost]§r 破基岩功能已关闭。
+ghostblock.bedrockminer.warn.multiplayer=§e[Ghost]§r 警告：您似乎在服务器上使用此功能，请确保已获得服主许可。
+ghostblock.bedrockminer.fail.survival_only=§c[Ghost]§r 错误：此功能仅限在生存模式下使用！
+ghostblock.bedrockminer.fail.missing_items.piston=§c[Ghost]§r 错误：活塞不足！(需要至少2个)
+ghostblock.bedrockminer.fail.missing_items.torch=§c[Ghost]§r 错误：红石火把不足！(需要至少1个)
+ghostblock.bedrockminer.fail.missing_items.slime=§c[Ghost]§r 错误：粘液块不足！(需要至少1个)
+ghostblock.bedrockminer.fail.instant_mine=§c[Ghost]§r 错误：无法秒破活塞！请检查是否有效率V的工具和急迫II效果。
+ghostblock.bedrockminer.fail.no_scheme=§c[Ghost]§r 错误：在目标方块周围找不到任何可行的放置方案。
+
+# 按键绑定
+key.ghost.category=Ghost Mod
+key.ghost.toggleAutoSneak=切换 自动边缘下蹲
+key.ghost.togglePlayerESP=切换 玩家透视 (ESP)
+key.ghost.toggleBedrockMiner=切换 破基岩模式
+
+# Gameplay Tweaks
+ghostblock.config.category.gameplay_tweaks=游戏玩法调整
+ghostblock.config.fastPistonBreaking.tooltip=是否启用“镐可快速破坏活塞”的特性（模拟1.16+）。启用后，使用镐子破坏活塞的速度将大幅提升。
+ghostblock.commands.gconfig.fastpiston_autogen=提示: “镐可快速破坏活塞”选项已作为依赖项被自动启用。
+ghostblock.commands.gconfig.help.setting.fastPistonBreaking=启用镐可快速破坏活塞的特性。
+ghostblock.commands.gconfig.help.example.fastPistonBreaking=/gconfig fastPistonBreaking true
+
 
 # /cgb help
 ghostblock.commands.cghostblock.help.menu=--- Ghost Config 命令帮助 (/gconfig) ---
@@ -186,7 +217,7 @@ ghostblock.commands.cghostblock.help.subcommand.undo=撤销上一次的 set/fill
 ghostblock.commands.cghostblock.help.aliases=别名
 
 # /gconfig help
-ghostblock.commands.gconfig.help.description=管理 GhostBlock Mod 的配置。
+ghostblock.commands.gconfig.help.description=管理 Ghost Mod 的配置。
 ghostblock.commands.gconfig.help.usage.main=用法:
 ghostblock.commands.gconfig.help.usage.display=显示当前所有配置设置。
 ghostblock.commands.gconfig.help.usage.set=设置指定的配置选项的值。
@@ -202,7 +233,8 @@ ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=在加入世界�
 ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge=启用走到方块边缘时自动蹲下。
 ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset=自动蹲伏的向前偏移量 (触发灵敏度)。
 ghostblock.commands.gconfig.help.setting.autoSneakVerticalCheckDepth=自动蹲伏的垂直检测深度 (下方支撑判断距离)。
-ghostblock.commands.gconfig.help.setting.enablePlayerESP=启用玩家透视功能 (隔墙看名称标签)。
+ghostblock.commands.gconfig.help.setting.enablePlayerESP=启用玩家透视功能。
+ghostblock.commands.gconfig.help.setting.enableBedrockMiner=启用破基岩功能。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.alwaysBatchFill=/gconfig alwaysBatchFill true
 ghostblock.commands.gconfig.help.example.forcedBatchSize=/gconfig forcedBatchSize 500
@@ -214,4 +246,5 @@ ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge=/gconfig enableAu
 ghostblock.commands.gconfig.help.example.autoSneakForwardOffset=/gconfig autoSneakForwardOffset 0.3
 ghostblock.commands.gconfig.help.example.autoSneakVerticalCheckDepth=/gconfig autoSneakVerticalCheckDepth 0.8
 ghostblock.commands.gconfig.help.example.enablePlayerESP=/gconfig enablePlayerESP true
+ghostblock.commands.gconfig.help.example.enableBedrockMiner=/gconfig enableBedrockMiner true
 ghostblock.commands.gconfig.help.aliases=别名

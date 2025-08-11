@@ -1,57 +1,55 @@
+// =================================================================
+//          Ghost Mod - build.gradle for 1.8.9 with Mixin
+//                 (v12 - 修正了最终的依赖坐标错误)
+// =================================================================
+
 buildscript {
     repositories {
-        // ForgeGradle 需要 Forge 仓库
-        maven {
-            name = "forge"
-            url = "https://files.minecraftforge.net/maven"
-        } // *** 修正：确保这里没有逗号 ***
-        mavenCentral()
+        jcenter()
+        maven { name = "forge"; url = "https://maven.minecraftforge.net/" }
     }
     dependencies {
         classpath 'net.minecraftforge.gradle:ForgeGradle:2.1-SNAPSHOT'
-        // 不再需要 mixingradle
     }
 }
 
-// 应用 Forge 插件
 apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'java'
 
-// 移除 Mixin 和 Shadow 插件应用
-
-version = "0.1.0"
+version = "0.1.1"
 group = "com.zihaomc.ghost"
 archivesBaseName = "Ghost"
 
 sourceCompatibility = targetCompatibility = '1.8'
+compileJava.options.encoding = "UTF-8"
+compileJava {
+    options.fork = true
+    options.forkOptions.executable = '/usr/lib/jvm/java-8-openjdk-arm64/bin/javac'
+}
 
 minecraft {
     version = "1.8.9-11.15.1.2318-1.8.9"
     runDir = "run"
     mappings = "stable_22"
-    // 移除 coreMod
+    makeObfSourceJar = false
+    clientJvmArgs += ["-Dfml.coreMods.load=com.zihaomc.ghost.MixinLoader"]
 }
 
 repositories {
     mavenCentral()
-    // 可以保留 Sponge 仓库以防万一
-    // maven { url = "https://repo.spongepowered.org/repository/maven-public/" }
+    jcenter()
+    maven { name = "forge"; url = "https://maven.minecraftforge.net/" }
+    maven { name = "spongepowered"; url = "https://repo.spongepowered.org/repository/maven-public/" }
 }
 
 dependencies {
-    // 只保留 Mod 自身需要的依赖（如果 ChatSuggestEventHandler 需要特殊库，在这里添加）
-    // 例如，如果使用了 Apache Commons Lang 等
+    compile('org.spongepowered:mixin:0.7.11-SNAPSHOT') {
+        transitive = false
+    }
+    
+    // **核心修正：修正了 annotationProcessor 的依赖坐标**
+    annotationProcessor 'org.spongepowered:mixin:0.7.11-SNAPSHOT'
 }
-
-compileJava {
-    sourceCompatibility = targetCompatibility = '1.8'
-    options.encoding = "UTF-8"
-    // 保留 fork 和 executable (如果需要解决 JavacTool 问题)
-    options.fork = true
-    options.forkOptions.executable = '/usr/lib/jvm/java-8-openjdk-arm64/bin/javac'
-    // 移除不支持的 javaHome
-}
-
-// 移除 mixin {} 配置块
 
 processResources {
     inputs.property "version", project.version
@@ -63,15 +61,34 @@ processResources {
     from(sourceSets.main.resources.srcDirs) {
         exclude 'mcmod.info'
     }
-    // 移除 refmap 相关处理
+    rename 'ghost_at.cfg', 'META-INF/ghost_at.cfg'
 }
 
-// 使用默认的 jar 任务即可
-// 使用默认的 jar 任务即可
 jar {
-    manifest {
-        // 如果不需要额外属性，可以留空或移除 manifest 块
+    enabled = true
+    
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
     }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    exclude('com/google/**')
+    exclude('org/apache/logging/**')
+    exclude('io/netty/**')
+    exclude('org/objectweb/asm/**')
+    
+    exclude 'LICENSE.txt'
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA'
+
+    manifest.attributes(
+            'FMLCorePlugin': 'com.zihaomc.ghost.MixinLoader',
+            'FMLCorePluginContainsFMLMod': 'true',
+            'ForceLoadAsMod': 'true',
+            'MixinConfigs': 'mixins.ghost.json',
+            'TweakClass': 'org.spongepowered.asm.launch.MixinTweaker',
+            'TweakOrder': '0',
+            'FMLAT': 'ghost_at.cfg'
+    )
 }
 
-// 移除 shadowJar, reobf { shadowJar {} }, build.dependsOn reobfShadowJar
+// 移除所有 shadow 相关的任务，我们不再需要它

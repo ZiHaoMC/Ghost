@@ -3,9 +3,12 @@ package com.zihaomc.ghost;
 import com.zihaomc.ghost.commands.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.features.playeresp.PlayerESPHandler; // 新增导入
 import com.zihaomc.ghost.handlers.ChatSuggestEventHandler;
-import com.zihaomc.ghost.features.autosneak.AutoSneakHandler; 
+import com.zihaomc.ghost.handlers.KeybindHandler; // 确保导入路径正确
+import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
+import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
+import com.zihaomc.ghost.features.bedrockminer.BedrockMinerHandler;
+import com.zihaomc.ghost.features.gameplay.FastPistonBreakingHandler;
 import com.zihaomc.ghost.proxy.CommonProxy;
 import net.minecraft.init.Blocks;
 import net.minecraftforge.fml.common.Mod;
@@ -28,7 +31,7 @@ public class Ghost {
 
     // Mod 的常量信息
     public static final String MODID = "ghost";
-    public static final String VERSION = "0.1.0"; // 如果你更新了版本，可以改这里
+    public static final String VERSION = "0.1.1";
     public static final String NAME = "Ghost";
 
     /** Mod 的实例 */
@@ -54,6 +57,8 @@ public class Ghost {
         File configFile = event.getSuggestedConfigurationFile();
         GhostConfig.init(configFile);
 
+        proxy.preInit(event);
+
         // 仅在客户端注册事件处理器
         if (event.getSide() == Side.CLIENT) {
             // 注册聊天建议事件处理器
@@ -63,10 +68,18 @@ public class Ghost {
             MinecraftForge.EVENT_BUS.register(new AutoSneakHandler());
             System.out.println("[" + MODID + "-DEBUG] 自动蹲伏事件处理器 (AutoSneakHandler) 已在 PreInit 中注册。");
 
-            // 新增：注册玩家ESP事件处理器
             MinecraftForge.EVENT_BUS.register(new PlayerESPHandler());
             System.out.println("[" + MODID + "-DEBUG] 玩家ESP事件处理器 (PlayerESPHandler) 已在 PreInit 中注册。");
+            
+            MinecraftForge.EVENT_BUS.register(new BedrockMinerHandler());
+            System.out.println("[" + MODID + "-DEBUG] 破基岩事件处理器 (BedrockMinerHandler) 已在 PreInit 中注册。");
+            
+            MinecraftForge.EVENT_BUS.register(new FastPistonBreakingHandler());
+            System.out.println("[" + MODID + "-DEBUG] 快速破坏活塞事件处理器 (FastPistonBreakingHandler) 已在 PreInit 中注册。");
 
+            // 注册按键绑定事件处理器
+            MinecraftForge.EVENT_BUS.register(new KeybindHandler());
+            System.out.println("[" + MODID + "-DEBUG] 按键绑定事件处理器 (KeybindHandler) 已在 PreInit 中注册。");
         }
     }
 
@@ -78,6 +91,9 @@ public class Ghost {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         System.out.println("[" + NAME + "] 初始化阶段");
+
+        // --- 修正：将事件传递给代理，这是让按键绑定注册的关键 ---
+        proxy.init(event);
 
         // 仅在客户端进行命令注册
         if (event.getSide() == Side.CLIENT) {
@@ -92,7 +108,7 @@ public class Ghost {
             System.out.println("[" + MODID + "-DEBUG] GhostConfigCommand (/gconfig) 已注册。");
 
             // 3. 注册 GhostBlockCommand 命令实例 (/cgb)
-            ClientCommandHandler.instance.registerCommand(new GhostBlockCommand()); // 确保 GhostBlockCommand 构造函数等是合适的
+            ClientCommandHandler.instance.registerCommand(new GhostBlockCommand());
             System.out.println("[" + MODID + "-DEBUG] /cgb 命令实例已注册。");
 
         } else {
@@ -108,6 +124,7 @@ public class Ghost {
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         System.out.println("[" + NAME + "] 后初始化阶段");
-        // 目前无操作
+        
+        proxy.postInit(event);
     }
 }
