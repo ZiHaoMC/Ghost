@@ -120,6 +120,16 @@ public class GhostConfigCommand extends CommandBase {
                     sendBooleanError(sender, valueStr);
                 }
                 break;
+            
+            case "enablecommandhistoryscroll": // 新增 case
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setEnableCommandHistoryScroll(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
 
             case "enableautoplaceonjoin":
                 try {
@@ -230,6 +240,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("defaultSaveName", displayFileName));
 
         sender.addChatMessage(formatSettingLine("enableChatSuggestions", GhostConfig.enableChatSuggestions));
+        sender.addChatMessage(formatSettingLine("enableCommandHistoryScroll", GhostConfig.enableCommandHistoryScroll)); // 新增显示
         sender.addChatMessage(formatSettingLine("enableAutoPlaceOnJoin", GhostConfig.enableAutoPlaceOnJoin));
         sender.addChatMessage(formatSettingLine("enableAutoSneakAtEdge", GhostConfig.enableAutoSneakAtEdge));
         sender.addChatMessage(formatSettingLine("autoSneakForwardOffset", String.format("%.2f", GhostConfig.autoSneakForwardOffset)));
@@ -278,7 +289,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  forcedBatchSize " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.positive_integer")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoSave " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean")));
         sender.addChatMessage(new ChatComponentText(op + "  defaultSaveName " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text")));
-        sender.addChatMessage(new ChatComponentText(op + "  enableChatSuggestions " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean")));
+        sender.addChatMessage(new ChatComponentText(op + "  enableChatSuggestions " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableChatSuggestions")));
+        sender.addChatMessage(new ChatComponentText(op + "  enableCommandHistoryScroll " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoPlaceOnJoin " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoSneakAtEdge " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(op + "  autoSneakForwardOffset " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "0.05-1.0") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset")));
@@ -291,6 +303,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableAutoSave true"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig defaultSaveName my_server_ghosts"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig forcedBatchSize 500"));
+        sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableChatSuggestions")));
+        sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.autoSneakForwardOffset")));
@@ -332,9 +346,9 @@ public class GhostConfigCommand extends CommandBase {
         if (args.length == 1) {
             return CommandBase.getListOfStringsMatchingLastWord(args,
                     "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
-                    "enableChatSuggestions", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
+                    "enableChatSuggestions", "enableCommandHistoryScroll", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
-                    "enableBedrockMiner", "fastPistonBreaking", // 新增
+                    "enableBedrockMiner", "fastPistonBreaking",
                     "toggleSuggest");
         } else if (args.length == 2) {
             String settingName = args[0].toLowerCase();
@@ -345,11 +359,12 @@ public class GhostConfigCommand extends CommandBase {
                 case "alwaysbatchfill":
                 case "enableautosave":
                 case "enablechatsuggestions":
+                case "enablecommandhistoryscroll": // 新增 case
                 case "enableautoplaceonjoin":
                 case "enableautosneakatedge":
                 case "enableplayeresp":
                 case "enablebedrockminer":
-                case "fastpistonbreaking": // 新增
+                case "fastpistonbreaking":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
 
                 case "forcedbatchsize":

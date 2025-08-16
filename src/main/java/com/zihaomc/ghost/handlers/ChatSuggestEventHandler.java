@@ -547,8 +547,8 @@ public class ChatSuggestEventHandler {
      */
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
-        // 检查功能是否启用，以及是否成功获取了 inputField 反射字段
-        if (!GhostConfig.enableChatSuggestions || chatInputField == null) {
+        // 核心修改：检查新的配置项
+        if (!GhostConfig.enableCommandHistoryScroll || chatInputField == null) {
             return;
         }
 
@@ -662,8 +662,8 @@ public class ChatSuggestEventHandler {
      */
     @SubscribeEvent
     public void onGuiMouseInput(MouseInputEvent.Pre event) {
-        // 检查功能是否启用，以及是否成功获取了 inputField 反射字段
-        if (!GhostConfig.enableChatSuggestions || chatInputField == null) {
+        // 核心修改：检查新的配置项
+        if (!GhostConfig.enableCommandHistoryScroll || chatInputField == null) {
             return;
         }
 

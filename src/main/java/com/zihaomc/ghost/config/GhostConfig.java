@@ -27,13 +27,14 @@ public class GhostConfig {
 
     // --- 旧配置项 (保持原样) ---
     public static boolean enableAutoSneakAtEdge = false;
-    public static double autoSneakForwardOffset = 0.15;
-    public static double autoSneakVerticalCheckDepth = 1.0;
+    public static double autoSneakForwardOffset = 0.10;
+    public static double autoSneakVerticalCheckDepth = 2.0;
     public static boolean alwaysBatchFill = false;
     public static int forcedBatchSize = 100;
     public static boolean enableAutoSave = false;
     public static String defaultSaveFileName = "";
     public static boolean enableChatSuggestions = true;
+    public static boolean enableCommandHistoryScroll = true; // 新增：控制命令历史滚动
     public static boolean enableAutoPlaceOnJoin = false;
     public static boolean enablePlayerESP = false;
     public static boolean fastPistonBreaking = false;
@@ -78,6 +79,10 @@ public class GhostConfig {
 
         String enableChatSuggestComment = LangUtil.translate("ghostblock.config.enableChatSuggestions.tooltip");
         enableChatSuggestions = config.getBoolean("enableChatSuggestions", CATEGORY_CHAT, true, enableChatSuggestComment);
+
+        // 新增：加载命令历史滚动配置
+        String enableCmdHistoryScrollComment = LangUtil.translate("ghostblock.config.enableCommandHistoryScroll.tooltip");
+        enableCommandHistoryScroll = config.getBoolean("enableCommandHistoryScroll", CATEGORY_CHAT, true, enableCmdHistoryScrollComment);
 
         String enableAutoPlaceComment = LangUtil.translate("ghostblock.config.enableAutoPlaceOnJoin.tooltip");
         enableAutoPlaceOnJoin = config.getBoolean("enableAutoPlaceOnJoin", CATEGORY_AUTO_PLACE, false, enableAutoPlaceComment);
@@ -131,12 +136,13 @@ public class GhostConfig {
     public static boolean isBlinkDuringTasksTick() { return blinkDuringTasksTick; }
     public static Set<Block> getBlockWhitelist() { return blockWhitelist; }
     
-    // --- 已有的 Setter 方法 (完整保留) ---
+    // --- 已有的 Setter 方法 ---
     public static void setAlwaysBatchFill(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_FILL, "alwaysBatchFill", false); prop.set(value); alwaysBatchFill = value; config.save(); }
     public static boolean setForcedBatchSize(int value) { if (config == null || value <= 0) return false; Property prop = config.get(CATEGORY_FILL, "forcedBatchSize", 100); prop.set(value); forcedBatchSize = value; config.save(); return true; }
     public static void setEnableAutoSave(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_SAVE, "enableAutoSave", false); prop.set(value); enableAutoSave = value; config.save(); }
     public static boolean setDefaultSaveFileName(String value) { if (config == null) return false; String processedValue = (value != null) ? value.trim() : ""; Property prop = config.get(CATEGORY_SAVE, "defaultSaveFileName", ""); prop.set(processedValue); defaultSaveFileName = processedValue; config.save(); return true; }
     public static void setEnableChatSuggestions(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_CHAT, "enableChatSuggestions", true); prop.set(value); enableChatSuggestions = value; config.save(); }
+    public static void setEnableCommandHistoryScroll(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_CHAT, "enableCommandHistoryScroll", true); prop.set(value); enableCommandHistoryScroll = value; config.save(); }
     public static void setEnableAutoPlaceOnJoin(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false); prop.set(value); enableAutoPlaceOnJoin = value; config.save(); }
     public static void setEnableAutoSneakAtEdge(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false); prop.set(value); enableAutoSneakAtEdge = value; config.save(); }
     public static void setAutoSneakForwardOffset(double value) { if (config == null || value < 0.05 || value > 1.0) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.35); prop.set(value); autoSneakForwardOffset = value; config.save(); }
