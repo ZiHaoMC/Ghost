@@ -14,6 +14,7 @@ import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.EnumChatFormatting;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -60,12 +61,12 @@ public class GhostConfigCommand extends CommandBase {
             return;
         }
 
-        if (args.length != 2) {
+        if (args.length < 2 && !args[0].equalsIgnoreCase("niutransapikey")) {
             throw new WrongUsageException(getCommandUsage(sender) + " - " + LangUtil.translate("ghostblock.commands.gconfig.extra_usage_toggle", "Use '/gconfig toggleSuggest' to quickly toggle suggestions."));
         }
 
         String settingName = args[0].toLowerCase();
-        String valueStr = args[1];
+        String valueStr = (args.length > 1) ? args[1] : "";
 
         switch (settingName) {
             case "alwaysbatchfill":
@@ -121,10 +122,20 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
             
-            case "enablecommandhistoryscroll": // 新增 case
+            case "enablecommandhistoryscroll":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
                     GhostConfig.setEnableCommandHistoryScroll(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
+            
+            case "enablechattranslationbutton":
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setEnableChatTranslationButton(value);
                     sendSuccessMessage(sender, settingName, value);
                 } catch (CommandException e) {
                     sendBooleanError(sender, valueStr);
@@ -174,6 +185,7 @@ public class GhostConfigCommand extends CommandBase {
                     throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_value.double.range", valueStr, 0.1, 3.0));
                 }
                 break;
+
             case "enableplayeresp":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
@@ -205,6 +217,26 @@ public class GhostConfigCommand extends CommandBase {
                 } catch (CommandException e) {
                     sendBooleanError(sender, valueStr);
                 }
+                break;
+
+            case "niutransapikey":
+                String keyToSet = (args.length > 1) ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "";
+                GhostConfig.setNiuTransApiKey(keyToSet);
+                if (keyToSet.trim().isEmpty()) {
+                    sender.addChatMessage(GhostBlockCommand.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.gconfig.success.key_cleared"));
+                } else {
+                    sender.addChatMessage(GhostBlockCommand.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.gconfig.success.key_set"));
+                }
+                break;
+
+            case "translationsourcelang":
+                GhostConfig.setTranslationSourceLang(valueStr);
+                sendSuccessMessage(sender, settingName, valueStr);
+                break;
+
+            case "translationtargetlang":
+                GhostConfig.setTranslationTargetLang(valueStr);
+                sendSuccessMessage(sender, settingName, valueStr);
                 break;
 
             default:
@@ -240,14 +272,22 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("defaultSaveName", displayFileName));
 
         sender.addChatMessage(formatSettingLine("enableChatSuggestions", GhostConfig.enableChatSuggestions));
-        sender.addChatMessage(formatSettingLine("enableCommandHistoryScroll", GhostConfig.enableCommandHistoryScroll)); // 新增显示
+        sender.addChatMessage(formatSettingLine("enableCommandHistoryScroll", GhostConfig.enableCommandHistoryScroll));
+        sender.addChatMessage(formatSettingLine("enableChatTranslationButton", GhostConfig.enableChatTranslationButton));
         sender.addChatMessage(formatSettingLine("enableAutoPlaceOnJoin", GhostConfig.enableAutoPlaceOnJoin));
         sender.addChatMessage(formatSettingLine("enableAutoSneakAtEdge", GhostConfig.enableAutoSneakAtEdge));
         sender.addChatMessage(formatSettingLine("autoSneakForwardOffset", String.format("%.2f", GhostConfig.autoSneakForwardOffset)));
         sender.addChatMessage(formatSettingLine("autoSneakVerticalCheckDepth", String.format("%.2f", GhostConfig.autoSneakVerticalCheckDepth)));
         sender.addChatMessage(formatSettingLine("enablePlayerESP", GhostConfig.enablePlayerESP));
         sender.addChatMessage(formatSettingLine("enableBedrockMiner", GhostConfig.enableBedrockMiner));
-        sender.addChatMessage(formatSettingLine("fastPistonBreaking", GhostConfig.fastPistonBreaking)); // 新增
+        sender.addChatMessage(formatSettingLine("fastPistonBreaking", GhostConfig.fastPistonBreaking));
+
+        String apiKeyDisplay = (GhostConfig.niuTransApiKey != null && !GhostConfig.niuTransApiKey.isEmpty()) ?
+                "******" + GhostConfig.niuTransApiKey.substring(Math.max(0, GhostConfig.niuTransApiKey.length() - 4)) :
+                LangUtil.translate("ghostblock.commands.gconfig.not_set");
+        sender.addChatMessage(formatSettingLine("niuTransApiKey", apiKeyDisplay));
+        sender.addChatMessage(formatSettingLine("translationSourceLang", GhostConfig.translationSourceLang));
+        sender.addChatMessage(formatSettingLine("translationTargetLang", GhostConfig.translationTargetLang));
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
@@ -291,6 +331,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  defaultSaveName " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text")));
         sender.addChatMessage(new ChatComponentText(op + "  enableChatSuggestions " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableChatSuggestions")));
         sender.addChatMessage(new ChatComponentText(op + "  enableCommandHistoryScroll " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll")));
+        sender.addChatMessage(new ChatComponentText(op + "  enableChatTranslationButton " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableChatTranslationButton")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoPlaceOnJoin " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoSneakAtEdge " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(op + "  autoSneakForwardOffset " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "0.05-1.0") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset")));
@@ -298,6 +339,9 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  enablePlayerESP " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enablePlayerESP")));
         sender.addChatMessage(new ChatComponentText(op + "  enableBedrockMiner " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableBedrockMiner")));
         sender.addChatMessage(new ChatComponentText(op + "  fastPistonBreaking " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.fastPistonBreaking")));
+        sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
+        sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
+        sender.addChatMessage(new ChatComponentText(op + "  translationTargetLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationTargetLang")));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.examples.header")));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableAutoSave true"));
@@ -305,6 +349,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig forcedBatchSize 500"));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableChatSuggestions")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll")));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableChatTranslationButton true"));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.autoSneakForwardOffset")));
@@ -312,6 +357,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enablePlayerESP")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableBedrockMiner")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.fastPistonBreaking")));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig niuTransApiKey your_api_key_here"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig translationTargetLang en"));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.aliases") + ": " + hl + String.join(", ", getCommandAliases())));
     }
@@ -346,9 +393,10 @@ public class GhostConfigCommand extends CommandBase {
         if (args.length == 1) {
             return CommandBase.getListOfStringsMatchingLastWord(args,
                     "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
-                    "enableChatSuggestions", "enableCommandHistoryScroll", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
+                    "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslationButton", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
                     "enableBedrockMiner", "fastPistonBreaking",
+                    "niuTransApiKey", "translationSourceLang", "translationTargetLang",
                     "toggleSuggest");
         } else if (args.length == 2) {
             String settingName = args[0].toLowerCase();
@@ -359,13 +407,19 @@ public class GhostConfigCommand extends CommandBase {
                 case "alwaysbatchfill":
                 case "enableautosave":
                 case "enablechatsuggestions":
-                case "enablecommandhistoryscroll": // 新增 case
+                case "enablecommandhistoryscroll":
+                case "enablechattranslationbutton":
                 case "enableautoplaceonjoin":
                 case "enableautosneakatedge":
                 case "enableplayeresp":
                 case "enablebedrockminer":
                 case "fastpistonbreaking":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
+
+                case "translationsourcelang":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "auto", "zh", "en", "ja", "ko", "fr", "ru", "de");
+                case "translationtargetlang":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "zh", "en", "ja", "ko", "fr", "ru", "de");
 
                 case "forcedbatchsize":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "100", "500", "1000");
@@ -392,6 +446,7 @@ public class GhostConfigCommand extends CommandBase {
                     return CommandBase.getListOfStringsMatchingLastWord(args, "0.5", "1.0", "1.5", "2.0", "2.5", "3.0");
 
                 case "togglesuggest":
+                case "niutransapikey":
                     return Collections.emptyList();
                 default:
                     return Collections.emptyList();

@@ -1,6 +1,6 @@
 package com.zihaomc.ghost.mixins;
 
-import com.zihaomc.ghost.features.bedrockminer.task.TaskManager;
+// import com.zihaomc.ghost.features.bedrockminer.task.TaskManager;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumFacing;
@@ -21,11 +21,14 @@ public class MixinPlayerControllerMP {
      */
     @Inject(method = "func_180512_c", at = @At("HEAD"), cancellable = true)
     private void onPlayerDamageBlock(BlockPos posBlock, EnumFacing directionFacing, CallbackInfoReturnable<Boolean> cir) {
+    // 暂时禁用此功能
+    /*
          System.out.println("====== MIXIN: onClickBlock successful!");
         TaskManager taskManager = TaskManager.getInstance();
         if (taskManager.handleAttackBlock(posBlock)) {
             // 如果我们的代码处理了这个点击，就取消原始方法，并返回 true
             cir.setReturnValue(true);
         }
+        */
     }
 }

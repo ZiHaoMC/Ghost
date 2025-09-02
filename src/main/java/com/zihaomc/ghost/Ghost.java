@@ -2,12 +2,13 @@ package com.zihaomc.ghost;
 
 import com.zihaomc.ghost.commands.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
+import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.handlers.ChatSuggestEventHandler;
 import com.zihaomc.ghost.handlers.KeybindHandler; // 确保导入路径正确
 import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
 import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
-import com.zihaomc.ghost.features.bedrockminer.BedrockMinerHandler;
+// import com.zihaomc.ghost.features.bedrockminer.BedrockMinerHandler;
 import com.zihaomc.ghost.features.gameplay.FastPistonBreakingHandler;
 import com.zihaomc.ghost.proxy.CommonProxy;
 import net.minecraft.init.Blocks;
@@ -71,8 +72,8 @@ public class Ghost {
             MinecraftForge.EVENT_BUS.register(new PlayerESPHandler());
             System.out.println("[" + MODID + "-DEBUG] 玩家ESP事件处理器 (PlayerESPHandler) 已在 PreInit 中注册。");
             
-            MinecraftForge.EVENT_BUS.register(new BedrockMinerHandler());
-            System.out.println("[" + MODID + "-DEBUG] 破基岩事件处理器 (BedrockMinerHandler) 已在 PreInit 中注册。");
+        //    MinecraftForge.EVENT_BUS.register(new BedrockMinerHandler());
+        //    System.out.println("[" + MODID + "-DEBUG] 破基岩事件处理器 (BedrockMinerHandler) 已在 PreInit 中注册。");
             
             MinecraftForge.EVENT_BUS.register(new FastPistonBreakingHandler());
             System.out.println("[" + MODID + "-DEBUG] 快速破坏活塞事件处理器 (FastPistonBreakingHandler) 已在 PreInit 中注册。");
@@ -110,6 +111,10 @@ public class Ghost {
             // 3. 注册 GhostBlockCommand 命令实例 (/cgb)
             ClientCommandHandler.instance.registerCommand(new GhostBlockCommand());
             System.out.println("[" + MODID + "-DEBUG] /cgb 命令实例已注册。");
+            
+            // 4. 注册/gtranslate
+            ClientCommandHandler.instance.registerCommand(new TranslateCommand());
+            System.out.println("[" + MODID + "-DEBUG] TranslateCommand (/gtranslate) 已注册。");
 
         } else {
             System.out.println("[" + MODID + "-DEBUG] 在服务端跳过客户端命令注册。");

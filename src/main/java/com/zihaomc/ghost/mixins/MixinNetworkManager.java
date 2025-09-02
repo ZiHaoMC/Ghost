@@ -1,6 +1,6 @@
 package com.zihaomc.ghost.mixins;
 
-import com.zihaomc.ghost.features.bedrockminer.utils.BlinkUtils;
+// import com.zihaomc.ghost.features.bedrockminer.utils.BlinkUtils;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,6 +19,8 @@ public class MixinNetworkManager {
      */
     @Inject(method = "func_179290_a", at = @At("HEAD"), cancellable = true, remap = false)
     private void onSendPacket(Packet packetIn, CallbackInfo ci) {
+    // --- 暂时禁用破基岩功能以通过编译 ---
+    /*
         
         NetworkManager thisManager = (NetworkManager) (Object) this;
 
@@ -26,5 +28,6 @@ public class MixinNetworkManager {
             // TODO: 在未来的步骤中，将 packetIn 添加到 BlinkUtils 的队列中
             ci.cancel(); 
         }
+        */
     }
 }
