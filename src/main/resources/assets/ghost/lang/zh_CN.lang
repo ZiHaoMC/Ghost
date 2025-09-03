@@ -143,7 +143,7 @@ ghostblock.config.enableAutoSave.tooltip=是否在执行 /cgb set 或 /cgb fill 
 ghostblock.config.defaultSaveFileName.tooltip=当启用自动保存 (enableAutoSave=true) 且未使用 -s 时，默认使用的保存文件名。留空或输入 'default' 将使用当前世界/服务器标识符作为文件名。
 ghostblock.config.enableChatSuggestions.tooltip=是否启用在聊天中为命令添加建议按钮的功能 (例如在命令成功或失败后)。
 ghostblock.config.enableCommandHistoryScroll.tooltip=是否启用 Shift + 鼠标滚轮/方向键 切换已发送命令历史的功能。
-ghostblock.config.enableChatTranslationButton.tooltip=是否在其他玩家的聊天消息后添加一个[译]按钮，点击即可翻译。
+ghostblock.config.enableChatTranslationButton.tooltip=是否在其他玩家的聊天消息及其告示牌后添加一个[译]按钮，点击即可翻译。
 ghostblock.config.enableAutoPlaceOnJoin.tooltip=是否在玩家加入世界时，自动在脚下重新放置之前记录的幽灵方块（如果脚下当前是空气）。这可以防止在空中退出后重新进入时掉落。
 ghostblock.config.enableAutoSneakAtEdge.tooltip=是否在玩家走到方块边缘，即将掉落时自动蹲下以防止掉落。
 ghostblock.config.autoSneakForwardOffset.tooltip=自动蹲伏时向前检测的偏移量 (0.05-1.0 之间的小数)。值越小，玩家越靠近方块边缘才会触发自动蹲伏。

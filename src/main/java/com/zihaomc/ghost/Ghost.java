@@ -5,6 +5,7 @@ import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.handlers.ChatSuggestEventHandler;
+import com.zihaomc.ghost.handlers.SignTranslationHandler;
 import com.zihaomc.ghost.handlers.KeybindHandler; // 确保导入路径正确
 import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
 import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
@@ -81,6 +82,9 @@ public class Ghost {
             // 注册按键绑定事件处理器
             MinecraftForge.EVENT_BUS.register(new KeybindHandler());
             System.out.println("[" + MODID + "-DEBUG] 按键绑定事件处理器 (KeybindHandler) 已在 PreInit 中注册。");
+            
+            MinecraftForge.EVENT_BUS.register(new SignTranslationHandler());
+            System.out.println("[" + MODID + "-DEBUG] 告示牌翻译事件处理器 (SignTranslationHandler) 已在 PreInit 中注册。");
         }
     }
 
