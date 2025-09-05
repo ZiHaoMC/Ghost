@@ -3,7 +3,7 @@ package com.zihaomc.ghost.handlers;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiChat; // <-- 新增 Import
+import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.ChatComponentText;
@@ -78,17 +78,12 @@ public class KeybindHandler {
             sendToggleMessage("破基岩模式", newState);
         }
 
-        // v-- 这里是修正的核心 --v
         // 为“翻译”和“聊天”的按键冲突提供解决方案
-        // 如果我们在游戏世界里 (没有打开任何GUI)，并且我们的翻译键被按下了...
         if (Minecraft.getMinecraft().currentScreen == null && translateItemKey != null && translateItemKey.isPressed()) {
-            // ...那么我们检查一下，这个键是不是和原版的聊天键设置成了同一个键。
             if (translateItemKey.getKeyCode() == Minecraft.getMinecraft().gameSettings.keyBindChat.getKeyCode()) {
-                // 如果是同一个键，我们就手动帮Minecraft打开聊天栏，以恢复它的正常功能。
                 Minecraft.getMinecraft().displayGuiScreen(new GuiChat());
             }
         }
-        // ^-- 修正结束 --^
     }
 
     /**
@@ -97,13 +92,9 @@ public class KeybindHandler {
      */
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
-        // 检查是否在带有物品栏的GUI中 (例如，背包、箱子等)
         if (event.gui instanceof GuiContainer) {
-            // 直接检查原始按键状态，而不是用 isPressed()
-            // Keyboard.getEventKeyState()确保是“按下”事件，而不是“弹起”
             if (translateItemKey != null && Keyboard.getEventKeyState() && Keyboard.getEventKey() == translateItemKey.getKeyCode()) {
                 handleItemTranslationKeyPress();
-                // 取消事件，防止Minecraft执行默认的“打开聊天栏”操作（如果按键也是T）
                 event.setCanceled(true);
             }
         }
@@ -117,59 +108,61 @@ public class KeybindHandler {
             return;
         }
         
-        // 从 Handler 获取物品名称和完整的描述列表
         String itemName = ItemTooltipTranslationHandler.lastHoveredItemName;
         List<String> itemLore = ItemTooltipTranslationHandler.lastHoveredItemLore;
 
-        // 如果名称或描述无效，则不处理
         if (itemName == null || itemName.trim().isEmpty() || itemLore == null) {
             return;
         }
         
-        // 如果已在缓存或翻译中，则不处理
-        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName) ||
-            ItemTooltipTranslationHandler.pendingTranslations.contains(itemName)) {
+        // v-- 这里是修改的核心 --v
+        
+        // 检查是否正在翻译中
+        if (ItemTooltipTranslationHandler.pendingTranslations.contains(itemName)) {
             return;
         }
+
+        // 检查缓存中是否已有 *成功* 的翻译
+        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
+            List<String> cachedValue = ItemTooltipTranslationHandler.translationCache.get(itemName);
+            // 如果缓存值有效，且不以错误代码开头，则说明是成功翻译，直接返回
+            if (cachedValue != null && !cachedValue.isEmpty() && !cachedValue.get(0).startsWith("§c")) {
+                return;
+            }
+        }
+        // 如果代码能执行到这里，说明：要么没翻译过，要么上次翻译失败了。两种情况都应该重新翻译。
+
+        // ^-- 修改结束 --^
         
-        // 1. 将名称和所有描述行合并成一个由换行符分隔的字符串
         StringBuilder fullTextBuilder = new StringBuilder(itemName);
         for (String line : itemLore) {
             fullTextBuilder.append("\n").append(line);
         }
         String textToTranslate = fullTextBuilder.toString();
         
-        // 如果合并后为空（虽然不太可能），则不处理
         if (textToTranslate.trim().isEmpty()) {
             return;
         }
         
-        // 使用物品名称作为键，加入“等待中”列表
         ItemTooltipTranslationHandler.pendingTranslations.add(itemName);
         Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "已发送翻译请求: " + itemName));
 
         new Thread(() -> {
             try {
                 String result = NiuTransUtil.translate(textToTranslate);
-
                 List<String> translatedLines;
                 
                 if (result == null || result.trim().isEmpty()) {
-                    // 网络或未知错误
                     translatedLines = Collections.singletonList("§c翻译失败: 网络或未知错误");
                 } else if (result.startsWith("§c")) {
-                    // API返回的明确错误
                     translatedLines = Collections.singletonList(result);
                 } else {
-                    // 翻译成功，按换行符拆分成列表
                     translatedLines = Arrays.asList(result.split("\n"));
                 }
                 
-                // 将翻译后的行列表存入缓存
                 ItemTooltipTranslationHandler.translationCache.put(itemName, translatedLines);
 
             } finally {
-                // 无论结果如何，都从“等待中”列表移除
                 ItemTooltipTranslationHandler.pendingTranslations.remove(itemName);
             }
         }).start();

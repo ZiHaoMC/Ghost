@@ -49,29 +49,36 @@ public class ItemTooltipTranslationHandler {
         }
         lastHoveredItemName = unformattedItemName;
         
-        // 提取并存储所有描述行 (除了第一行的名称)
         if (event.toolTip.size() > 1) {
             lastHoveredItemLore = event.toolTip.subList(1, event.toolTip.size()).stream()
                 .map(line -> STRIP_COLOR_PATTERN.matcher(line).replaceAll(""))
                 .collect(Collectors.toList());
         } else {
-            lastHoveredItemLore = new ArrayList<>(); // 如果没有描述，就是一个空列表
+            lastHoveredItemLore = new ArrayList<>();
         }
 
-        // 2. 检查缓存并显示完整结果
+        String keyName = Keyboard.getKeyName(KeybindHandler.translateItemKey.getKeyCode());
+
+        // v-- 这里是修改的核心 --v
+
+        // 2. 检查缓存并显示结果
         if (translationCache.containsKey(unformattedItemName)) {
-            List<String> translatedLines = translationCache.get(unformattedItemName);
+            List<String> cachedLines = translationCache.get(unformattedItemName);
             
-            // 添加一个分隔符和标题
-            event.toolTip.add("");
-            event.toolTip.add(EnumChatFormatting.GOLD + "--- 翻译 ---");
-            
-            for (String line : translatedLines) {
-                // 如果是错误信息，它会自带颜色；否则我们给一个默认颜色
-                if (line.startsWith("§c")) {
-                    event.toolTip.add(line);
-                } else {
-                    event.toolTip.add(EnumChatFormatting.AQUA + line);
+            // 检查缓存的是否是失败记录
+            if (cachedLines != null && !cachedLines.isEmpty() && cachedLines.get(0).startsWith("§c")) {
+                // 是失败记录：显示错误信息 和 重试提示
+                event.toolTip.add("");
+                event.toolTip.add(cachedLines.get(0)); // 显示错误
+                event.toolTip.add(EnumChatFormatting.DARK_GRAY + "按 " + keyName + " 键重试");
+            } else {
+                // 是成功记录：显示翻译结果
+                event.toolTip.add("");
+                event.toolTip.add(EnumChatFormatting.GOLD + "--- 翻译 ---");
+                if (cachedLines != null) {
+                    for (String line : cachedLines) {
+                        event.toolTip.add(EnumChatFormatting.AQUA + line);
+                    }
                 }
             }
             return;
@@ -81,10 +88,10 @@ public class ItemTooltipTranslationHandler {
         if (pendingTranslations.contains(unformattedItemName)) {
             event.toolTip.add(EnumChatFormatting.GRAY + "翻译中...");
         } else {
-            // 4. 显示操作提示
-            String keyName = Keyboard.getKeyName(KeybindHandler.translateItemKey.getKeyCode());
+            // 4. 显示初次翻译的操作提示
             event.toolTip.add(EnumChatFormatting.DARK_GRAY + "按 " + keyName + " 键翻译");
         }
+        // ^-- 修改结束 --^
     }
     
     /**
