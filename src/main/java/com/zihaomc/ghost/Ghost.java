@@ -64,6 +64,17 @@ public class Ghost {
 
         // 仅在客户端注册事件处理器
         if (event.getSide() == Side.CLIENT) {
+            
+            // v-- 这里是修改的核心 --v
+            // 1. 从文件加载翻译缓存
+            ItemTooltipTranslationHandler.loadCacheFromFile();
+            
+            // 2. 注册一个JVM关闭钩子，以在游戏关闭时保存缓存
+            // 这是确保数据被保存的最可靠方法
+            Runtime.getRuntime().addShutdownHook(new Thread(ItemTooltipTranslationHandler::saveCacheToFile));
+            System.out.println("[" + MODID + "-DEBUG] 翻译缓存已加载，并已注册保存钩子。");
+            // ^-- 修改结束 --^
+            
             // 注册聊天建议事件处理器
             MinecraftForge.EVENT_BUS.register(new ChatSuggestEventHandler());
             System.out.println("[" + MODID + "-DEBUG] 聊天建议事件处理器已在 PreInit 中注册。");

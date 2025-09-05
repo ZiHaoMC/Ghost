@@ -109,30 +109,42 @@ public class KeybindHandler {
         }
         
         String itemName = ItemTooltipTranslationHandler.lastHoveredItemName;
-        List<String> itemLore = ItemTooltipTranslationHandler.lastHoveredItemLore;
+        if (itemName == null || itemName.trim().isEmpty()) {
+            return;
+        }
 
-        if (itemName == null || itemName.trim().isEmpty() || itemLore == null) {
+        // v-- 这里是修改的核心 --v
+
+        // 1. 检查翻译是否当前可见
+        if (ItemTooltipTranslationHandler.visiblyTranslatedItems.contains(itemName)) {
+            // 如果可见，则隐藏它
+            ItemTooltipTranslationHandler.visiblyTranslatedItems.remove(itemName);
             return;
         }
         
-        // v-- 这里是修改的核心 --v
+        // 2. 如果翻译不可见，检查缓存中是否存在
+        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
+            // 如果存在，则显示它（并处理重试失败的情况）
+            List<String> cachedValue = ItemTooltipTranslationHandler.translationCache.get(itemName);
+            if (cachedValue != null && !cachedValue.isEmpty() && cachedValue.get(0).startsWith("§c")) {
+                // 如果是失败记录，从缓存中移除，以便下次可以重新请求
+                ItemTooltipTranslationHandler.translationCache.remove(itemName);
+            } else {
+                // 如果是成功记录，则加入可见列表
+                ItemTooltipTranslationHandler.visiblyTranslatedItems.add(itemName);
+                return;
+            }
+        }
+
+        // 3. 如果以上条件都不满足（缓存中没有 或 是一个刚被移除的失败记录），则发起新的翻译请求
         
-        // 检查是否正在翻译中
+        // 确保不会重复发送请求
         if (ItemTooltipTranslationHandler.pendingTranslations.contains(itemName)) {
             return;
         }
 
-        // 检查缓存中是否已有 *成功* 的翻译
-        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
-            List<String> cachedValue = ItemTooltipTranslationHandler.translationCache.get(itemName);
-            // 如果缓存值有效，且不以错误代码开头，则说明是成功翻译，直接返回
-            if (cachedValue != null && !cachedValue.isEmpty() && !cachedValue.get(0).startsWith("§c")) {
-                return;
-            }
-        }
-        // 如果代码能执行到这里，说明：要么没翻译过，要么上次翻译失败了。两种情况都应该重新翻译。
-
-        // ^-- 修改结束 --^
+        List<String> itemLore = ItemTooltipTranslationHandler.lastHoveredItemLore;
+        if (itemLore == null) return;
         
         StringBuilder fullTextBuilder = new StringBuilder(itemName);
         for (String line : itemLore) {
@@ -161,11 +173,14 @@ public class KeybindHandler {
                 }
                 
                 ItemTooltipTranslationHandler.translationCache.put(itemName, translatedLines);
+                // 翻译完成后，自动设为可见
+                ItemTooltipTranslationHandler.visiblyTranslatedItems.add(itemName);
 
             } finally {
                 ItemTooltipTranslationHandler.pendingTranslations.remove(itemName);
             }
         }).start();
+        // ^-- 修改结束 --^
     }
 
     /**
