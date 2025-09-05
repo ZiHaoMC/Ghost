@@ -30,7 +30,9 @@ public class GhostConfig {
     public static boolean enableAutoSave = false;
     public static boolean enableChatSuggestions = true;
     public static boolean enableCommandHistoryScroll = true;
-    public static boolean enableChatTranslationButton = false; // 新增
+    public static boolean enableChatTranslation = false; // 分离后的聊天翻译开关
+    public static boolean enableSignTranslation = false; // 分离后的告示牌翻译开关
+    public static boolean enableItemTranslation = false; // 新增的物品翻译开关
     public static boolean enableAutoPlaceOnJoin = false;
     public static boolean enableAutoSneakAtEdge = false;
     public static boolean enablePlayerESP = false;
@@ -91,9 +93,6 @@ public class GhostConfig {
         String enableCmdHistoryScrollComment = LangUtil.translate("ghostblock.config.enableCommandHistoryScroll.tooltip");
         enableCommandHistoryScroll = config.getBoolean("enableCommandHistoryScroll", CATEGORY_CHAT, true, enableCmdHistoryScrollComment);
         
-        String enableChatTransBtnComment = LangUtil.translate("ghostblock.config.enableChatTranslationButton.tooltip");
-        enableChatTranslationButton = config.getBoolean("enableChatTranslationButton", CATEGORY_CHAT, false, enableChatTransBtnComment);
-
         // --- 自动放置 ---
         String enableAutoPlaceComment = LangUtil.translate("ghostblock.config.enableAutoPlaceOnJoin.tooltip");
         enableAutoPlaceOnJoin = config.getBoolean("enableAutoPlaceOnJoin", CATEGORY_AUTO_PLACE, false, enableAutoPlaceComment);
@@ -138,6 +137,15 @@ public class GhostConfig {
         dependBlockWhitelist = Arrays.stream(dependArr).map(s -> Block.blockRegistry.getObject(new ResourceLocation(s))).filter(Objects::nonNull).collect(Collectors.toSet());
 
         // --- 在线翻译 ---
+        String enableChatTransComment = "启用后，在其他玩家的聊天消息后会显示一个 [翻译] 按钮。";
+        enableChatTranslation = config.getBoolean("enableChatTranslation", CATEGORY_TRANSLATION, false, enableChatTransComment);
+
+        String enableSignTransComment = "启用后，右键点击告示牌会尝试翻译其内容。";
+        enableSignTranslation = config.getBoolean("enableSignTranslation", CATEGORY_TRANSLATION, false, enableSignTransComment);
+
+        String enableItemTransComment = "启用后，将鼠标悬停在物品上时会尝试翻译其名称。";
+        enableItemTranslation = config.getBoolean("enableItemTranslation", CATEGORY_TRANSLATION, false, enableItemTransComment);
+
         String apiKeyComment = LangUtil.translate("ghostblock.config.niuTransApiKey.tooltip");
         niuTransApiKey = config.getString("niuTransApiKey", CATEGORY_TRANSLATION, "", apiKeyComment);
 
@@ -167,7 +175,9 @@ public class GhostConfig {
     public static boolean setDefaultSaveFileName(String value) { if (config == null) return false; String processedValue = (value != null) ? value.trim() : ""; Property prop = config.get(CATEGORY_SAVE, "defaultSaveFileName", ""); prop.set(processedValue); defaultSaveFileName = processedValue; config.save(); return true; }
     public static void setEnableChatSuggestions(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_CHAT, "enableChatSuggestions", true); prop.set(value); enableChatSuggestions = value; config.save(); }
     public static void setEnableCommandHistoryScroll(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_CHAT, "enableCommandHistoryScroll", true); prop.set(value); enableCommandHistoryScroll = value; config.save(); }
-    public static void setEnableChatTranslationButton(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_CHAT, "enableChatTranslationButton", false); prop.set(value); enableChatTranslationButton = value; config.save(); }
+    public static void setEnableChatTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableChatTranslation", false); prop.set(value); enableChatTranslation = value; config.save(); }
+    public static void setEnableSignTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableSignTranslation", false); prop.set(value); enableSignTranslation = value; config.save(); }
+    public static void setEnableItemTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableItemTranslation", false); prop.set(value); enableItemTranslation = value; config.save(); }
     public static void setEnableAutoPlaceOnJoin(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false); prop.set(value); enableAutoPlaceOnJoin = value; config.save(); }
     public static void setEnableAutoSneakAtEdge(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false); prop.set(value); enableAutoSneakAtEdge = value; config.save(); }
     public static void setAutoSneakForwardOffset(double value) { if (config == null || value < 0.05 || value > 1.0) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.35); prop.set(value); autoSneakForwardOffset = value; config.save(); }

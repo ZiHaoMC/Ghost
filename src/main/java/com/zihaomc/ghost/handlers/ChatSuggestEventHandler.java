@@ -134,7 +134,7 @@ public class ChatSuggestEventHandler {
 
         // 3. ***次级优先级***：如果不是命令错误，再检查是否需要添加【翻译】按钮
         // 这里的 (event.type == 0 || event.type == 1) 依然保留，以兼容服务器消息
-        if (GhostConfig.enableChatTranslationButton && (event.type == 0 || event.type == 1)) {
+        if (GhostConfig.enableChatTranslation && (event.type == 0 || event.type == 1)) {
             String unformattedText = event.message.getUnformattedText();
             String formattedText = event.message.getFormattedText();
 
@@ -223,7 +223,6 @@ public class ChatSuggestEventHandler {
 
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
-        // 此方法为您之前代码中的键盘输入逻辑，它本身没有问题，保持原样
         if (!GhostConfig.enableCommandHistoryScroll || chatInputField == null) return;
         if (!(event.gui instanceof GuiChat)) {
             if (activeGuiChatInstance != null) {
@@ -242,45 +241,80 @@ public class ChatSuggestEventHandler {
         if (Keyboard.getEventKeyState() && GuiScreen.isShiftKeyDown()) {
             int keyCode = Keyboard.getEventKey();
             if (keyCode == Keyboard.KEY_UP || keyCode == Keyboard.KEY_DOWN) {
+                // v-- 这里是键盘滚动的逻辑，我们将统一鼠标逻辑与此一致 --v
                 try {
                     GuiTextField inputField = (GuiTextField) chatInputField.get(currentChatGui);
                     if (inputField == null) return;
                     List<String> sentMessages = Minecraft.getMinecraft().ingameGUI.getChatGUI().getSentMessages();
                     if (sentMessages == null) sentMessages = new ArrayList<>();
                     if (chatHistoryIndex == -1) originalChatText = inputField.getText();
-                    if (keyCode == Keyboard.KEY_UP) chatHistoryIndex = Math.max(-1, (chatHistoryIndex == -1) ? sentMessages.size() - 1 : chatHistoryIndex - 1);
-                    else chatHistoryIndex = Math.min(sentMessages.size(), chatHistoryIndex + 1);
-                    String newText = (chatHistoryIndex >= 0 && chatHistoryIndex < sentMessages.size()) ? sentMessages.get(chatHistoryIndex) : (originalChatText != null ? originalChatText : "");
-                    if (chatHistoryIndex >= sentMessages.size()) chatHistoryIndex = -1; // wrap around or reset
-                    inputField.setText(newText);
-                    inputField.setCursorPositionEnd();
+                    
+                    int delta = (keyCode == Keyboard.KEY_UP) ? -1 : 1;
+                    updateChatHistory(delta, sentMessages, inputField);
+                    
                     event.setCanceled(true);
                 } catch (Exception e) { e.printStackTrace(); }
+                // ^-- 键盘逻辑结束 --^
             }
         }
     }
 
     @SubscribeEvent
     public void onGuiMouseInput(MouseInputEvent.Pre event) {
-        // 此方法为您之前代码中的鼠标输入逻辑，它本身没有问题，保持原样
         if (!GhostConfig.enableCommandHistoryScroll || chatInputField == null) return;
         if (!(event.gui instanceof GuiChat)) return;
-        if (Mouse.getEventButton() == -1 && Mouse.getEventDWheel() != 0 && GuiScreen.isShiftKeyDown()) {
+        
+        int wheelDelta = Mouse.getEventDWheel();
+        if (wheelDelta != 0 && GuiScreen.isShiftKeyDown()) {
              try {
-                int delta = Mouse.getEventDWheel() > 0 ? -1 : 1; // scroll up = prev command
+                // v-- 这里是修正的核心 --v
+
+                // 1. 修正方向：向上滚(wheelDelta > 0)是上一个命令(delta = -1)
+                int delta = (wheelDelta > 0) ? -1 : 1;
+                
                 GuiTextField inputField = (GuiTextField) chatInputField.get(event.gui);
                 if (inputField == null) return;
+                
                 List<String> sentMessages = Minecraft.getMinecraft().ingameGUI.getChatGUI().getSentMessages();
                 if (sentMessages == null || sentMessages.isEmpty()) return;
+                
                 if (chatHistoryIndex == -1) originalChatText = inputField.getText();
-                chatHistoryIndex += delta;
-                chatHistoryIndex = MathHelper.clamp_int(chatHistoryIndex, -1, sentMessages.size() - 1);
-                String newText = (chatHistoryIndex >= 0) ? sentMessages.get(chatHistoryIndex) : (originalChatText != null ? originalChatText : "");
-                inputField.setText(newText);
-                inputField.setCursorPositionEnd();
-                event.setCanceled(true);
+
+                // 2. 调用统一的、支持循环滚动的逻辑
+                updateChatHistory(delta, sentMessages, inputField);
+
+                event.setCanceled(true); // 阻止事件继续传递
+                // ^-- 修正结束 --^
             } catch (Exception e) { e.printStackTrace(); }
         }
+    }
+
+    /**
+     * 新增：统一处理聊天历史滚动的核心逻辑，支持循环。
+     * @param delta 变化量（-1表示上一个，1表示下一个）
+     * @param sentMessages 已发送消息列表
+     * @param inputField 聊天输入框对象
+     */
+    private void updateChatHistory(int delta, List<String> sentMessages, GuiTextField inputField) {
+        if (sentMessages.isEmpty()) {
+            return;
+        }
+        
+        chatHistoryIndex += delta;
+        
+        // 实现循环滚动
+        if (chatHistoryIndex < -1) {
+            // 从“原始文本”向上滚动，应循环到列表的最后一个（最新的）命令
+            chatHistoryIndex = sentMessages.size() - 1;
+        } else if (chatHistoryIndex >= sentMessages.size()) {
+            // 从最新的命令向下滚动，应循环回到“原始文本”
+            chatHistoryIndex = -1;
+        }
+        
+        // 根据最终的索引设置文本
+        String newText = (chatHistoryIndex >= 0) ? sentMessages.get(chatHistoryIndex) : (originalChatText != null ? originalChatText : "");
+        inputField.setText(newText);
+        inputField.setCursorPositionEnd();
     }
 
     // ====================

@@ -132,10 +132,30 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
             
-            case "enablechattranslationbutton":
+            case "enablechattranslation":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableChatTranslationButton(value);
+                    GhostConfig.setEnableChatTranslation(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
+
+            case "enablesigntranslation":
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setEnableSignTranslation(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
+
+            case "enableitemtranslation":
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setEnableItemTranslation(value);
                     sendSuccessMessage(sender, settingName, value);
                 } catch (CommandException e) {
                     sendBooleanError(sender, valueStr);
@@ -273,7 +293,9 @@ public class GhostConfigCommand extends CommandBase {
 
         sender.addChatMessage(formatSettingLine("enableChatSuggestions", GhostConfig.enableChatSuggestions));
         sender.addChatMessage(formatSettingLine("enableCommandHistoryScroll", GhostConfig.enableCommandHistoryScroll));
-        sender.addChatMessage(formatSettingLine("enableChatTranslationButton", GhostConfig.enableChatTranslationButton));
+        sender.addChatMessage(formatSettingLine("enableChatTranslation", GhostConfig.enableChatTranslation));
+        sender.addChatMessage(formatSettingLine("enableSignTranslation", GhostConfig.enableSignTranslation));
+        sender.addChatMessage(formatSettingLine("enableItemTranslation", GhostConfig.enableItemTranslation));
         sender.addChatMessage(formatSettingLine("enableAutoPlaceOnJoin", GhostConfig.enableAutoPlaceOnJoin));
         sender.addChatMessage(formatSettingLine("enableAutoSneakAtEdge", GhostConfig.enableAutoSneakAtEdge));
         sender.addChatMessage(formatSettingLine("autoSneakForwardOffset", String.format("%.2f", GhostConfig.autoSneakForwardOffset)));
@@ -331,7 +353,9 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  defaultSaveName " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text")));
         sender.addChatMessage(new ChatComponentText(op + "  enableChatSuggestions " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableChatSuggestions")));
         sender.addChatMessage(new ChatComponentText(op + "  enableCommandHistoryScroll " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll")));
-        sender.addChatMessage(new ChatComponentText(op + "  enableChatTranslationButton " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableChatTranslationButton")));
+        sender.addChatMessage(new ChatComponentText(op + "  enableChatTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + "启用聊天消息翻译按钮。"));
+        sender.addChatMessage(new ChatComponentText(op + "  enableSignTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + "启用告示牌右键翻译功能。"));
+        sender.addChatMessage(new ChatComponentText(op + "  enableItemTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + "启用物品提示框名称翻译。"));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoPlaceOnJoin " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoSneakAtEdge " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(op + "  autoSneakForwardOffset " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "0.05-1.0") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset")));
@@ -349,7 +373,9 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig forcedBatchSize 500"));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableChatSuggestions")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll")));
-        sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableChatTranslationButton true"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableChatTranslation true"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableSignTranslation true"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableItemTranslation true"));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.autoSneakForwardOffset")));
@@ -393,7 +419,7 @@ public class GhostConfigCommand extends CommandBase {
         if (args.length == 1) {
             return CommandBase.getListOfStringsMatchingLastWord(args,
                     "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
-                    "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslationButton", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
+                    "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
                     "enableBedrockMiner", "fastPistonBreaking",
                     "niuTransApiKey", "translationSourceLang", "translationTargetLang",
@@ -408,7 +434,9 @@ public class GhostConfigCommand extends CommandBase {
                 case "enableautosave":
                 case "enablechatsuggestions":
                 case "enablecommandhistoryscroll":
-                case "enablechattranslationbutton":
+                case "enablechattranslation":
+                case "enablesigntranslation":
+                case "enableitemtranslation":
                 case "enableautoplaceonjoin":
                 case "enableautosneakatedge":
                 case "enableplayeresp":

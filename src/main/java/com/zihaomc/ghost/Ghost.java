@@ -5,6 +5,7 @@ import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.handlers.ChatSuggestEventHandler;
+import com.zihaomc.ghost.handlers.ItemTooltipTranslationHandler;
 import com.zihaomc.ghost.handlers.SignTranslationHandler;
 import com.zihaomc.ghost.handlers.KeybindHandler; // 确保导入路径正确
 import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
@@ -85,6 +86,10 @@ public class Ghost {
             
             MinecraftForge.EVENT_BUS.register(new SignTranslationHandler());
             System.out.println("[" + MODID + "-DEBUG] 告示牌翻译事件处理器 (SignTranslationHandler) 已在 PreInit 中注册。");
+
+            // 注册物品提示框翻译事件处理器
+            MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
+            System.out.println("[" + MODID + "-DEBUG] 物品提示框翻译事件处理器 (ItemTooltipTranslationHandler) 已在 PreInit 中注册。");
         }
     }
 

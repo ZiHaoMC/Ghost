@@ -31,7 +31,7 @@ public class SignTranslationHandler {
         // - 必须是右键点击方块的动作
         // - 必须在客户端执行 (world.isRemote)
         // - 翻译功能必须在配置中启用
-        if (event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK || !event.world.isRemote || !GhostConfig.enableChatTranslationButton) {
+        if (event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK || !event.world.isRemote || !GhostConfig.enableSignTranslation) {
             return;
         }
 
