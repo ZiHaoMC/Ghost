@@ -3,6 +3,7 @@ package com.zihaomc.ghost.handlers;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiChat; // <-- 新增 Import
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.ChatComponentText;
@@ -12,6 +13,10 @@ import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.lwjgl.input.Keyboard;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 处理 Ghost Mod 的所有按键绑定。
@@ -72,6 +77,18 @@ public class KeybindHandler {
             GhostConfig.setEnableBedrockMiner(newState);
             sendToggleMessage("破基岩模式", newState);
         }
+
+        // v-- 这里是修正的核心 --v
+        // 为“翻译”和“聊天”的按键冲突提供解决方案
+        // 如果我们在游戏世界里 (没有打开任何GUI)，并且我们的翻译键被按下了...
+        if (Minecraft.getMinecraft().currentScreen == null && translateItemKey != null && translateItemKey.isPressed()) {
+            // ...那么我们检查一下，这个键是不是和原版的聊天键设置成了同一个键。
+            if (translateItemKey.getKeyCode() == Minecraft.getMinecraft().gameSettings.keyBindChat.getKeyCode()) {
+                // 如果是同一个键，我们就手动帮Minecraft打开聊天栏，以恢复它的正常功能。
+                Minecraft.getMinecraft().displayGuiScreen(new GuiChat());
+            }
+        }
+        // ^-- 修正结束 --^
     }
 
     /**
@@ -86,6 +103,8 @@ public class KeybindHandler {
             // Keyboard.getEventKeyState()确保是“按下”事件，而不是“弹起”
             if (translateItemKey != null && Keyboard.getEventKeyState() && Keyboard.getEventKey() == translateItemKey.getKeyCode()) {
                 handleItemTranslationKeyPress();
+                // 取消事件，防止Minecraft执行默认的“打开聊天栏”操作（如果按键也是T）
+                event.setCanceled(true);
             }
         }
     }
@@ -98,34 +117,60 @@ public class KeybindHandler {
             return;
         }
         
-        String itemToTranslate = ItemTooltipTranslationHandler.lastHoveredItemName;
+        // 从 Handler 获取物品名称和完整的描述列表
+        String itemName = ItemTooltipTranslationHandler.lastHoveredItemName;
+        List<String> itemLore = ItemTooltipTranslationHandler.lastHoveredItemLore;
 
-        if (itemToTranslate == null || itemToTranslate.trim().isEmpty()) {
+        // 如果名称或描述无效，则不处理
+        if (itemName == null || itemName.trim().isEmpty() || itemLore == null) {
             return;
         }
         
-        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemToTranslate) ||
-            ItemTooltipTranslationHandler.pendingTranslations.contains(itemToTranslate)) {
+        // 如果已在缓存或翻译中，则不处理
+        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName) ||
+            ItemTooltipTranslationHandler.pendingTranslations.contains(itemName)) {
             return;
         }
         
-        ItemTooltipTranslationHandler.pendingTranslations.add(itemToTranslate);
-        Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "已发送翻译请求: " + itemToTranslate));
+        // 1. 将名称和所有描述行合并成一个由换行符分隔的字符串
+        StringBuilder fullTextBuilder = new StringBuilder(itemName);
+        for (String line : itemLore) {
+            fullTextBuilder.append("\n").append(line);
+        }
+        String textToTranslate = fullTextBuilder.toString();
+        
+        // 如果合并后为空（虽然不太可能），则不处理
+        if (textToTranslate.trim().isEmpty()) {
+            return;
+        }
+        
+        // 使用物品名称作为键，加入“等待中”列表
+        ItemTooltipTranslationHandler.pendingTranslations.add(itemName);
+        Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "已发送翻译请求: " + itemName));
 
         new Thread(() -> {
             try {
-                String result = NiuTransUtil.translate(itemToTranslate);
+                String result = NiuTransUtil.translate(textToTranslate);
 
-                // NiuTransUtil 在失败时会返回一个以 "§c" 开头的错误信息。
-                // 如果是网络问题等导致结果为null或空，我们也自己构造一个错误信息。
+                List<String> translatedLines;
+                
                 if (result == null || result.trim().isEmpty()) {
-                    result = "§c翻译失败: 网络或未知错误";
+                    // 网络或未知错误
+                    translatedLines = Collections.singletonList("§c翻译失败: 网络或未知错误");
+                } else if (result.startsWith("§c")) {
+                    // API返回的明确错误
+                    translatedLines = Collections.singletonList(result);
+                } else {
+                    // 翻译成功，按换行符拆分成列表
+                    translatedLines = Arrays.asList(result.split("\n"));
                 }
                 
-                // 无论结果是成功还是失败信息，都存入缓存
-                ItemTooltipTranslationHandler.translationCache.put(itemToTranslate, result);
+                // 将翻译后的行列表存入缓存
+                ItemTooltipTranslationHandler.translationCache.put(itemName, translatedLines);
+
             } finally {
-                ItemTooltipTranslationHandler.pendingTranslations.remove(itemToTranslate);
+                // 无论结果如何，都从“等待中”列表移除
+                ItemTooltipTranslationHandler.pendingTranslations.remove(itemName);
             }
         }).start();
     }
