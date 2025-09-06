@@ -965,7 +965,7 @@ public class GhostBlockCommand extends CommandBase {
                         // 理论上这个错误不应该在这个分支发生，因为 EBS 检查通过了
                         System.err.println("[GhostBlock Fill Sync FATAL] 设置方块时发生意外错误 (本应已就绪) " + pos + ": " + e.getMessage());
                         e.printStackTrace();
-                        sender.addChatMessage(formatMessage(EnumChatFormatting.RED, "内部错误：同步放置方块时出错，请检查日志。 Pos: " + pos));
+                        sender.addChatMessage(formatMessage(EnumChatFormatting.RED, "ghostblock.commands.error.internal_sync_place_failed", pos.toString()));
                         // 考虑是否中断
                         // return;
                     }

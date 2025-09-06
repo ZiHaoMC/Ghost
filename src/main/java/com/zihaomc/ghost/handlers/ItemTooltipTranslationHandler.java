@@ -36,17 +36,11 @@ public class ItemTooltipTranslationHandler {
 
     private static final Pattern STRIP_COLOR_PATTERN = Pattern.compile("(?i)§[0-9A-FK-OR]");
     
-    /**
-     * 从文件加载持久化缓存。应在 Mod 启动时调用。
-     */
     public static void loadCacheFromFile() {
         translationCache = TranslationCacheManager.loadCache();
         System.out.println("[Ghost-Cache] 已加载 " + translationCache.size() + " 条翻译缓存。");
     }
 
-    /**
-     * 将当前内存中的缓存保存到文件。应在游戏关闭时调用。
-     */
     public static void saveCacheToFile() {
         System.out.println("[Ghost-Cache] 正在保存 " + translationCache.size() + " 条翻译缓存...");
         TranslationCacheManager.saveCache(translationCache);
@@ -88,42 +82,36 @@ public class ItemTooltipTranslationHandler {
         }
 
         List<String> cachedLines = translationCache.get(unformattedItemName);
-        if (cachedLines != null && !cachedLines.isEmpty() && cachedLines.get(0).startsWith("§c")) {
+        if (cachedLines != null && !cachedLines.isEmpty() && cachedLines.get(0).startsWith(EnumChatFormatting.RED.toString())) {
             event.toolTip.add("");
             event.toolTip.add(cachedLines.get(0));
-            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.retryAndClear", keyName, keyName));
+            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.retryAndClear", keyName, keyName, keyName));
             return;
         }
 
         boolean isHidden = temporarilyHiddenItems.contains(unformattedItemName);
         boolean shouldBeVisible = GhostConfig.autoShowCachedTranslation ? !isHidden : isHidden;
 
-        // v-- 这里是修改的核心 --v
         if (shouldBeVisible) {
             if (GhostConfig.showTranslationOnly) {
-                // 单语模式：替换原文
-                event.toolTip.clear(); // 清空原始提示
+                event.toolTip.clear();
 
                 if (cachedLines != null && !cachedLines.isEmpty()) {
-                    // 使用物品原有的稀有度颜色来显示翻译后的名称
                     event.toolTip.add(event.itemStack.getRarity().rarityColor + cachedLines.get(0));
 
-                    // 添加翻译后的lore，使用统一的颜色
                     if (cachedLines.size() > 1) {
                         for (int i = 1; i < cachedLines.size(); i++) {
                             event.toolTip.add(EnumChatFormatting.AQUA + cachedLines.get(i));
                         }
                     }
                 }
-                // 在末尾添加操作提示
-                event.toolTip.add(""); // 分隔行
-                event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName));
+                event.toolTip.add("");
+                event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
             } else {
-                // 双语模式（保留原始行为）
                 displayTranslation(event, cachedLines, keyName);
             }
         } else {
-            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.showAndClear", keyName, keyName));
+            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.showAndClear", keyName, keyName, keyName));
         }
     }
 
@@ -135,7 +123,7 @@ public class ItemTooltipTranslationHandler {
                 event.toolTip.add(EnumChatFormatting.AQUA + line);
             }
         }
-        event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName));
+        event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
     }
     
     @SubscribeEvent

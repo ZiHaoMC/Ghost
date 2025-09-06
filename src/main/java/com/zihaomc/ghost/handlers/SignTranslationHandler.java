@@ -5,7 +5,6 @@ import com.zihaomc.ghost.utils.NiuTransUtil;
 import com.zihaomc.ghost.LangUtil;
 import net.minecraft.block.BlockSign;
 import net.minecraft.client.Minecraft;
-import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntitySign;
 import net.minecraft.util.ChatComponentText;
@@ -17,15 +16,8 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-/**
- * 处理告示牌翻译功能。
- * 通过监听玩家右键点击事件来实现，因为1.8.9无法重新打开告示牌GUI。
- */
 public class SignTranslationHandler {
 
-    /**
-     * 当玩家与世界交互时（例如左/右键点击）触发此事件。
-     */
     @SubscribeEvent
     public void onPlayerInteract(PlayerInteractEvent event) {
         if (event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK || !event.world.isRemote || !GhostConfig.enableSignTranslation) {
@@ -49,7 +41,24 @@ public class SignTranslationHandler {
                     new Thread(() -> {
                         final String result = NiuTransUtil.translate(combinedText);
                         Minecraft.getMinecraft().addScheduledTask(() -> {
-                            ChatComponentText resultMessage = new ChatComponentText(LangUtil.translate("ghost.sign.result", result));
+                            ChatComponentText resultMessage = new ChatComponentText("");
+                            
+                            if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                                // 错误消息
+                                String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
+                                ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default") + " ");
+                                errorPrefix.getChatStyle().setColor(EnumChatFormatting.RED);
+                                ChatComponentText errorText = new ChatComponentText(errorContent);
+                                errorText.getChatStyle().setColor(EnumChatFormatting.RED);
+                                resultMessage.appendSibling(errorPrefix).appendSibling(errorText);
+                            } else {
+                                // 成功消息
+                                ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.sign.prefix.translation") + " ");
+                                prefix.getChatStyle().setColor(EnumChatFormatting.AQUA);
+                                ChatComponentText content = new ChatComponentText(result);
+                                resultMessage.appendSibling(prefix).appendSibling(content);
+                            }
+                            
                             Minecraft.getMinecraft().thePlayer.addChatMessage(resultMessage);
                         });
                     }).start();

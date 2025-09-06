@@ -15,6 +15,8 @@ key.ghost.translateItem=翻译物品
 ghost.generic.enabled=启用
 ghost.generic.disabled=禁用
 ghost.generic.toggle.feedback=%s 已 %s
+ghost.generic.prefix.default=[Ghost]
+ghost.generic.prefix.translation=[翻译]
 
 # ==================================
 # ===        翻译功能          ===
@@ -31,22 +33,28 @@ ghostblock.chat.button.translate.hover=点击翻译此消息
 
 # 告示牌翻译
 ghost.sign.translating=正在翻译告示牌内容...
-ghost.sign.result=§b[告示牌翻译]§r %s
+ghost.sign.prefix.translation=[告示牌翻译]
 
 # 物品提示框 (Tooltip) 翻译
 ghost.tooltip.translating=翻译中...
 ghost.tooltip.header=--- 翻译 ---
-ghost.tooltip.requestSent=§8已发送翻译请求: %s
+ghost.tooltip.requestSent=已发送翻译请求: %s
 ghost.tooltip.translate=按 %s 键翻译
-ghost.tooltip.showAndClear=按 %s 键显示, Shift+%s 清除
-ghost.tooltip.hideAndClear=按 %s 键隐藏, Shift+%s 清除
-ghost.tooltip.retryAndClear=按 %s 键重试, Shift+%s 清除
+ghost.tooltip.showAndClear=按 %s 键显示 | Shift+%s 清除 | Ctrl+Shift+%s 清除全部
+ghost.tooltip.hideAndClear=按 %s 键隐藏 | Shift+%s 清除 | Ctrl+Shift+%s 清除全部
+ghost.tooltip.retryAndClear=按 %s 键重试 | Shift+%s 清除 | Ctrl+Shift+%s 清除全部
 
 # 翻译错误
-ghost.error.translation.network=§c翻译失败: 网络或未知错误
+ghost.error.translation.no_api_key=错误: 未在配置中设置小牛翻译 API Key。请使用 /gconfig niuTransApiKey <您的key> 进行设置。
+ghost.error.translation.api_error=翻译API错误: %s (代码: %s)
+ghost.error.translation.unknown_format=翻译失败: 未知的API响应格式。
+ghost.error.translation.http_error=翻译失败: HTTP 错误码 %s
+ghost.error.translation.internal_error=翻译时发生内部错误: %s
+ghost.error.translation.network=翻译失败: 网络或未知错误
 
 # 缓存相关
-ghost.cache.cleared=§e[Ghost] 已清除 '%s' 的翻译缓存。
+ghost.cache.cleared=[Ghost] 已清除 '%s' 的翻译缓存。
+ghost.cache.cleared_all=[Ghost] 已清除所有物品的翻译缓存。
 
 # ==================================
 # ===      通用命令和错误      ===
@@ -59,6 +67,7 @@ ghostblock.commands.error.batch_size_too_small=错误: 批次大小必须大于 
 ghostblock.commands.error.unloaded=错误: 目标坐标所在区块未加载。
 ghostblock.commands.error.out_of_world=错误: 目标坐标超出了世界边界 (Y轴应在 0-255 之间)。
 ghostblock.commands.task.cancelled_world_change=警告: 由于世界更改/卸载，所有活动任务已被取消。
+ghostblock.commands.error.internal_sync_place_failed=内部错误：同步放置方块时出错，请检查日志。 位置: %s
 
 # ==================================
 # ===       /cgb 命令族       ===
@@ -273,15 +282,16 @@ ghostblock.commands.suggest.text= ↩
 ghostblock.commands.suggest.hovertext=点击重新输入: %s
 
 # 破基岩功能
-ghostblock.bedrockminer.toggle.on=§a[Ghost]§r 破基岩功能已激活！左键点击白名单中的方块开始作业。
-ghostblock.bedrockminer.toggle.off=§7[Ghost]§r 破基岩功能已关闭。
-ghostblock.bedrockminer.warn.multiplayer=§e[Ghost]§r 警告：您似乎在服务器上使用此功能，请确保已获得服主许可。
-ghostblock.bedrockminer.fail.survival_only=§c[Ghost]§r 错误：此功能仅限在生存模式下使用！
-ghostblock.bedrockminer.fail.missing_items.piston=§c[Ghost]§r 错误：活塞不足！(需要至少2个)
-ghostblock.bedrockminer.fail.missing_items.torch=§c[Ghost]§r 错误：红石火把不足！(需要至少1个)
-ghostblock.bedrockminer.fail.missing_items.slime=§c[Ghost]§r 错误：粘液块不足！(需要至少1个)
-ghostblock.bedrockminer.fail.instant_mine=§c[Ghost]§r 错误：无法秒破活塞！请检查是否有效率V的工具和急迫II效果。
-ghostblock.bedrockminer.fail.no_scheme=§c[Ghost]§r 错误：在目标方块周围找不到任何可行的放置方案。
+ghostblock.bedrockminer.prefix=[Ghost]
+ghostblock.bedrockminer.toggle.on=破基岩功能已激活！左键点击白名单中的方块开始作业。
+ghostblock.bedrockminer.toggle.off=破基岩功能已关闭。
+ghostblock.bedrockminer.warn.multiplayer=警告：您似乎在服务器上使用此功能，请确保已获得服主许可。
+ghostblock.bedrockminer.fail.survival_only=错误：此功能仅限在生存模式下使用！
+ghostblock.bedrockminer.fail.missing_items.piston=错误：活塞不足！(需要至少2个)
+ghostblock.bedrockminer.fail.missing_items.torch=错误：红石火把不足！(需要至少1个)
+ghostblock.bedrockminer.fail.missing_items.slime=错误：粘液块不足！(需要至少1个)
+ghostblock.bedrockminer.fail.instant_mine=错误：无法秒破活塞！请检查是否有效率V的工具和急迫II效果。
+ghostblock.bedrockminer.fail.no_scheme=错误：在目标方块周围找不到任何可行的放置方案。
 
 # 按键切换功能名称
 ghost.keybind.toggle.autosneak=自动边缘下蹲

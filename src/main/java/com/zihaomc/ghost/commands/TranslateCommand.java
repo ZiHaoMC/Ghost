@@ -16,6 +16,7 @@ import java.util.List;
 
 public class TranslateCommand extends CommandBase {
 
+    // ... (getCommandName, getCommandAliases, getCommandUsage, etc. 不变) ...
     @Override
     public String getCommandName() {
         return "gtranslate";
@@ -47,15 +48,10 @@ public class TranslateCommand extends CommandBase {
             throw new WrongUsageException(getCommandUsage(sender));
         }
 
-        // 最终修正：使用标准的 Java String.join 方法。
-        // Minecraft的命令解析器已经为我们处理好了引号，
-        // args 数组已经是分割好的参数。我们只需要把它们用空格拼回来即可。
-        // 这个方法不依赖任何Minecraft内部代码，因此100%兼容。
         final String sourceText = String.join(" ", args);
         
-        // 自己构建带前缀的消息
         ChatComponentText translatingMessage = new ChatComponentText("");
-        ChatComponentText prefix = new ChatComponentText("[Ghost] ");
+        ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default") + " ");
         prefix.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.DARK_GRAY));
         ChatComponentText content = new ChatComponentText(LangUtil.translate("ghostblock.commands.gtranslate.translating", sourceText));
         content.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GRAY));
@@ -63,12 +59,27 @@ public class TranslateCommand extends CommandBase {
         translatingMessage.appendSibling(content);
         sender.addChatMessage(translatingMessage);
 
-        // 网络请求在新线程中执行
         new Thread(() -> {
             final String result = NiuTransUtil.translate(sourceText);
-            // 将结果发送回主线程进行处理
             Minecraft.getMinecraft().addScheduledTask(() -> {
-                ChatComponentText resultMessage = new ChatComponentText("§b[翻译]§r " + result);
+                ChatComponentText resultMessage = new ChatComponentText("");
+                
+                if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                    // 错误消息：使用通用前缀和红色
+                    String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
+                    ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default") + " ");
+                    errorPrefix.getChatStyle().setColor(EnumChatFormatting.RED);
+                    ChatComponentText errorText = new ChatComponentText(errorContent);
+                    errorText.getChatStyle().setColor(EnumChatFormatting.RED);
+                    resultMessage.appendSibling(errorPrefix).appendSibling(errorText);
+                } else {
+                    // 成功消息：使用翻译前缀和蓝色
+                    ChatComponentText resultPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.translation") + " ");
+                    resultPrefix.getChatStyle().setColor(EnumChatFormatting.AQUA);
+                    ChatComponentText resultContent = new ChatComponentText(result);
+                    resultMessage.appendSibling(resultPrefix).appendSibling(resultContent);
+                }
+                
                 sender.addChatMessage(resultMessage);
             });
         }).start();
@@ -76,11 +87,8 @@ public class TranslateCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        // 当准备输入第一个参数时，提供占位符提示
         if (args.length == 1) {
             String placeholder = LangUtil.translate("ghostblock.commands.gtranslate.placeholder");
-            // 注意：这里我们调用的 getListOfStringsMatchingLastWord 是继承自 CommandBase 的，
-            // 它在运行时是可用的，不会导致编译错误。
             return getListOfStringsMatchingLastWord(args, Collections.singletonList(placeholder));
         }
         return null;

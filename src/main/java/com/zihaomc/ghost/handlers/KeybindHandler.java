@@ -2,13 +2,14 @@ package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.utils.NiuTransUtil;
-import com.zihaomc.ghost.LangUtil; // <-- 新增 Import
+import com.zihaomc.ghost.LangUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -20,22 +21,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * 处理 Ghost Mod 的所有按键绑定。
- * 负责注册按键并在按下时执行相应操作。
- */
 public class KeybindHandler {
 
-    // 为需要按键切换的功能定义 KeyBinding 对象
+    // ... (registerKeybinds, onClientTick, onGuiKeyboardInput, handleClear... 方法保持不变) ...
+
     public static KeyBinding toggleAutoSneak;
     public static KeyBinding togglePlayerESP;
     public static KeyBinding toggleBedrockMiner;
     public static KeyBinding translateItemKey;
 
-    /**
-     * 注册所有的按键绑定。
-     * 此方法应在 ClientProxy 的 init 阶段被调用。
-     */
     public static void registerKeybinds() {
         String category = "key.ghost.category";
 
@@ -50,19 +44,12 @@ public class KeybindHandler {
         ClientRegistry.registerKeyBinding(translateItemKey);
     }
 
-    /**
-     * 监听客户端 Tick 事件以检查按键是否被按下。
-     * 这个事件只适用于非GUI界面的按键绑定。
-     * @param event Tick 事件对象
-     */
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || Minecraft.getMinecraft().thePlayer == null) {
             return;
         }
 
-        // --- 功能开关按键 ---
-        // v-- 这里是修改的核心 --v
         if (toggleAutoSneak != null && toggleAutoSneak.isPressed()) {
             boolean newState = !GhostConfig.enableAutoSneakAtEdge;
             GhostConfig.setEnableAutoSneakAtEdge(newState);
@@ -80,9 +67,7 @@ public class KeybindHandler {
             GhostConfig.setEnableBedrockMiner(newState);
             sendToggleMessage("ghost.keybind.toggle.bedrockminer", newState);
         }
-        // ^-- 修改结束 --^
 
-        // 为“翻译”和“聊天”的按键冲突提供解决方案
         if (Minecraft.getMinecraft().currentScreen == null && translateItemKey != null && translateItemKey.isPressed()) {
             if (translateItemKey.getKeyCode() == Minecraft.getMinecraft().gameSettings.keyBindChat.getKeyCode()) {
                 Minecraft.getMinecraft().displayGuiScreen(new GuiChat());
@@ -90,16 +75,16 @@ public class KeybindHandler {
         }
     }
 
-    /**
-     * 新增：监听GUI界面的键盘输入事件。
-     * 这是处理在物品栏等界面中按键的正确方式。
-     */
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
         if (event.gui instanceof GuiContainer) {
             if (translateItemKey != null && Keyboard.getEventKeyState() && Keyboard.getEventKey() == translateItemKey.getKeyCode()) {
                 if (GuiScreen.isShiftKeyDown()) {
-                    handleClearItemTranslationPress();
+                    if (GuiScreen.isCtrlKeyDown()) {
+                        handleClearAllItemTranslations();
+                    } else {
+                        handleClearItemTranslationPress();
+                    }
                 } else {
                     handleToggleOrTranslatePress();
                 }
@@ -108,9 +93,19 @@ public class KeybindHandler {
         }
     }
     
-    /**
-     * 新增：处理清除翻译缓存的按键事件 (Shift + T)。
-     */
+    private void handleClearAllItemTranslations() {
+        if (ItemTooltipTranslationHandler.translationCache.isEmpty()) {
+            return;
+        }
+    
+        ItemTooltipTranslationHandler.translationCache.clear();
+        ItemTooltipTranslationHandler.temporarilyHiddenItems.clear();
+    
+        ChatComponentText message = new ChatComponentText(LangUtil.translate("ghost.cache.cleared_all"));
+        message.getChatStyle().setColor(EnumChatFormatting.YELLOW);
+        Minecraft.getMinecraft().thePlayer.addChatMessage(message);
+    }
+
     private void handleClearItemTranslationPress() {
         String itemName = ItemTooltipTranslationHandler.lastHoveredItemName;
         if (itemName == null || itemName.trim().isEmpty()) {
@@ -121,15 +116,12 @@ public class KeybindHandler {
             ItemTooltipTranslationHandler.translationCache.remove(itemName);
             ItemTooltipTranslationHandler.temporarilyHiddenItems.remove(itemName);
             
-            Minecraft.getMinecraft().thePlayer.addChatMessage(
-                new ChatComponentText(LangUtil.translate("ghost.cache.cleared", itemName))
-            );
+            ChatComponentText message = new ChatComponentText(LangUtil.translate("ghost.cache.cleared", itemName));
+            message.getChatStyle().setColor(EnumChatFormatting.YELLOW);
+            Minecraft.getMinecraft().thePlayer.addChatMessage(message);
         }
     }
-
-    /**
-     * 处理物品翻译切换/请求的快捷键按下事件 (T)。
-     */
+    
     private void handleToggleOrTranslatePress() {
         if (!GhostConfig.enableItemTranslation) {
             return;
@@ -167,7 +159,9 @@ public class KeybindHandler {
         }
         
         ItemTooltipTranslationHandler.pendingTranslations.add(itemName);
-        Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.tooltip.requestSent", itemName)));
+        ChatComponentText requestMessage = new ChatComponentText(LangUtil.translate("ghost.tooltip.requestSent", itemName));
+        requestMessage.getChatStyle().setColor(EnumChatFormatting.DARK_GRAY);
+        Minecraft.getMinecraft().thePlayer.addChatMessage(requestMessage);
 
         new Thread(() -> {
             try {
@@ -175,10 +169,13 @@ public class KeybindHandler {
                 List<String> translatedLines;
                 
                 if (result == null || result.trim().isEmpty()) {
-                    translatedLines = Collections.singletonList(LangUtil.translate("ghost.error.translation.network"));
-                } else if (result.startsWith("§c")) {
-                    translatedLines = Collections.singletonList(result);
+                    translatedLines = Collections.singletonList(EnumChatFormatting.RED + LangUtil.translate("ghost.error.translation.network"));
+                } else if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                    // 如果是错误，移除前缀并添加红色
+                    String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
+                    translatedLines = Collections.singletonList(EnumChatFormatting.RED + errorContent);
                 } else {
+                    // 正常结果
                     translatedLines = Arrays.asList(result.split("\n"));
                 }
                 
@@ -190,30 +187,26 @@ public class KeybindHandler {
         }).start();
     }
 
-    /**
-     * 向玩家发送功能切换状态的聊天消息。
-     * @param featureNameKey 功能名称的语言文件键
-     * @param enabled 功能的新状态 (true 为启用, false 为禁用)
-     */
     private void sendToggleMessage(String featureNameKey, boolean enabled) {
-        EnumChatFormatting statusColor = enabled ? EnumChatFormatting.GREEN : EnumChatFormatting.RED;
         String featureName = LangUtil.translate(featureNameKey);
         String statusText = LangUtil.translate(enabled ? "ghost.generic.enabled" : "ghost.generic.disabled");
-
-        // 构建带颜色代码的文本
-        String statusPart = statusColor + statusText;
-        String formattedMessage = LangUtil.translate("ghost.generic.toggle.feedback", featureName, statusPart);
+        
+        EnumChatFormatting statusColor = enabled ? EnumChatFormatting.GREEN : EnumChatFormatting.RED;
+        ChatComponentText statusComponent = new ChatComponentText(statusText);
+        statusComponent.getChatStyle().setColor(statusColor);
         
         ChatComponentText message = new ChatComponentText("");
-        ChatComponentText prefix = new ChatComponentText("[Ghost] ");
+        ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default") + " ");
         prefix.getChatStyle().setColor(EnumChatFormatting.AQUA);
-
-        // LangUtil 不会解析颜色代码，所以我们用 ChatComponentText 来处理
-        ChatComponentText content = new ChatComponentText(formattedMessage);
+        
+        ChatComponentTranslation content = new ChatComponentTranslation(
+            "ghost.generic.toggle.feedback",
+            featureName,
+            statusComponent
+        );
         
         message.appendSibling(prefix);
         message.appendSibling(content);
-
         Minecraft.getMinecraft().thePlayer.addChatMessage(message);
     }
 }

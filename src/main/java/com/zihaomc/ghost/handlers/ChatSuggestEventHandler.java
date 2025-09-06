@@ -50,7 +50,6 @@ public class ChatSuggestEventHandler {
     // ==================
     private static String lastCommand = null;
     private static final Set<Integer> processedMessageHashes = new HashSet<>();
-    private static final String TRANSLATE_RESULT_PREFIX = "§b[翻译]§r ";
     private static Field drawnChatLinesField = null;
     private static Field chatComponentField = null;
     private static Field updateCounterField = null;
@@ -68,7 +67,6 @@ public class ChatSuggestEventHandler {
     }
 
     private void initializeReflectionFields() {
-        // 此部分代码与您之前提供的版本相同，保持不变
         if (drawnChatLinesField == null) { try { drawnChatLinesField = ReflectionHelper.findField(GuiNewChat.class, "field_146253_i", "drawnChatLines"); drawnChatLinesField.setAccessible(true); } catch (Exception e) { System.err.println("[Ghost-Suggest ERROR] 无法找到 drawnChatLines 字段！"); } }
         if (chatComponentField == null) { try { chatComponentField = ReflectionHelper.findField(ChatLine.class, "field_74541_b", "chatComponent", "lineString"); chatComponentField.setAccessible(true); } catch (Exception e) { System.err.println("[Ghost-Suggest ERROR] 无法找到 chatComponent 字段！"); } }
         if (updateCounterField == null) { try { updateCounterField = ReflectionHelper.findField(ChatLine.class, "field_74549_e", "updateCounter", "field_146250_d"); updateCounterField.setAccessible(true); } catch (Exception e) { System.err.println("[Ghost-Suggest WARN] 无法找到 updateCounter 字段，将使用Fallback逻辑。"); updateCounterField = null; } }
@@ -93,56 +91,44 @@ public class ChatSuggestEventHandler {
         }
     }
 
-    /**
-     * =================================================================================
-     * 核心修复：单一聊天事件监听器，但带有正确的处理优先级
-     * =================================================================================
-     */
     @SubscribeEvent
     public void onClientChatReceived(ClientChatReceivedEvent event) {
-        // 1. 通用检查：忽略操作栏消息(type 2)和已经处理过的消息
-        if (event.type == 2) {
-            return;
-        }
+        if (event.type == 2) return;
         int messageHash = System.identityHashCode(event.message);
-        if (processedMessageHashes.contains(messageHash)) {
-            return;
-        }
+        if (processedMessageHashes.contains(messageHash)) return;
 
-        // 2. ***最高优先级***：检查是否为"未知命令"的错误提示
+        // --- 命令建议逻辑 (优先级高) ---
         if (GhostConfig.enableChatSuggestions && event.message instanceof ChatComponentTranslation) {
             ChatComponentTranslation translation = (ChatComponentTranslation) event.message;
             String key = translation.getKey();
-
-            // 如果是命令错误相关的key
             if ("commands.generic.unknownCommand".equals(key) || "commands.generic.notFound".equals(key)) {
                 Minecraft mc = Minecraft.getMinecraft();
                 List<String> sentMessages = mc.ingameGUI.getChatGUI().getSentMessages();
-
                 if (sentMessages != null && !sentMessages.isEmpty()) {
                     String lastSentMsg = sentMessages.get(sentMessages.size() - 1);
-                    // 确认上一条发送的是命令
                     if (lastSentMsg != null && lastSentMsg.startsWith("/")) {
-                        // 添加【重输】按钮，并标记为已处理，然后直接返回
                         appendSuggestButton(event.message, lastSentMsg);
                         processedMessageHashes.add(messageHash);
-                        return; // 明确终止，不再尝试添加翻译按钮
+                        return;
                     }
                 }
             }
         }
 
-        // 3. ***次级优先级***：如果不是命令错误，再检查是否需要添加【翻译】按钮
-        // 这里的 (event.type == 0 || event.type == 1) 依然保留，以兼容服务器消息
-        if (GhostConfig.enableChatTranslation && (event.type == 0 || event.type == 1)) {
-            String unformattedText = event.message.getUnformattedText();
-            String formattedText = event.message.getFormattedText();
+        // --- 翻译按钮逻辑 (优先级低) ---
+        String unformattedText = event.message.getUnformattedText();
+        String translatedPrefix = LangUtil.translate("ghost.generic.prefix.translation");
 
-            // 如果消息不为空，且不是我们自己的翻译结果，则添加按钮
-            if (!unformattedText.trim().isEmpty() && !formattedText.startsWith(TRANSLATE_RESULT_PREFIX)) {
+        // 检查消息是否已经是我们自己的翻译结果，如果是则不处理
+        if (unformattedText.startsWith(translatedPrefix)) {
+            processedMessageHashes.add(messageHash);
+            return;
+        }
+
+        if (GhostConfig.enableChatTranslation && (event.type == 0 || event.type == 1)) {
+            if (!unformattedText.trim().isEmpty()) {
                 appendTranslateButton(event.message, unformattedText);
                 processedMessageHashes.add(messageHash);
-                // 这里处理完也可以返回，因为不会再有其他逻辑了
             }
         }
     }
@@ -165,7 +151,6 @@ public class ChatSuggestEventHandler {
     }
 
     private void processTickFallbackV2(Minecraft mc, String commandToProcess) {
-        // 此方法为您之前代码中的 Fallback V2 逻辑，它本身没有问题，保持原样
         GuiNewChat chatGUI = mc.ingameGUI.getChatGUI();
         try {
             @SuppressWarnings("unchecked")
@@ -241,7 +226,6 @@ public class ChatSuggestEventHandler {
         if (Keyboard.getEventKeyState() && GuiScreen.isShiftKeyDown()) {
             int keyCode = Keyboard.getEventKey();
             if (keyCode == Keyboard.KEY_UP || keyCode == Keyboard.KEY_DOWN) {
-                // v-- 这里是键盘滚动的逻辑，我们将统一鼠标逻辑与此一致 --v
                 try {
                     GuiTextField inputField = (GuiTextField) chatInputField.get(currentChatGui);
                     if (inputField == null) return;
@@ -254,7 +238,6 @@ public class ChatSuggestEventHandler {
                     
                     event.setCanceled(true);
                 } catch (Exception e) { e.printStackTrace(); }
-                // ^-- 键盘逻辑结束 --^
             }
         }
     }
@@ -267,9 +250,6 @@ public class ChatSuggestEventHandler {
         int wheelDelta = Mouse.getEventDWheel();
         if (wheelDelta != 0 && GuiScreen.isShiftKeyDown()) {
              try {
-                // v-- 这里是修正的核心 --v
-
-                // 1. 修正方向：向上滚(wheelDelta > 0)是上一个命令(delta = -1)
                 int delta = (wheelDelta > 0) ? -1 : 1;
                 
                 GuiTextField inputField = (GuiTextField) chatInputField.get(event.gui);
@@ -280,21 +260,13 @@ public class ChatSuggestEventHandler {
                 
                 if (chatHistoryIndex == -1) originalChatText = inputField.getText();
 
-                // 2. 调用统一的、支持循环滚动的逻辑
                 updateChatHistory(delta, sentMessages, inputField);
 
-                event.setCanceled(true); // 阻止事件继续传递
-                // ^-- 修正结束 --^
+                event.setCanceled(true);
             } catch (Exception e) { e.printStackTrace(); }
         }
     }
 
-    /**
-     * 新增：统一处理聊天历史滚动的核心逻辑，支持循环。
-     * @param delta 变化量（-1表示上一个，1表示下一个）
-     * @param sentMessages 已发送消息列表
-     * @param inputField 聊天输入框对象
-     */
     private void updateChatHistory(int delta, List<String> sentMessages, GuiTextField inputField) {
         if (sentMessages.isEmpty()) {
             return;
@@ -302,16 +274,12 @@ public class ChatSuggestEventHandler {
         
         chatHistoryIndex += delta;
         
-        // 实现循环滚动
         if (chatHistoryIndex < -1) {
-            // 从“原始文本”向上滚动，应循环到列表的最后一个（最新的）命令
             chatHistoryIndex = sentMessages.size() - 1;
         } else if (chatHistoryIndex >= sentMessages.size()) {
-            // 从最新的命令向下滚动，应循环回到“原始文本”
             chatHistoryIndex = -1;
         }
         
-        // 根据最终的索引设置文本
         String newText = (chatHistoryIndex >= 0) ? sentMessages.get(chatHistoryIndex) : (originalChatText != null ? originalChatText : "");
         inputField.setText(newText);
         inputField.setCursorPositionEnd();
@@ -330,7 +298,6 @@ public class ChatSuggestEventHandler {
             IChatComponent hoverComponent = new ChatComponentText(hoverText).setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GRAY));
             HoverEvent hoverEvent = new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComponent);
             
-            // 确保按钮有颜色
             ChatStyle buttonStyle = new ChatStyle()
                     .setColor(EnumChatFormatting.GREEN)
                     .setChatClickEvent(clickEvent)
