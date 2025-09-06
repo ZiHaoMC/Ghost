@@ -1,4 +1,51 @@
-# GhostBlock Mod - Chinese (Simplified) Language File
+# Ghost Mod - Chinese (Simplified) Language File
+
+# ==================================
+# ===      按键绑定 (Keybinds)    ===
+# ==================================
+key.ghost.category=Ghost Mod
+key.ghost.toggleAutoSneak=切换 自动边缘下蹲
+key.ghost.togglePlayerESP=切换 玩家透视 (ESP)
+key.ghost.toggleBedrockMiner=切换 破基岩模式
+key.ghost.translateItem=翻译物品
+
+# ==================================
+# ===         通用文本           ===
+# ==================================
+ghost.generic.enabled=启用
+ghost.generic.disabled=禁用
+ghost.generic.toggle.feedback=%s 已 %s
+
+# ==================================
+# ===        翻译功能          ===
+# ==================================
+# 在线翻译命令
+ghostblock.commands.gtranslate.usage=用法: /gtranslate <要翻译的文本...>
+ghostblock.commands.gtranslate.translating=正在翻译: %s
+ghostblock.commands.gtranslate.placeholder=<要翻译的文本...>
+
+# 聊天翻译
+ghostblock.chat.button.translate= [译]
+ghostblock.chat.button.translate.hover=点击翻译此消息
+
+# 告示牌翻译
+ghost.sign.translating=正在翻译告示牌内容...
+ghost.sign.result=§b[告示牌翻译]§r %s
+
+# 物品提示框 (Tooltip) 翻译
+ghost.tooltip.translating=翻译中...
+ghost.tooltip.header=--- 翻译 ---
+ghost.tooltip.requestSent=§8已发送翻译请求: %s
+ghost.tooltip.translate=按 %s 键翻译
+ghost.tooltip.showAndClear=按 %s 键显示, Shift+%s 清除
+ghost.tooltip.hideAndClear=按 %s 键隐藏, Shift+%s 清除
+ghost.tooltip.retryAndClear=按 %s 键重试, Shift+%s 清除
+
+# 翻译错误
+ghost.error.translation.network=§c翻译失败: 网络或未知错误
+
+# 缓存相关
+ghost.cache.cleared=§e[Ghost] 已清除 '%s' 的翻译缓存。
 
 # ==================================
 # ===      通用命令和错误      ===
@@ -33,24 +80,20 @@ ghostblock.commands.fill.implicit_batch_notice=检测到目标区域包含未加
 
 # load 命令
 ghostblock.commands.cghostblock.load.usage=用法: /cgb load [文件名...] [-b [大小]]
-ghostblock.commands.cghostblock.load.usage.missing_args=用法: /cgb load [文件名...] [-b [大小]]。请提供文件名或使用 -b 参数。
 ghostblock.commands.load.ignored_internal_file=已忽略内部文件: %1$s
 ghostblock.commands.load.using_default_file=未指定文件名，将尝试加载默认文件...
 ghostblock.commands.load.error.default_is_internal=错误: 默认文件名指向一个内部文件，请明确指定要加载的文件。
 ghostblock.commands.load.error.no_valid_files=错误: 您提供的文件名均无效或指向内部文件。
-ghostblock.commands.load.empty=错误: 指定的文件为空或不存在，或者所有方块都已被过滤。
-ghostblock.commands.load.start=开始加载 %1$d 个幽灵方块...
+ghostblock.commands.load.empty_or_missing=警告: 文件 [%1$s] 不存在、为空或无法访问。
 ghostblock.commands.load.complete=加载完成: 成功 %1$d / 总计 %2$d 个方块。
 ghostblock.commands.load.failed=加载过程中有 %1$d 个方块加载失败 (可能方块ID无效)。
 ghostblock.commands.load.batch_started=加载任务 #%1$d 已启动，总计 %2$d 个条目，每批处理 %3$d 个。
 ghostblock.commands.load.progress=加载进度: {0} {1}
 ghostblock.commands.load.finish=✔ 加载任务完成，尝试处理 %1$d 个条目。
-ghostblock.commands.load.empty_or_missing=警告: 文件 [%1$s] 不存在、为空或无法访问。
 ghostblock.commands.load.implicit_batch_notice=检测到加载数据包含未加载区块的坐标，将自动切换到批处理模式。
 
 # clear 命令
 ghostblock.commands.clear.usage=用法: /cgb clear <block|file> [参数...]
-ghostblock.commands.clear.usage.file=用法: /cgb clear file <文件名...>
 ghostblock.commands.clear.usage.file_missing_args=用法: /cgb clear file <文件名...>。请提供至少一个文件名。
 ghostblock.commands.clear.usage.block=用法: /cgb clear block [-b [大小]] [confirm]
 ghostblock.commands.clear.confirm.question=警告: 您确定要永久删除以下文件吗？此操作可以通过 /cgb undo 撤销！
@@ -60,9 +103,7 @@ ghostblock.commands.clear.failed=删除文件失败: %1$s
 ghostblock.commands.clear.missing_files=警告: 以下文件不存在或已被忽略: %1$s
 ghostblock.commands.clear.error.no_valid_files_to_delete=错误: 没有找到有效的用户文件可供删除。
 ghostblock.commands.clear.confirm_expired=错误: 文件删除确认请求已超时或无效。请重新执行 clear file 命令。
-ghostblock.commands.clear.progress_detailed=清除进度: {0} {1} ({2}/{3})
-ghostblock.commands.clear.finish_complete=✔ 清除任务完成，成功恢复 %1$d 个方块。
-ghostblock.commands.clear.finish_partial=✔ 清除任务完成，成功恢复 %1$d / %2$d 个目标方块。
+ghostblock.commands.clear.finish=✔ 清除任务完成，共处理 %1$d 个方块。
 
 # clear block 子命令
 ghostblock.commands.clear.block.no_blocks=信息: 当前世界/维度没有记录任何幽灵方块可供清除。
@@ -73,7 +114,6 @@ ghostblock.commands.clear.block.partial_fail=清除了 %1$d 个幽灵方块，�
 ghostblock.commands.clear.block.delete_failed=错误: 清除幽灵方块后，未能删除自动记录文件: %1$s
 ghostblock.commands.clear.batch_started=清除任务 #%1$d 已启动，总计 %2$d 个方块，每批处理 %3$d 个。
 ghostblock.commands.clear.progress=清除进度: {0} {1}
-ghostblock.commands.clear.finish=✔ 清除任务完成，共处理 %1$d 个方块。
 
 # cancel 命令
 ghostblock.commands.cancel.usage=用法: /cgb cancel <任务ID1> [任务ID2...]
@@ -107,7 +147,6 @@ ghostblock.commands.undo.success_clear=成功撤销清除操作，恢复了 %1$d
 ghostblock.commands.undo.record_created_clear=已为文件删除操作创建撤销记录。
 
 # /cgb help
-ghostblock.commands.cghostblock.help.menu=--- Ghost Config 命令帮助 (/gconfig) ---
 ghostblock.commands.cghostblock.help.description=管理客户端幽灵方块。
 ghostblock.commands.cghostblock.help.usage.main=主要用法
 ghostblock.commands.cghostblock.help.subcommands.header=可用子命令:
@@ -125,17 +164,6 @@ ghostblock.commands.cghostblock.help.aliases=别名
 # ===     Mod 配置文件文本     ===
 # ==================================
 
-# --- 类别 ---
-ghostblock.config.category.fill=填充命令设置
-ghostblock.config.category.save=保存选项
-ghostblock.config.category.chat=聊天功能
-ghostblock.config.category.auto_place=自动放置功能
-ghostblock.config.category.auto_sneak_feature=自动蹲伏功能
-ghostblock.config.category.player_esp_feature=玩家透视 (ESP) 功能
-ghostblock.config.category.bedrock_miner_feature=破基岩功能
-ghostblock.config.category.gameplay_tweaks=游戏玩法调整
-ghostblock.config.category.translation_api=在线翻译 (小牛翻译API)
-
 # --- Tooltips ---
 ghostblock.config.alwaysBatchFill.tooltip=是否强制 /cgb fill 命令总是使用批处理模式 (-b)。如果为 true，即使命令中不包含 -b 也会使用批处理。
 ghostblock.config.forcedBatchSize.tooltip=当 alwaysBatchFill 为 true 且用户执行 /cgb fill 时 *没有* 指定批次大小时，使用的批次大小。
@@ -143,7 +171,6 @@ ghostblock.config.enableAutoSave.tooltip=是否在执行 /cgb set 或 /cgb fill 
 ghostblock.config.defaultSaveFileName.tooltip=当启用自动保存 (enableAutoSave=true) 且未使用 -s 时，默认使用的保存文件名。留空或输入 'default' 将使用当前世界/服务器标识符作为文件名。
 ghostblock.config.enableChatSuggestions.tooltip=是否启用在聊天中为命令添加建议按钮的功能 (例如在命令成功或失败后)。
 ghostblock.config.enableCommandHistoryScroll.tooltip=是否启用 Shift + 鼠标滚轮/方向键 切换已发送命令历史的功能。
-ghostblock.config.enableChatTranslationButton.tooltip=是否在其他玩家的聊天消息及其告示牌后添加一个[译]按钮，点击即可翻译。
 ghostblock.config.enableAutoPlaceOnJoin.tooltip=是否在玩家加入世界时，自动在脚下重新放置之前记录的幽灵方块（如果脚下当前是空气）。这可以防止在空中退出后重新进入时掉落。
 ghostblock.config.enableAutoSneakAtEdge.tooltip=是否在玩家走到方块边缘，即将掉落时自动蹲下以防止掉落。
 ghostblock.config.autoSneakForwardOffset.tooltip=自动蹲伏时向前检测的偏移量 (0.05-1.0 之间的小数)。值越小，玩家越靠近方块边缘才会触发自动蹲伏。
@@ -154,13 +181,21 @@ ghostblock.config.enableBedrockMiner.tooltip=是否启用破基岩功能。启�
 ghostblock.config.niuTransApiKey.tooltip=您的小牛翻译API Key。请从官网获取。
 ghostblock.config.translationSourceLang.tooltip=翻译的源语言代码 (例如: auto, en, zh, ja)。'auto' 表示自动检测。
 ghostblock.config.translationTargetLang.tooltip=翻译的目标语言代码 (例如: zh, en)。
+ghost.config.comment.enableChatTranslation=启用后，在其他玩家的聊天消息后会显示一个 [翻译] 按钮。
+ghost.config.comment.enableSignTranslation=启用后，右键点击告示牌会尝试翻译其内容。
+ghost.config.comment.enableItemTranslation=启用后，将鼠标悬停在物品上时会尝试翻译其名称。
+ghost.config.comment.autoShowCachedTranslation=启用后，对于已缓存的翻译，将自动显示而无需按T键。
+ghost.config.comment.pingSpike=额外等待的 ticks, 用于弥补高延迟. [默认: 2]
+ghost.config.comment.headlessPiston=是否启用无头活塞模式 (更高效). [默认: true]
+ghost.config.comment.blink=在执行任务时是否启用Blink (数据包暂存), 强烈建议开启. [默认: true]
+ghost.config.comment.blockWhitelist=可以作为目标的方块列表 (例如 'minecraft:bedrock').
+ghost.config.comment.dependWhitelist=可以作为支撑/依赖的方块列表 (例如 'minecraft:slime_block').
 
 # ==================================
 # ===     /gconfig 命令文本     ===
 # ==================================
-ghostblock.commands.gconfig.usage=用法: /gconfig [选项名] [值] (无参数则显示当前设置)
 ghostblock.commands.gconfig.usage.extended=用法: /gconfig [选项名] [值] 或 /gconfig 或 /gconfig help
-ghostblock.commands.gconfig.error.invalid_setting.all_options=错误: 未知的配置选项 '%1$s'。可用: help, alwaysBatchFill, forcedBatchSize, enableAutoSave, defaultSaveName, enableChatSuggestions, enableCommandHistoryScroll, enableChatTranslationButton, enableAutoPlaceOnJoin, enableAutoSneakAtEdge, autoSneakForwardOffset, autoSneakVerticalCheckDepth, enablePlayerESP, enableBedrockMiner, fastPistonBreaking, niuTransApiKey, translationSourceLang, translationTargetLang, toggleSuggest。
+ghostblock.commands.gconfig.error.invalid_setting.all_options=错误: 未知的配置选项 '%1$s'。
 ghostblock.commands.gconfig.error.invalid_value.boolean=错误: 无效的布尔值 '%1$s'。请输入 'true' 或 'false'。
 ghostblock.commands.gconfig.error.invalid_value.integer=错误: 无效的整数值 '%1$s'。
 ghostblock.commands.gconfig.error.invalid_value.integer.positive=错误: 无效的整数值 '%1$s'。请输入一个大于 0 的整数。
@@ -170,7 +205,7 @@ ghostblock.commands.gconfig.error.generic_set_failed=错误: 设置配置选项 
 ghostblock.commands.gconfig.success=成功将配置选项 '%1$s' 设置为 '%2$s'。
 ghostblock.commands.gconfig.success.key_set=API Key 已设置。为安全起见，将不会完整显示。
 ghostblock.commands.gconfig.success.key_cleared=API Key 已清除。
-ghostblock.commands.gconfig.current_settings.header=--- 当前 GhostBlock 配置 ---
+ghostblock.commands.gconfig.current_settings.header=--- 当前 Ghost Mod 配置 ---
 ghostblock.commands.gconfig.current_settings.default_filename_placeholder=(使用世界标识符)
 ghostblock.commands.gconfig.not_set=(未设置)
 ghostblock.commands.gconfig.togglesuggest.enabled=聊天命令建议功能已启用。
@@ -180,6 +215,7 @@ ghostblock.commands.gconfig.extra_usage_toggle=(或使用 '/gconfig toggleSugges
 ghostblock.commands.gconfig.fastpiston_autogen=提示: “镐可快速破坏活塞”选项已作为依赖项被自动启用。
 
 # /gconfig help
+ghostblock.commands.gconfig.help.menu=--- Ghost Config 命令帮助 (/gconfig) ---
 ghostblock.commands.gconfig.help.description=管理 Ghost Mod 的配置。
 ghostblock.commands.gconfig.help.usage.main=用法:
 ghostblock.commands.gconfig.help.usage.display=显示当前所有配置设置。
@@ -191,13 +227,12 @@ ghostblock.commands.gconfig.help.type.boolean=(true/false)
 ghostblock.commands.gconfig.help.type.positive_integer=(正整数)
 ghostblock.commands.gconfig.help.type.text=(文本)
 ghostblock.commands.gconfig.help.type.double_range=(小数 %1$s)
-ghostblock.commands.gconfig.help.setting.alwaysBatchFill=强制填充使用批处理。
-ghostblock.commands.gconfig.help.setting.forcedBatchSize=强制的批处理大小 (如果未指定)。
-ghostblock.commands.gconfig.help.setting.enableAutoSave=命令执行时自动保存 (无需 -s)。
-ghostblock.commands.gconfig.help.setting.defaultSaveName=自动保存时使用的默认文件名。
 ghostblock.commands.gconfig.help.setting.enableChatSuggestions=启用聊天命令建议按钮。
 ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll=启用Shift+滚轮/方向键切换命令历史。
-ghostblock.commands.gconfig.help.setting.enableChatTranslationButton=在聊天消息后添加翻译按钮。
+ghost.commands.gconfig.help.setting.enableChatTranslation=启用聊天消息翻译按钮。
+ghost.commands.gconfig.help.setting.enableSignTranslation=启用告示牌右键翻译功能。
+ghost.commands.gconfig.help.setting.enableItemTranslation=启用物品提示框名称翻译。
+ghost.commands.gconfig.help.setting.autoShowCachedTranslation=自动显示已缓存的翻译。
 ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=在加入世界时自动放置脚下的幽灵方块。
 ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge=启用走到方块边缘时自动蹲下。
 ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset=自动蹲伏的向前偏移量 (触发灵敏度)。
@@ -209,12 +244,8 @@ ghostblock.commands.gconfig.help.setting.niuTransApiKey=设置小牛翻译的API
 ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的源语言。
 ghostblock.commands.gconfig.help.setting.translationTargetLang=设置翻译的目标语言。
 ghostblock.commands.gconfig.help.examples.header=示例:
-ghostblock.commands.gconfig.help.example.alwaysBatchFill=/gconfig alwaysBatchFill true
-ghostblock.commands.gconfig.help.example.forcedBatchSize=/gconfig forcedBatchSize 500
-ghostblock.commands.gconfig.help.example.enableAutoSave=/gconfig enableAutoSave true
-ghostblock.commands.gconfig.help.example.defaultSaveName=/gconfig defaultSaveName my_server_ghosts
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
-ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
+ghostblock.commands.g-config.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
 ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true
 ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge=/gconfig enableAutoSneakAtEdge true
 ghostblock.commands.gconfig.help.example.autoSneakForwardOffset=/gconfig autoSneakForwardOffset 0.3
@@ -222,21 +253,6 @@ ghostblock.commands.gconfig.help.example.autoSneakVerticalCheckDepth=/gconfig au
 ghostblock.commands.gconfig.help.example.enablePlayerESP=/gconfig enablePlayerESP true
 ghostblock.commands.gconfig.help.example.enableBedrockMiner=/gconfig enableBedrockMiner true
 ghostblock.commands.gconfig.help.example.fastPistonBreaking=/gconfig fastPistonBreaking true
-ghostblock.commands.gconfig.help.aliases=别名
-
-# ==================================
-# ===     在线翻译功能 (新增)     ===
-# ==================================
-ghostblock.commands.gtranslate.usage=用法: /gtranslate <要翻译的文本...>
-ghostblock.commands.gtranslate.translating=正在翻译: %s
-ghostblock.commands.gtranslate.placeholder=<要翻译的文本...>
-
-# ==================================
-# ===      聊天增强功能        ===
-# ==================================
-# 下面 [译] 字后面的空格请勿删除
-ghostblock.chat.button.translate= [译]  
-ghostblock.chat.button.translate.hover=点击翻译此消息
 
 # ==================================
 # ===         其他文本         ===
@@ -248,18 +264,10 @@ ghostblock.commands.autoplace.platform_success=幽灵平台已在 (%1$d, %2$d, %
 ghostblock.commands.autosave.activated=提示: 自动保存已激活。
 ghostblock.commands.task.chunk_aware_notice=提示: 任务将在后台运行。位于未加载区块的方块将在您靠近时自动放置。
 ghostblock.commands.task.sync_skipped=警告: 同步操作跳过了 %1$d 个位于未加载区块或处理失败的方块。
-ghostblock.commands.load.failed_or_skipped=加载过程中有 %1$d 个方块加载失败或因区块未加载而被跳过。
-ghostblock.commands.fill.sync_start=所有目标区块已加载，开始同步填充...
-
-# --- 命令建议功能文本 ---
-# 注意后面的空格是为了更好的让玩家点到 不要删除！
-ghostblock.commands.suggest.text= ↩  
+ghostblock.commands.suggest.text= ↩
 ghostblock.commands.suggest.hovertext=点击重新输入: %s
-# 这个问号同理
-ghostblock.commands.suggest.help.text= ?  
-ghostblock.commands.suggest.help.hovertext=点击查看语法和示例
 
-# --- 破基岩功能 ---
+# 破基岩功能
 ghostblock.bedrockminer.toggle.on=§a[Ghost]§r 破基岩功能已激活！左键点击白名单中的方块开始作业。
 ghostblock.bedrockminer.toggle.off=§7[Ghost]§r 破基岩功能已关闭。
 ghostblock.bedrockminer.warn.multiplayer=§e[Ghost]§r 警告：您似乎在服务器上使用此功能，请确保已获得服主许可。
@@ -270,9 +278,7 @@ ghostblock.bedrockminer.fail.missing_items.slime=§c[Ghost]§r 错误：粘液�
 ghostblock.bedrockminer.fail.instant_mine=§c[Ghost]§r 错误：无法秒破活塞！请检查是否有效率V的工具和急迫II效果。
 ghostblock.bedrockminer.fail.no_scheme=§c[Ghost]§r 错误：在目标方块周围找不到任何可行的放置方案。
 
-# --- 按键绑定 ---
-key.ghost.category=Ghost Mod
-key.ghost.toggleAutoSneak=切换 自动边缘下蹲
-key.ghost.togglePlayerESP=切换 玩家透视 (ESP)
-key.ghost.toggleBedrockMiner=切换 破基岩模式
-key.ghost.translateItem=翻译物品名称
+# 按键切换功能名称
+ghost.keybind.toggle.autosneak=自动边缘下蹲
+ghost.keybind.toggle.playeresp=玩家透视 (ESP)
+ghost.keybind.toggle.bedrockminer=破基岩模式

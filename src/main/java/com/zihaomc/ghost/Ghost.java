@@ -4,6 +4,7 @@ import com.zihaomc.ghost.commands.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.handlers.CacheSavingHandler; // <-- 新增 Import
 import com.zihaomc.ghost.handlers.ChatSuggestEventHandler;
 import com.zihaomc.ghost.handlers.ItemTooltipTranslationHandler;
 import com.zihaomc.ghost.handlers.SignTranslationHandler;
@@ -69,10 +70,12 @@ public class Ghost {
             // 1. 从文件加载翻译缓存
             ItemTooltipTranslationHandler.loadCacheFromFile();
             
-            // 2. 注册一个JVM关闭钩子，以在游戏关闭时保存缓存
-            // 这是确保数据被保存的最可靠方法
-            Runtime.getRuntime().addShutdownHook(new Thread(ItemTooltipTranslationHandler::saveCacheToFile));
-            System.out.println("[" + MODID + "-DEBUG] 翻译缓存已加载，并已注册保存钩子。");
+            // 2. 移除旧的、不可靠的JVM关闭钩子
+            // Runtime.getRuntime().addShutdownHook(new Thread(ItemTooltipTranslationHandler::saveCacheToFile));
+
+            // 3. 注册新的、可靠的缓存保存处理器
+            MinecraftForge.EVENT_BUS.register(new CacheSavingHandler());
+            System.out.println("[" + MODID + "-DEBUG] 翻译缓存已加载，并已注册保存事件处理器。");
             // ^-- 修改结束 --^
             
             // 注册聊天建议事件处理器

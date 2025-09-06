@@ -30,9 +30,10 @@ public class GhostConfig {
     public static boolean enableAutoSave = false;
     public static boolean enableChatSuggestions = true;
     public static boolean enableCommandHistoryScroll = true;
-    public static boolean enableChatTranslation = false; // 分离后的聊天翻译开关
-    public static boolean enableSignTranslation = false; // 分离后的告示牌翻译开关
-    public static boolean enableItemTranslation = false; // 新增的物品翻译开关
+    public static boolean enableChatTranslation = false;
+    public static boolean enableSignTranslation = false;
+    public static boolean enableItemTranslation = false;
+    public static boolean autoShowCachedTranslation = true;
     public static boolean enableAutoPlaceOnJoin = false;
     public static boolean enableAutoSneakAtEdge = false;
     public static boolean enablePlayerESP = false;
@@ -118,33 +119,36 @@ public class GhostConfig {
         // --- 破基岩 ---
         String enableBedrockMinerComment = LangUtil.translate("ghostblock.config.enableBedrockMiner.tooltip");
         enableBedrockMiner = config.getBoolean("enableBedrockMiner", CATEGORY_BEDROCK_MINER, false, enableBedrockMinerComment);
-
-        String pingSpikeComment = "额外等待的 ticks, 用于弥补高延迟. [默认: 2]";
+        
+        String pingSpikeComment = LangUtil.translate("ghost.config.comment.pingSpike");
         pingSpikeThreshold = config.getInt("pingSpikeThreshold", CATEGORY_BEDROCK_MINER, 2, 0, 100, pingSpikeComment);
 
-        String headlessComment = "是否启用无头活塞模式 (更高效). [默认: true]";
+        String headlessComment = LangUtil.translate("ghost.config.comment.headlessPiston");
         headlessPistonMode = config.getBoolean("headlessPistonMode", CATEGORY_BEDROCK_MINER, true, headlessComment);
 
-        String blinkComment = "在执行任务时是否启用Blink (数据包暂存), 强烈建议开启. [默认: true]";
+        String blinkComment = LangUtil.translate("ghost.config.comment.blink");
         blinkDuringTasksTick = config.getBoolean("blinkDuringTasksTick", CATEGORY_BEDROCK_MINER, true, blinkComment);
 
-        String whitelistComment = "可以作为目标的方块列表 (例如 'minecraft:bedrock').";
+        String whitelistComment = LangUtil.translate("ghost.config.comment.blockWhitelist");
         String[] whitelistArr = config.getStringList("blockWhitelist", CATEGORY_BEDROCK_MINER, new String[]{"minecraft:bedrock"}, whitelistComment);
         blockWhitelist = Arrays.stream(whitelistArr).map(s -> Block.blockRegistry.getObject(new ResourceLocation(s))).filter(Objects::nonNull).collect(Collectors.toSet());
 
-        String dependComment = "可以作为支撑/依赖的方块列表 (例如 'minecraft:slime_block').";
+        String dependComment = LangUtil.translate("ghost.config.comment.dependWhitelist");
         String[] dependArr = config.getStringList("dependBlockWhitelist", CATEGORY_BEDROCK_MINER, new String[]{"minecraft:slime_block"}, dependComment);
         dependBlockWhitelist = Arrays.stream(dependArr).map(s -> Block.blockRegistry.getObject(new ResourceLocation(s))).filter(Objects::nonNull).collect(Collectors.toSet());
 
         // --- 在线翻译 ---
-        String enableChatTransComment = "启用后，在其他玩家的聊天消息后会显示一个 [翻译] 按钮。";
+        String enableChatTransComment = LangUtil.translate("ghost.config.comment.enableChatTranslation");
         enableChatTranslation = config.getBoolean("enableChatTranslation", CATEGORY_TRANSLATION, false, enableChatTransComment);
 
-        String enableSignTransComment = "启用后，右键点击告示牌会尝试翻译其内容。";
+        String enableSignTransComment = LangUtil.translate("ghost.config.comment.enableSignTranslation");
         enableSignTranslation = config.getBoolean("enableSignTranslation", CATEGORY_TRANSLATION, false, enableSignTransComment);
 
-        String enableItemTransComment = "启用后，将鼠标悬停在物品上时会尝试翻译其名称。";
+        String enableItemTransComment = LangUtil.translate("ghost.config.comment.enableItemTranslation");
         enableItemTranslation = config.getBoolean("enableItemTranslation", CATEGORY_TRANSLATION, false, enableItemTransComment);
+
+        String autoShowComment = LangUtil.translate("ghost.config.comment.autoShowCachedTranslation");
+        autoShowCachedTranslation = config.getBoolean("autoShowCachedTranslation", CATEGORY_TRANSLATION, true, autoShowComment);
 
         String apiKeyComment = LangUtil.translate("ghostblock.config.niuTransApiKey.tooltip");
         niuTransApiKey = config.getString("niuTransApiKey", CATEGORY_TRANSLATION, "", apiKeyComment);
@@ -178,6 +182,7 @@ public class GhostConfig {
     public static void setEnableChatTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableChatTranslation", false); prop.set(value); enableChatTranslation = value; config.save(); }
     public static void setEnableSignTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableSignTranslation", false); prop.set(value); enableSignTranslation = value; config.save(); }
     public static void setEnableItemTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableItemTranslation", false); prop.set(value); enableItemTranslation = value; config.save(); }
+    public static void setAutoShowCachedTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true); prop.set(value); autoShowCachedTranslation = value; config.save(); }
     public static void setEnableAutoPlaceOnJoin(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false); prop.set(value); enableAutoPlaceOnJoin = value; config.save(); }
     public static void setEnableAutoSneakAtEdge(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false); prop.set(value); enableAutoSneakAtEdge = value; config.save(); }
     public static void setAutoSneakForwardOffset(double value) { if (config == null || value < 0.05 || value > 1.0) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.35); prop.set(value); autoSneakForwardOffset = value; config.save(); }

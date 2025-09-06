@@ -2,6 +2,7 @@ package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.TranslationCacheManager;
+import com.zihaomc.ghost.LangUtil; // <-- 新增 Import
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
@@ -28,8 +29,7 @@ public class ItemTooltipTranslationHandler {
     public static Map<String, List<String>> translationCache;
     public static final Set<String> pendingTranslations = Collections.newSetFromMap(new ConcurrentHashMap<>());
     
-    // 新增：用于跟踪哪些物品的翻译是可见的
-    public static final Set<String> visiblyTranslatedItems = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    public static final Set<String> temporarilyHiddenItems = Collections.newSetFromMap(new ConcurrentHashMap<>());
     
     public static String lastHoveredItemName = null;
     public static List<String> lastHoveredItemLore = null;
@@ -60,7 +60,6 @@ public class ItemTooltipTranslationHandler {
             return;
         }
 
-        // 1. 更新当前悬停的物品信息
         String unformattedItemName = STRIP_COLOR_PATTERN.matcher(event.toolTip.get(0)).replaceAll("");
         if (unformattedItemName.trim().isEmpty()) {
             resetHoveredItem();
@@ -78,62 +77,53 @@ public class ItemTooltipTranslationHandler {
 
         String keyName = Keyboard.getKeyName(KeybindHandler.translateItemKey.getKeyCode());
 
-        // v-- 这里是修改的核心 --v
-
-        // 2. 检查是否正在翻译中（最高优先级）
         if (pendingTranslations.contains(unformattedItemName)) {
-            event.toolTip.add(EnumChatFormatting.GRAY + "翻译中...");
+            event.toolTip.add(EnumChatFormatting.GRAY + LangUtil.translate("ghost.tooltip.translating"));
             return;
         }
         
-        // 3. 检查翻译是否应该可见
-        if (visiblyTranslatedItems.contains(unformattedItemName)) {
-            List<String> cachedLines = translationCache.get(unformattedItemName);
-            
-            // 如果缓存中找到了记录
-            if (cachedLines != null) {
-                event.toolTip.add(""); // 添加分隔
-                // 检查是成功还是失败记录
-                if (!cachedLines.isEmpty() && cachedLines.get(0).startsWith("§c")) {
-                    event.toolTip.add(cachedLines.get(0)); // 显示错误
-                } else {
-                    event.toolTip.add(EnumChatFormatting.GOLD + "--- 翻译 ---");
-                    for (String line : cachedLines) {
-                        event.toolTip.add(EnumChatFormatting.AQUA + line);
-                    }
-                }
-                event.toolTip.add(EnumChatFormatting.DARK_GRAY + "按 " + keyName + " 键隐藏");
-            }
-            // 如果在可见列表但缓存找不到（理论上不应发生），则不做任何事，让按键逻辑处理
-            
+        if (!translationCache.containsKey(unformattedItemName)) {
+            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.translate", keyName));
+            return;
+        }
+
+        List<String> cachedLines = translationCache.get(unformattedItemName);
+        if (cachedLines != null && !cachedLines.isEmpty() && cachedLines.get(0).startsWith("§c")) {
+            event.toolTip.add("");
+            event.toolTip.add(cachedLines.get(0));
+            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.retryAndClear", keyName, keyName));
+            return;
+        }
+
+        boolean isHidden = temporarilyHiddenItems.contains(unformattedItemName);
+        boolean shouldBeVisible = GhostConfig.autoShowCachedTranslation ? !isHidden : isHidden;
+
+        if (shouldBeVisible) {
+            displayTranslation(event, cachedLines, keyName);
         } else {
-            // 4. 如果翻译不可见，根据缓存状态显示不同提示
-            if (translationCache.containsKey(unformattedItemName)) {
-                // 有缓存但被隐藏了
-                event.toolTip.add(EnumChatFormatting.DARK_GRAY + "按 " + keyName + " 键显示翻译");
-            } else {
-                // 从未翻译过
-                event.toolTip.add(EnumChatFormatting.DARK_GRAY + "按 " + keyName + " 键翻译");
+            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.showAndClear", keyName, keyName));
+        }
+    }
+
+    private void displayTranslation(ItemTooltipEvent event, List<String> translatedLines, String keyName) {
+        event.toolTip.add("");
+        event.toolTip.add(EnumChatFormatting.GOLD + LangUtil.translate("ghost.tooltip.header"));
+        if (translatedLines != null) {
+            for (String line : translatedLines) {
+                event.toolTip.add(EnumChatFormatting.AQUA + line);
             }
         }
-        // ^-- 修改结束 --^
+        event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName));
     }
     
-    /**
-     * 当GUI关闭时，重置所有悬停和可见性信息。
-     */
     @SubscribeEvent
     public void onGuiClosed(GuiOpenEvent event) {
         if (event.gui == null) {
             resetHoveredItem();
-            // 关闭GUI时，重置所有物品的可见状态，下次打开时默认都是隐藏的
-            visiblyTranslatedItems.clear();
+            temporarilyHiddenItems.clear();
         }
     }
 
-    /**
-     * 辅助方法，用于清空当前悬停的物品信息。
-     */
     private void resetHoveredItem() {
         lastHoveredItemName = null;
         lastHoveredItemLore = null;

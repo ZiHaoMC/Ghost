@@ -2,8 +2,10 @@ package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.utils.NiuTransUtil;
+import com.zihaomc.ghost.LangUtil; // <-- 新增 Import
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.ChatComponentText;
@@ -60,23 +62,25 @@ public class KeybindHandler {
         }
 
         // --- 功能开关按键 ---
+        // v-- 这里是修改的核心 --v
         if (toggleAutoSneak != null && toggleAutoSneak.isPressed()) {
             boolean newState = !GhostConfig.enableAutoSneakAtEdge;
             GhostConfig.setEnableAutoSneakAtEdge(newState);
-            sendToggleMessage("自动边缘下蹲", newState);
+            sendToggleMessage("ghost.keybind.toggle.autosneak", newState);
         }
 
         if (togglePlayerESP != null && togglePlayerESP.isPressed()) {
             boolean newState = !GhostConfig.enablePlayerESP;
             GhostConfig.setEnablePlayerESP(newState);
-            sendToggleMessage("玩家透视 (ESP)", newState);
+            sendToggleMessage("ghost.keybind.toggle.playeresp", newState);
         }
 
         if (toggleBedrockMiner != null && toggleBedrockMiner.isPressed()) {
             boolean newState = !GhostConfig.enableBedrockMiner;
             GhostConfig.setEnableBedrockMiner(newState);
-            sendToggleMessage("破基岩模式", newState);
+            sendToggleMessage("ghost.keybind.toggle.bedrockminer", newState);
         }
+        // ^-- 修改结束 --^
 
         // 为“翻译”和“聊天”的按键冲突提供解决方案
         if (Minecraft.getMinecraft().currentScreen == null && translateItemKey != null && translateItemKey.isPressed()) {
@@ -94,16 +98,39 @@ public class KeybindHandler {
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
         if (event.gui instanceof GuiContainer) {
             if (translateItemKey != null && Keyboard.getEventKeyState() && Keyboard.getEventKey() == translateItemKey.getKeyCode()) {
-                handleItemTranslationKeyPress();
+                if (GuiScreen.isShiftKeyDown()) {
+                    handleClearItemTranslationPress();
+                } else {
+                    handleToggleOrTranslatePress();
+                }
                 event.setCanceled(true);
             }
         }
     }
+    
+    /**
+     * 新增：处理清除翻译缓存的按键事件 (Shift + T)。
+     */
+    private void handleClearItemTranslationPress() {
+        String itemName = ItemTooltipTranslationHandler.lastHoveredItemName;
+        if (itemName == null || itemName.trim().isEmpty()) {
+            return;
+        }
+
+        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
+            ItemTooltipTranslationHandler.translationCache.remove(itemName);
+            ItemTooltipTranslationHandler.temporarilyHiddenItems.remove(itemName);
+            
+            Minecraft.getMinecraft().thePlayer.addChatMessage(
+                new ChatComponentText(LangUtil.translate("ghost.cache.cleared", itemName))
+            );
+        }
+    }
 
     /**
-     * 处理物品翻译快捷键的按下事件。
+     * 处理物品翻译切换/请求的快捷键按下事件 (T)。
      */
-    private void handleItemTranslationKeyPress() {
+    private void handleToggleOrTranslatePress() {
         if (!GhostConfig.enableItemTranslation) {
             return;
         }
@@ -113,32 +140,15 @@ public class KeybindHandler {
             return;
         }
 
-        // v-- 这里是修改的核心 --v
-
-        // 1. 检查翻译是否当前可见
-        if (ItemTooltipTranslationHandler.visiblyTranslatedItems.contains(itemName)) {
-            // 如果可见，则隐藏它
-            ItemTooltipTranslationHandler.visiblyTranslatedItems.remove(itemName);
+        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
+            if (ItemTooltipTranslationHandler.temporarilyHiddenItems.contains(itemName)) {
+                ItemTooltipTranslationHandler.temporarilyHiddenItems.remove(itemName);
+            } else {
+                ItemTooltipTranslationHandler.temporarilyHiddenItems.add(itemName);
+            }
             return;
         }
-        
-        // 2. 如果翻译不可见，检查缓存中是否存在
-        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
-            // 如果存在，则显示它（并处理重试失败的情况）
-            List<String> cachedValue = ItemTooltipTranslationHandler.translationCache.get(itemName);
-            if (cachedValue != null && !cachedValue.isEmpty() && cachedValue.get(0).startsWith("§c")) {
-                // 如果是失败记录，从缓存中移除，以便下次可以重新请求
-                ItemTooltipTranslationHandler.translationCache.remove(itemName);
-            } else {
-                // 如果是成功记录，则加入可见列表
-                ItemTooltipTranslationHandler.visiblyTranslatedItems.add(itemName);
-                return;
-            }
-        }
 
-        // 3. 如果以上条件都不满足（缓存中没有 或 是一个刚被移除的失败记录），则发起新的翻译请求
-        
-        // 确保不会重复发送请求
         if (ItemTooltipTranslationHandler.pendingTranslations.contains(itemName)) {
             return;
         }
@@ -157,7 +167,7 @@ public class KeybindHandler {
         }
         
         ItemTooltipTranslationHandler.pendingTranslations.add(itemName);
-        Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "已发送翻译请求: " + itemName));
+        Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.tooltip.requestSent", itemName)));
 
         new Thread(() -> {
             try {
@@ -165,7 +175,7 @@ public class KeybindHandler {
                 List<String> translatedLines;
                 
                 if (result == null || result.trim().isEmpty()) {
-                    translatedLines = Collections.singletonList("§c翻译失败: 网络或未知错误");
+                    translatedLines = Collections.singletonList(LangUtil.translate("ghost.error.translation.network"));
                 } else if (result.startsWith("§c")) {
                     translatedLines = Collections.singletonList(result);
                 } else {
@@ -173,39 +183,36 @@ public class KeybindHandler {
                 }
                 
                 ItemTooltipTranslationHandler.translationCache.put(itemName, translatedLines);
-                // 翻译完成后，自动设为可见
-                ItemTooltipTranslationHandler.visiblyTranslatedItems.add(itemName);
 
             } finally {
                 ItemTooltipTranslationHandler.pendingTranslations.remove(itemName);
             }
         }).start();
-        // ^-- 修改结束 --^
     }
 
     /**
      * 向玩家发送功能切换状态的聊天消息。
-     * @param featureName 功能的名称
+     * @param featureNameKey 功能名称的语言文件键
      * @param enabled 功能的新状态 (true 为启用, false 为禁用)
      */
-    private void sendToggleMessage(String featureName, boolean enabled) {
+    private void sendToggleMessage(String featureNameKey, boolean enabled) {
         EnumChatFormatting statusColor = enabled ? EnumChatFormatting.GREEN : EnumChatFormatting.RED;
-        String statusText = enabled ? "启用" : "禁用";
+        String featureName = LangUtil.translate(featureNameKey);
+        String statusText = LangUtil.translate(enabled ? "ghost.generic.enabled" : "ghost.generic.disabled");
 
+        // 构建带颜色代码的文本
+        String statusPart = statusColor + statusText;
+        String formattedMessage = LangUtil.translate("ghost.generic.toggle.feedback", featureName, statusPart);
+        
         ChatComponentText message = new ChatComponentText("");
-
         ChatComponentText prefix = new ChatComponentText("[Ghost] ");
         prefix.getChatStyle().setColor(EnumChatFormatting.AQUA);
 
-        ChatComponentText feature = new ChatComponentText(featureName + " 已 ");
-        feature.getChatStyle().setColor(EnumChatFormatting.GRAY);
-
-        ChatComponentText status = new ChatComponentText(statusText);
-        status.getChatStyle().setColor(statusColor);
-
+        // LangUtil 不会解析颜色代码，所以我们用 ChatComponentText 来处理
+        ChatComponentText content = new ChatComponentText(formattedMessage);
+        
         message.appendSibling(prefix);
-        message.appendSibling(feature);
-        message.appendSibling(status);
+        message.appendSibling(content);
 
         Minecraft.getMinecraft().thePlayer.addChatMessage(message);
     }
