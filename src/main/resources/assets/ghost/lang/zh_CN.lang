@@ -25,7 +25,8 @@ ghostblock.commands.gtranslate.translating=正在翻译: %s
 ghostblock.commands.gtranslate.placeholder=<要翻译的文本...>
 
 # 聊天翻译
-ghostblock.chat.button.translate= [译]
+# 注意 下面这个 [译] 后面的两个空格是为了更好地让玩家按到按钮 不要删除！
+ghostblock.chat.button.translate= [译]  
 ghostblock.chat.button.translate.hover=点击翻译此消息
 
 # 告示牌翻译
@@ -185,6 +186,7 @@ ghost.config.comment.enableChatTranslation=启用后，在其他玩家的聊天�
 ghost.config.comment.enableSignTranslation=启用后，右键点击告示牌会尝试翻译其内容。
 ghost.config.comment.enableItemTranslation=启用后，将鼠标悬停在物品上时会尝试翻译其名称。
 ghost.config.comment.autoShowCachedTranslation=启用后，对于已缓存的翻译，将自动显示而无需按T键。
+ghost.config.comment.showTranslationOnly=启用后，物品提示框将只显示翻译后的文本，替换原文。
 ghost.config.comment.pingSpike=额外等待的 ticks, 用于弥补高延迟. [默认: 2]
 ghost.config.comment.headlessPiston=是否启用无头活塞模式 (更高效). [默认: true]
 ghost.config.comment.blink=在执行任务时是否启用Blink (数据包暂存), 强烈建议开启. [默认: true]
@@ -233,6 +235,7 @@ ghost.commands.gconfig.help.setting.enableChatTranslation=启用聊天消息翻�
 ghost.commands.gconfig.help.setting.enableSignTranslation=启用告示牌右键翻译功能。
 ghost.commands.gconfig.help.setting.enableItemTranslation=启用物品提示框名称翻译。
 ghost.commands.gconfig.help.setting.autoShowCachedTranslation=自动显示已缓存的翻译。
+ghostblock.commands.gconfig.help.setting.showTranslationOnly=仅显示物品翻译（替换原文）。
 ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=在加入世界时自动放置脚下的幽灵方块。
 ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge=启用走到方块边缘时自动蹲下。
 ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset=自动蹲伏的向前偏移量 (触发灵敏度)。
@@ -247,6 +250,7 @@ ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.g-config.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
 ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true
+ghostblock.commands.gconfig.help.example.showTranslationOnly=/gconfig showTranslationOnly true
 ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge=/gconfig enableAutoSneakAtEdge true
 ghostblock.commands.gconfig.help.example.autoSneakForwardOffset=/gconfig autoSneakForwardOffset 0.3
 ghostblock.commands.gconfig.help.example.autoSneakVerticalCheckDepth=/gconfig autoSneakVerticalCheckDepth 0.8
@@ -264,7 +268,8 @@ ghostblock.commands.autoplace.platform_success=幽灵平台已在 (%1$d, %2$d, %
 ghostblock.commands.autosave.activated=提示: 自动保存已激活。
 ghostblock.commands.task.chunk_aware_notice=提示: 任务将在后台运行。位于未加载区块的方块将在您靠近时自动放置。
 ghostblock.commands.task.sync_skipped=警告: 同步操作跳过了 %1$d 个位于未加载区块或处理失败的方块。
-ghostblock.commands.suggest.text= ↩
+# 注意 下面这个回车键后面的两个空格是为了更好地让玩家按到按钮 不要删除！
+ghostblock.commands.suggest.text= ↩  
 ghostblock.commands.suggest.hovertext=点击重新输入: %s
 
 # 破基岩功能

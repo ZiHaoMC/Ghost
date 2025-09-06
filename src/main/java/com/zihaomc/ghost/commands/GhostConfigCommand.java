@@ -172,6 +172,16 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
 
+            case "showtranslationonly": // <-- 新增 Case
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setShowTranslationOnly(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
+
             case "enableautoplaceonjoin":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
@@ -307,6 +317,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("enableSignTranslation", GhostConfig.enableSignTranslation));
         sender.addChatMessage(formatSettingLine("enableItemTranslation", GhostConfig.enableItemTranslation));
         sender.addChatMessage(formatSettingLine("autoShowCachedTranslation", GhostConfig.autoShowCachedTranslation));
+        sender.addChatMessage(formatSettingLine("showTranslationOnly", GhostConfig.showTranslationOnly)); // <-- 新增显示
         sender.addChatMessage(formatSettingLine("enableAutoPlaceOnJoin", GhostConfig.enableAutoPlaceOnJoin));
         sender.addChatMessage(formatSettingLine("enableAutoSneakAtEdge", GhostConfig.enableAutoSneakAtEdge));
         sender.addChatMessage(formatSettingLine("autoSneakForwardOffset", String.format("%.2f", GhostConfig.autoSneakForwardOffset)));
@@ -368,6 +379,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  enableSignTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableSignTranslation")));
         sender.addChatMessage(new ChatComponentText(op + "  enableItemTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableItemTranslation")));
         sender.addChatMessage(new ChatComponentText(op + "  autoShowCachedTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoShowCachedTranslation")));
+        sender.addChatMessage(new ChatComponentText(op + "  showTranslationOnly " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.showTranslationOnly"))); // <-- 新增帮助文本
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoPlaceOnJoin " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoSneakAtEdge " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(op + "  autoSneakForwardOffset " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "0.05-1.0") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset")));
@@ -384,11 +396,12 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig defaultSaveName my_server_ghosts"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig forcedBatchSize 500"));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableChatSuggestions")));
-        sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll")));
+        sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.g-config.help.example.enableCommandHistoryScroll")));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableChatTranslation true"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableSignTranslation true"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableItemTranslation true"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoShowCachedTranslation false"));
+        sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.showTranslationOnly"))); // <-- 新增示例
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.autoSneakForwardOffset")));
@@ -432,7 +445,7 @@ public class GhostConfigCommand extends CommandBase {
         if (args.length == 1) {
             return CommandBase.getListOfStringsMatchingLastWord(args,
                     "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
-                    "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", "autoShowCachedTranslation", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
+                    "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", "autoShowCachedTranslation", "showTranslationOnly", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
                     "enableBedrockMiner", "fastPistonBreaking",
                     "niuTransApiKey", "translationSourceLang", "translationTargetLang",
@@ -451,6 +464,7 @@ public class GhostConfigCommand extends CommandBase {
                 case "enablesigntranslation":
                 case "enableitemtranslation":
                 case "autoshowcachedtranslation":
+                case "showtranslationonly": // <-- 新增 Tab 补全
                 case "enableautoplaceonjoin":
                 case "enableautosneakatedge":
                 case "enableplayeresp":

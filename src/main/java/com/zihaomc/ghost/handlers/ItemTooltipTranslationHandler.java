@@ -2,7 +2,7 @@ package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.TranslationCacheManager;
-import com.zihaomc.ghost.LangUtil; // <-- 新增 Import
+import com.zihaomc.ghost.LangUtil;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
@@ -98,8 +98,30 @@ public class ItemTooltipTranslationHandler {
         boolean isHidden = temporarilyHiddenItems.contains(unformattedItemName);
         boolean shouldBeVisible = GhostConfig.autoShowCachedTranslation ? !isHidden : isHidden;
 
+        // v-- 这里是修改的核心 --v
         if (shouldBeVisible) {
-            displayTranslation(event, cachedLines, keyName);
+            if (GhostConfig.showTranslationOnly) {
+                // 单语模式：替换原文
+                event.toolTip.clear(); // 清空原始提示
+
+                if (cachedLines != null && !cachedLines.isEmpty()) {
+                    // 使用物品原有的稀有度颜色来显示翻译后的名称
+                    event.toolTip.add(event.itemStack.getRarity().rarityColor + cachedLines.get(0));
+
+                    // 添加翻译后的lore，使用统一的颜色
+                    if (cachedLines.size() > 1) {
+                        for (int i = 1; i < cachedLines.size(); i++) {
+                            event.toolTip.add(EnumChatFormatting.AQUA + cachedLines.get(i));
+                        }
+                    }
+                }
+                // 在末尾添加操作提示
+                event.toolTip.add(""); // 分隔行
+                event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName));
+            } else {
+                // 双语模式（保留原始行为）
+                displayTranslation(event, cachedLines, keyName);
+            }
         } else {
             event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.showAndClear", keyName, keyName));
         }

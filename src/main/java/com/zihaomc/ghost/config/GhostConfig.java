@@ -34,6 +34,7 @@ public class GhostConfig {
     public static boolean enableSignTranslation = false;
     public static boolean enableItemTranslation = false;
     public static boolean autoShowCachedTranslation = true;
+    public static boolean showTranslationOnly = false; // <-- 新增配置项
     public static boolean enableAutoPlaceOnJoin = false;
     public static boolean enableAutoSneakAtEdge = false;
     public static boolean enablePlayerESP = false;
@@ -150,6 +151,9 @@ public class GhostConfig {
         String autoShowComment = LangUtil.translate("ghost.config.comment.autoShowCachedTranslation");
         autoShowCachedTranslation = config.getBoolean("autoShowCachedTranslation", CATEGORY_TRANSLATION, true, autoShowComment);
 
+        String showOnlyComment = LangUtil.translate("ghost.config.comment.showTranslationOnly"); // <-- 新增
+        showTranslationOnly = config.getBoolean("showTranslationOnly", CATEGORY_TRANSLATION, false, showOnlyComment); // <-- 新增
+
         String apiKeyComment = LangUtil.translate("ghostblock.config.niuTransApiKey.tooltip");
         niuTransApiKey = config.getString("niuTransApiKey", CATEGORY_TRANSLATION, "", apiKeyComment);
 
@@ -183,6 +187,7 @@ public class GhostConfig {
     public static void setEnableSignTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableSignTranslation", false); prop.set(value); enableSignTranslation = value; config.save(); }
     public static void setEnableItemTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableItemTranslation", false); prop.set(value); enableItemTranslation = value; config.save(); }
     public static void setAutoShowCachedTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true); prop.set(value); autoShowCachedTranslation = value; config.save(); }
+    public static void setShowTranslationOnly(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "showTranslationOnly", false); prop.set(value); showTranslationOnly = value; config.save(); } // <-- 新增 Setter
     public static void setEnableAutoPlaceOnJoin(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false); prop.set(value); enableAutoPlaceOnJoin = value; config.save(); }
     public static void setEnableAutoSneakAtEdge(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false); prop.set(value); enableAutoSneakAtEdge = value; config.save(); }
     public static void setAutoSneakForwardOffset(double value) { if (config == null || value < 0.05 || value > 1.0) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.35); prop.set(value); autoSneakForwardOffset = value; config.save(); }
