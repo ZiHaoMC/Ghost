@@ -16,7 +16,6 @@ import java.util.List;
 
 public class TranslateCommand extends CommandBase {
 
-    // ... (getCommandName, getCommandAliases, getCommandUsage, etc. 不变) ...
     @Override
     public String getCommandName() {
         return "gtranslate";

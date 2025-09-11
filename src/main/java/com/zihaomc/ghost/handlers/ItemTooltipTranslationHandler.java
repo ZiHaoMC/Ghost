@@ -77,7 +77,9 @@ public class ItemTooltipTranslationHandler {
         }
         
         if (!translationCache.containsKey(unformattedItemName)) {
-            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.translate", keyName));
+            if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+                event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.translate", keyName));
+            }
             return;
         }
 
@@ -85,7 +87,9 @@ public class ItemTooltipTranslationHandler {
         if (cachedLines != null && !cachedLines.isEmpty() && cachedLines.get(0).startsWith(EnumChatFormatting.RED.toString())) {
             event.toolTip.add("");
             event.toolTip.add(cachedLines.get(0));
-            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.retryAndClear", keyName, keyName, keyName));
+            if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+                event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.retryAndClear", keyName, keyName, keyName));
+            }
             return;
         }
 
@@ -106,12 +110,16 @@ public class ItemTooltipTranslationHandler {
                     }
                 }
                 event.toolTip.add("");
-                event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
+                if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+                    event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
+                }
             } else {
                 displayTranslation(event, cachedLines, keyName);
             }
         } else {
-            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.showAndClear", keyName, keyName, keyName));
+            if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+                event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.showAndClear", keyName, keyName, keyName));
+            }
         }
     }
 
@@ -123,7 +131,9 @@ public class ItemTooltipTranslationHandler {
                 event.toolTip.add(EnumChatFormatting.AQUA + line);
             }
         }
-        event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
+        if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+            event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
+        }
     }
     
     @SubscribeEvent
