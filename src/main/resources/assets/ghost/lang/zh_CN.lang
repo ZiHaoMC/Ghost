@@ -202,6 +202,7 @@ ghost.config.comment.headlessPiston=是否启用无头活塞模式 (更高效). 
 ghost.config.comment.blink=在执行任务时是否启用Blink (数据包暂存), 强烈建议开启. [默认: true]
 ghost.config.comment.blockWhitelist=可以作为目标的方块列表 (例如 'minecraft:bedrock').
 ghost.config.comment.dependWhitelist=可以作为支撑/依赖的方块列表 (例如 'minecraft:slime_block').
+ghost.config.comment.hideArrowsOnPlayers=启用后，将隐藏射在其他玩家身上的箭，但保留自己身上的。
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -257,6 +258,7 @@ ghostblock.commands.gconfig.help.setting.fastPistonBreaking=启用镐可快速�
 ghostblock.commands.gconfig.help.setting.niuTransApiKey=设置小牛翻译的API Key。
 ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的源语言。
 ghostblock.commands.gconfig.help.setting.translationTargetLang=设置翻译的目标语言。
+ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers=隐藏射在其他玩家身上的箭。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.g-config.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
@@ -269,6 +271,7 @@ ghostblock.commands.gconfig.help.example.autoSneakVerticalCheckDepth=/gconfig au
 ghostblock.commands.gconfig.help.example.enablePlayerESP=/gconfig enablePlayerESP true
 ghostblock.commands.gconfig.help.example.enableBedrockMiner=/gconfig enableBedrockMiner true
 ghostblock.commands.gconfig.help.example.fastPistonBreaking=/gconfig fastPistonBreaking true
+ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers=/gconfig hideArrowsOnPlayers true
 
 # ==================================
 # ===         其他文本         ===

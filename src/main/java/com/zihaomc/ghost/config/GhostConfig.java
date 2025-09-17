@@ -35,12 +35,13 @@ public class GhostConfig {
     public static boolean enableItemTranslation = false;
     public static boolean autoShowCachedTranslation = true;
     public static boolean showTranslationOnly = false;
-    public static boolean hideTranslationKeybindTooltip = false; // <-- 新增配置项
+    public static boolean hideTranslationKeybindTooltip = false; 
     public static boolean enableAutoPlaceOnJoin = false;
     public static boolean enableAutoSneakAtEdge = false;
     public static boolean enablePlayerESP = false;
     public static boolean enableBedrockMiner = false;
     public static boolean fastPistonBreaking = false;
+    public static boolean hideArrowsOnPlayers = false; // <-- 名称已更新
 
     // --- 功能数值 ---
     public static int forcedBatchSize = 100;
@@ -118,6 +119,10 @@ public class GhostConfig {
         String fastPistonBreakingComment = LangUtil.translate("ghostblock.config.fastPistonBreaking.tooltip");
         fastPistonBreaking = config.getBoolean("fastPistonBreaking", CATEGORY_GAMEPLAY_TWEAKS, false, fastPistonBreakingComment);
 
+        String hideArrowsComment = LangUtil.translate("ghost.config.comment.hideArrowsOnPlayers");
+        hideArrowsOnPlayers = config.getBoolean("hideArrowsOnPlayers", CATEGORY_GAMEPLAY_TWEAKS, false, hideArrowsComment);
+
+
         // --- 破基岩 ---
         String enableBedrockMinerComment = LangUtil.translate("ghostblock.config.enableBedrockMiner.tooltip");
         enableBedrockMiner = config.getBoolean("enableBedrockMiner", CATEGORY_BEDROCK_MINER, false, enableBedrockMinerComment);
@@ -155,8 +160,8 @@ public class GhostConfig {
         String showOnlyComment = LangUtil.translate("ghost.config.comment.showTranslationOnly");
         showTranslationOnly = config.getBoolean("showTranslationOnly", CATEGORY_TRANSLATION, false, showOnlyComment);
 
-        String hideKeybindComment = LangUtil.translate("ghost.config.comment.hideTranslationKeybindTooltip"); // <-- 新增
-        hideTranslationKeybindTooltip = config.getBoolean("hideTranslationKeybindTooltip", CATEGORY_TRANSLATION, false, hideKeybindComment); // <-- 新增
+        String hideKeybindComment = LangUtil.translate("ghost.config.comment.hideTranslationKeybindTooltip");
+        hideTranslationKeybindTooltip = config.getBoolean("hideTranslationKeybindTooltip", CATEGORY_TRANSLATION, false, hideKeybindComment);
 
         String apiKeyComment = LangUtil.translate("ghostblock.config.niuTransApiKey.tooltip");
         niuTransApiKey = config.getString("niuTransApiKey", CATEGORY_TRANSLATION, "", apiKeyComment);
@@ -192,7 +197,7 @@ public class GhostConfig {
     public static void setEnableItemTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableItemTranslation", false); prop.set(value); enableItemTranslation = value; config.save(); }
     public static void setAutoShowCachedTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true); prop.set(value); autoShowCachedTranslation = value; config.save(); }
     public static void setShowTranslationOnly(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "showTranslationOnly", false); prop.set(value); showTranslationOnly = value; config.save(); }
-    public static void setHideTranslationKeybindTooltip(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false); prop.set(value); hideTranslationKeybindTooltip = value; config.save(); } // <-- 新增 Setter
+    public static void setHideTranslationKeybindTooltip(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false); prop.set(value); hideTranslationKeybindTooltip = value; config.save(); }
     public static void setEnableAutoPlaceOnJoin(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false); prop.set(value); enableAutoPlaceOnJoin = value; config.save(); }
     public static void setEnableAutoSneakAtEdge(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false); prop.set(value); enableAutoSneakAtEdge = value; config.save(); }
     public static void setAutoSneakForwardOffset(double value) { if (config == null || value < 0.05 || value > 1.0) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.35); prop.set(value); autoSneakForwardOffset = value; config.save(); }
@@ -200,6 +205,7 @@ public class GhostConfig {
     public static void setEnablePlayerESP(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_PLAYER_ESP, "enablePlayerESP", false); prop.set(value); enablePlayerESP = value; config.save(); }
     public static void setEnableBedrockMiner(boolean value) { if (config == null) return; if (value) { setFastPistonBreaking(true, false); } Property prop = config.get(CATEGORY_BEDROCK_MINER, "enableBedrockMiner", false); prop.set(value); enableBedrockMiner = value; config.save(); }
     public static void setFastPistonBreaking(boolean value, boolean saveImmediately) { if (config == null) return; Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "fastPistonBreaking", false); prop.set(value); fastPistonBreaking = value; if (saveImmediately) config.save(); }
+    public static void setHideArrowsOnPlayers(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "hideArrowsOnPlayers", false); prop.set(value); hideArrowsOnPlayers = value; config.save(); }
     public static void setNiuTransApiKey(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "niuTransApiKey", ""); prop.set(value); niuTransApiKey = value; config.save(); }
     public static void setTranslationSourceLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationSourceLang", "auto"); prop.set(value); translationSourceLang = value; config.save(); }
     public static void setTranslationTargetLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationTargetLang", "zh"); prop.set(value); translationTargetLang = value; config.save(); }

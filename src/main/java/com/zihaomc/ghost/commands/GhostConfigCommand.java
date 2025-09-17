@@ -182,7 +182,7 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
 
-            case "hidetranslationkeybindtooltip": // <-- 新增 Case
+            case "hidetranslationkeybindtooltip":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
                     GhostConfig.setHideTranslationKeybindTooltip(value);
@@ -268,6 +268,16 @@ public class GhostConfigCommand extends CommandBase {
                     sendBooleanError(sender, valueStr);
                 }
                 break;
+            
+            case "hidearrowsonplayers":
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setHideArrowsOnPlayers(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
 
             case "niutransapikey":
                 String keyToSet = (args.length > 1) ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "";
@@ -328,7 +338,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("enableItemTranslation", GhostConfig.enableItemTranslation));
         sender.addChatMessage(formatSettingLine("autoShowCachedTranslation", GhostConfig.autoShowCachedTranslation));
         sender.addChatMessage(formatSettingLine("showTranslationOnly", GhostConfig.showTranslationOnly));
-        sender.addChatMessage(formatSettingLine("hideTranslationKeybindTooltip", GhostConfig.hideTranslationKeybindTooltip)); // <-- 新增显示
+        sender.addChatMessage(formatSettingLine("hideTranslationKeybindTooltip", GhostConfig.hideTranslationKeybindTooltip));
         sender.addChatMessage(formatSettingLine("enableAutoPlaceOnJoin", GhostConfig.enableAutoPlaceOnJoin));
         sender.addChatMessage(formatSettingLine("enableAutoSneakAtEdge", GhostConfig.enableAutoSneakAtEdge));
         sender.addChatMessage(formatSettingLine("autoSneakForwardOffset", String.format("%.2f", GhostConfig.autoSneakForwardOffset)));
@@ -336,6 +346,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("enablePlayerESP", GhostConfig.enablePlayerESP));
         sender.addChatMessage(formatSettingLine("enableBedrockMiner", GhostConfig.enableBedrockMiner));
         sender.addChatMessage(formatSettingLine("fastPistonBreaking", GhostConfig.fastPistonBreaking));
+        sender.addChatMessage(formatSettingLine("hideArrowsOnPlayers", GhostConfig.hideArrowsOnPlayers));
 
         String apiKeyDisplay = (GhostConfig.niuTransApiKey != null && !GhostConfig.niuTransApiKey.isEmpty()) ?
                 "******" + GhostConfig.niuTransApiKey.substring(Math.max(0, GhostConfig.niuTransApiKey.length() - 4)) :
@@ -391,7 +402,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  enableItemTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableItemTranslation")));
         sender.addChatMessage(new ChatComponentText(op + "  autoShowCachedTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoShowCachedTranslation")));
         sender.addChatMessage(new ChatComponentText(op + "  showTranslationOnly " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.showTranslationOnly")));
-        sender.addChatMessage(new ChatComponentText(op + "  hideTranslationKeybindTooltip " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.hideTranslationKeybindTooltip"))); // <-- 新增帮助文本
+        sender.addChatMessage(new ChatComponentText(op + "  hideTranslationKeybindTooltip " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.hideTranslationKeybindTooltip")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoPlaceOnJoin " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAutoSneakAtEdge " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(op + "  autoSneakForwardOffset " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "0.05-1.0") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset")));
@@ -399,6 +410,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  enablePlayerESP " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enablePlayerESP")));
         sender.addChatMessage(new ChatComponentText(op + "  enableBedrockMiner " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableBedrockMiner")));
         sender.addChatMessage(new ChatComponentText(op + "  fastPistonBreaking " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.fastPistonBreaking")));
+        sender.addChatMessage(new ChatComponentText(op + "  hideArrowsOnPlayers " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers")));
         sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
         sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
         sender.addChatMessage(new ChatComponentText(op + "  translationTargetLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationTargetLang")));
@@ -414,7 +426,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableItemTranslation true"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoShowCachedTranslation false"));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.showTranslationOnly")));
-        sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.hideTranslationKeybindTooltip"))); // <-- 新增示例
+        sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.hideTranslationKeybindTooltip")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.autoSneakForwardOffset")));
@@ -422,6 +434,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enablePlayerESP")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableBedrockMiner")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.fastPistonBreaking")));
+        sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers")));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig niuTransApiKey your_api_key_here"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig translationTargetLang en"));
 
@@ -460,7 +473,7 @@ public class GhostConfigCommand extends CommandBase {
                     "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
                     "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", "autoShowCachedTranslation", "showTranslationOnly", "hideTranslationKeybindTooltip", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
-                    "enableBedrockMiner", "fastPistonBreaking",
+                    "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers",
                     "niuTransApiKey", "translationSourceLang", "translationTargetLang",
                     "toggleSuggest");
         } else if (args.length == 2) {
@@ -478,12 +491,13 @@ public class GhostConfigCommand extends CommandBase {
                 case "enableitemtranslation":
                 case "autoshowcachedtranslation":
                 case "showtranslationonly":
-                case "hidetranslationkeybindtooltip": // <-- 新增 Tab 补全
+                case "hidetranslationkeybindtooltip":
                 case "enableautoplaceonjoin":
                 case "enableautosneakatedge":
                 case "enableplayeresp":
                 case "enablebedrockminer":
                 case "fastpistonbreaking":
+                case "hidearrowsonplayers":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
 
                 case "translationsourcelang":
