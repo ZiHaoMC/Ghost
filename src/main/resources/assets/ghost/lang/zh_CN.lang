@@ -287,17 +287,6 @@ ghostblock.commands.task.sync_skipped=警告: 同步操作跳过了 %1$d 个位�
 ghostblock.commands.suggest.text= ↩  
 ghostblock.commands.suggest.hovertext=点击重新输入: %s
 
-# 破基岩功能
-ghostblock.bedrockminer.prefix=[Ghost]
-ghostblock.bedrockminer.toggle.on=破基岩功能已激活！左键点击白名单中的方块开始作业。
-ghostblock.bedrockminer.toggle.off=破基岩功能已关闭。
-ghostblock.bedrockminer.warn.multiplayer=警告：您似乎在服务器上使用此功能，请确保已获得服主许可。
-ghostblock.bedrockminer.fail.survival_only=错误：此功能仅限在生存模式下使用！
-ghostblock.bedrockminer.fail.missing_items.piston=错误：活塞不足！(需要至少2个)
-ghostblock.bedrockminer.fail.missing_items.torch=错误：红石火把不足！(需要至少1个)
-ghostblock.bedrockminer.fail.missing_items.slime=错误：粘液块不足！(需要至少1个)
-ghostblock.bedrockminer.fail.instant_mine=错误：无法秒破活塞！请检查是否有效率V的工具和急迫II效果。
-ghostblock.bedrockminer.fail.no_scheme=错误：在目标方块周围找不到任何可行的放置方案。
 
 # 按键切换功能名称
 ghost.keybind.toggle.autosneak=自动边缘下蹲
