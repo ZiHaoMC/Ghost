@@ -1,6 +1,7 @@
 package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.features.notes.GuiNote; // <--- 新增
 import com.zihaomc.ghost.utils.NiuTransUtil;
 import com.zihaomc.ghost.LangUtil;
 import net.minecraft.client.Minecraft;
@@ -23,12 +24,13 @@ import java.util.List;
 
 public class KeybindHandler {
 
-    // ... (registerKeybinds, onClientTick, onGuiKeyboardInput, handleClear... 方法保持不变) ...
+    // ... (其他方法保持不变) ...
 
     public static KeyBinding toggleAutoSneak;
     public static KeyBinding togglePlayerESP;
     public static KeyBinding toggleBedrockMiner;
     public static KeyBinding translateItemKey;
+    public static KeyBinding openNoteGui; // <--- 新增
 
     public static void registerKeybinds() {
         String category = "key.ghost.category";
@@ -37,11 +39,13 @@ public class KeybindHandler {
         togglePlayerESP = new KeyBinding("key.ghost.togglePlayerESP", Keyboard.KEY_NONE, category);
         toggleBedrockMiner = new KeyBinding("key.ghost.toggleBedrockMiner", Keyboard.KEY_NONE, category);
         translateItemKey = new KeyBinding("key.ghost.translateItem", Keyboard.KEY_T, category);
+        openNoteGui = new KeyBinding("key.ghost.openNote", Keyboard.KEY_N, category); // <--- 新增 (默认N键)
 
         ClientRegistry.registerKeyBinding(toggleAutoSneak);
         ClientRegistry.registerKeyBinding(togglePlayerESP);
         ClientRegistry.registerKeyBinding(toggleBedrockMiner);
         ClientRegistry.registerKeyBinding(translateItemKey);
+        ClientRegistry.registerKeyBinding(openNoteGui); // <--- 新增
     }
 
     @SubscribeEvent
@@ -50,6 +54,7 @@ public class KeybindHandler {
             return;
         }
 
+        // ... (其他按键处理逻辑保持不变) ...
         if (toggleAutoSneak != null && toggleAutoSneak.isPressed()) {
             boolean newState = !GhostConfig.enableAutoSneakAtEdge;
             GhostConfig.setEnableAutoSneakAtEdge(newState);
@@ -67,6 +72,17 @@ public class KeybindHandler {
             GhostConfig.setEnableBedrockMiner(newState);
             sendToggleMessage("ghost.keybind.toggle.bedrockminer", newState);
         }
+        
+        // vvvvvvvvvv 新增代码开始 vvvvvvvvvv
+        if (openNoteGui != null && openNoteGui.isPressed()) {
+            if (GhostConfig.enableNoteFeature) {
+                // 仅当当前没有打开任何GUI时才打开笔记界面
+                if (Minecraft.getMinecraft().currentScreen == null) {
+                    Minecraft.getMinecraft().displayGuiScreen(new GuiNote());
+                }
+            }
+        }
+        // ^^^^^^^^^^ 新增代码结束 ^^^^^^^^^^
 
         if (Minecraft.getMinecraft().currentScreen == null && translateItemKey != null && translateItemKey.isPressed()) {
             if (translateItemKey.getKeyCode() == Minecraft.getMinecraft().gameSettings.keyBindChat.getKeyCode()) {
@@ -75,6 +91,7 @@ public class KeybindHandler {
         }
     }
 
+    // ... (其他方法保持不变) ...
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
         if (event.gui instanceof GuiContainer) {
@@ -171,11 +188,9 @@ public class KeybindHandler {
                 if (result == null || result.trim().isEmpty()) {
                     translatedLines = Collections.singletonList(EnumChatFormatting.RED + LangUtil.translate("ghost.error.translation.network"));
                 } else if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
-                    // 如果是错误，移除前缀并添加红色
                     String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
                     translatedLines = Collections.singletonList(EnumChatFormatting.RED + errorContent);
                 } else {
-                    // 正常结果
                     translatedLines = Arrays.asList(result.split("\n"));
                 }
                 
