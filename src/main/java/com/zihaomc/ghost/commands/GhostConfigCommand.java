@@ -212,7 +212,6 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
             
-            // vvvvvvvvvv 新增代码开始 vvvvvvvvvv
             case "enablenotefeature":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
@@ -222,7 +221,16 @@ public class GhostConfigCommand extends CommandBase {
                     sendBooleanError(sender, valueStr);
                 }
                 break;
-            // ^^^^^^^^^^ 新增代码结束 ^^^^^^^^^^
+
+            case "enableadvancedediting":
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setEnableAdvancedEditing(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
 
             case "autosneakforwardoffset":
                 try {
@@ -359,7 +367,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("enableBedrockMiner", GhostConfig.enableBedrockMiner));
         sender.addChatMessage(formatSettingLine("fastPistonBreaking", GhostConfig.fastPistonBreaking));
         sender.addChatMessage(formatSettingLine("hideArrowsOnPlayers", GhostConfig.hideArrowsOnPlayers));
-        sender.addChatMessage(formatSettingLine("enableNoteFeature", GhostConfig.enableNoteFeature)); // <--- 新增
+        sender.addChatMessage(formatSettingLine("enableNoteFeature", GhostConfig.enableNoteFeature));
+        sender.addChatMessage(formatSettingLine("enableAdvancedEditing", GhostConfig.enableAdvancedEditing));
 
         String apiKeyDisplay = (GhostConfig.niuTransApiKey != null && !GhostConfig.niuTransApiKey.isEmpty()) ?
                 "******" + GhostConfig.niuTransApiKey.substring(Math.max(0, GhostConfig.niuTransApiKey.length() - 4)) :
@@ -424,9 +433,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  enableBedrockMiner " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableBedrockMiner")));
         sender.addChatMessage(new ChatComponentText(op + "  fastPistonBreaking " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.fastPistonBreaking")));
         sender.addChatMessage(new ChatComponentText(op + "  hideArrowsOnPlayers " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers")));
-        // vvvvvvvvvv 新增代码开始 vvvvvvvvvv
         sender.addChatMessage(new ChatComponentText(op + "  enableNoteFeature " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableNoteFeature")));
-        // ^^^^^^^^^^ 新增代码结束 ^^^^^^^^^^
+        sender.addChatMessage(new ChatComponentText(op + "  enableAdvancedEditing " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableAdvancedEditing")));
         sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
         sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
         sender.addChatMessage(new ChatComponentText(op + "  translationTargetLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationTargetLang")));
@@ -489,7 +497,8 @@ public class GhostConfigCommand extends CommandBase {
                     "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
                     "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", "autoShowCachedTranslation", "showTranslationOnly", "hideTranslationKeybindTooltip", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
-                    "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers", "enablenotefeature", // <--- 新增
+                    "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers", "enablenotefeature", 
+                    "enableadvancedediting",
                     "niuTransApiKey", "translationSourceLang", "translationTargetLang",
                     "toggleSuggest");
         } else if (args.length == 2) {
@@ -514,7 +523,8 @@ public class GhostConfigCommand extends CommandBase {
                 case "enablebedrockminer":
                 case "fastpistonbreaking":
                 case "hidearrowsonplayers":
-                case "enablenotefeature": // <--- 新增
+                case "enablenotefeature":
+                case "enableadvancedediting":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
 
                 case "translationsourcelang":

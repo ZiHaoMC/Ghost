@@ -65,6 +65,8 @@ ghost.gui.note.save_and_close=保存并关闭
 ghost.config.comment.enableNoteFeature=启用游戏内笔记功能。启用后，可通过指定按键打开一个可以随时记录文本的界面。
 ghost.commands.gconfig.help.setting.enableNoteFeature=启用游戏内笔记功能。
 ghost.gui.note.scroll_hint=(使用鼠标滚轮滚动)
+ghost.config.comment.enableAdvancedEditing=启用笔记界面的高级编辑功能(如鼠标选择、Ctrl+A/C/X)。
+ghost.commands.gconfig.help.setting.enableAdvancedEditing=启用笔记界面的高级编辑功能。
 
 # ==================================
 # ===      通用命令和错误      ===

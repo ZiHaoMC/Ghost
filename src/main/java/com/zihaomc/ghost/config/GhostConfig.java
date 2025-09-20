@@ -42,8 +42,9 @@ public class GhostConfig {
     public static boolean enablePlayerESP = false;
     public static boolean enableBedrockMiner = false;
     public static boolean fastPistonBreaking = false;
-    public static boolean hideArrowsOnPlayers = false; // <-- 名称已更新
-    public static boolean enableNoteFeature = true; // <--- 新增
+    public static boolean hideArrowsOnPlayers = false;
+    public static boolean enableNoteFeature = true;
+    public static boolean enableAdvancedEditing = true; // 高级编辑开关
 
     // --- 功能数值 ---
     public static int forcedBatchSize = 100;
@@ -124,11 +125,12 @@ public class GhostConfig {
         String hideArrowsComment = LangUtil.translate("ghost.config.comment.hideArrowsOnPlayers");
         hideArrowsOnPlayers = config.getBoolean("hideArrowsOnPlayers", CATEGORY_GAMEPLAY_TWEAKS, false, hideArrowsComment);
 
-        // vvvvvvvvvv 新增代码开始 vvvvvvvvvv
         // --- 笔记功能 ---
         String enableNoteComment = LangUtil.translate("ghost.config.comment.enableNoteFeature");
         enableNoteFeature = config.getBoolean("enableNoteFeature", CATEGORY_NOTE, true, enableNoteComment);
-        // ^^^^^^^^^^ 新增代码结束 ^^^^^^^^^^
+        
+        String enableAdvancedEditingComment = LangUtil.translate("ghost.config.comment.enableAdvancedEditing");
+        enableAdvancedEditing = config.getBoolean("enableAdvancedEditing", CATEGORY_NOTE, true, enableAdvancedEditingComment);
 
         // --- 破基岩 ---
         String enableBedrockMinerComment = LangUtil.translate("ghostblock.config.enableBedrockMiner.tooltip");
@@ -213,12 +215,11 @@ public class GhostConfig {
     public static void setEnableBedrockMiner(boolean value) { if (config == null) return; if (value) { setFastPistonBreaking(true, false); } Property prop = config.get(CATEGORY_BEDROCK_MINER, "enableBedrockMiner", false); prop.set(value); enableBedrockMiner = value; config.save(); }
     public static void setFastPistonBreaking(boolean value, boolean saveImmediately) { if (config == null) return; Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "fastPistonBreaking", false); prop.set(value); fastPistonBreaking = value; if (saveImmediately) config.save(); }
     public static void setHideArrowsOnPlayers(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "hideArrowsOnPlayers", false); prop.set(value); hideArrowsOnPlayers = value; config.save(); }
-    // vvvvvvvvvv 新增代码开始 vvvvvvvvvv
     public static void setEnableNoteFeature(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableNoteFeature", true); prop.set(value); enableNoteFeature = value; config.save(); }
-    // ^^^^^^^^^^ 新增代码结束 ^^^^^^^^^^
     public static void setNiuTransApiKey(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "niuTransApiKey", ""); prop.set(value); niuTransApiKey = value; config.save(); }
     public static void setTranslationSourceLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationSourceLang", "auto"); prop.set(value); translationSourceLang = value; config.save(); }
     public static void setTranslationTargetLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationTargetLang", "zh"); prop.set(value); translationTargetLang = value; config.save(); }
+    public static void setEnableAdvancedEditing(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableAdvancedEditing", true); prop.set(value); enableAdvancedEditing = value; config.save(); }
 
     public static Configuration getConfig() {
         return config;
