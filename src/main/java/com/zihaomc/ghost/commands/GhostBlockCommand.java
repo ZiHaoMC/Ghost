@@ -64,7 +64,7 @@ public class GhostBlockCommand extends CommandBase {
     private static final EnumChatFormatting LABEL_COLOR = EnumChatFormatting.GRAY;    // 标签颜色（如"填充进度"）
     private static final EnumChatFormatting VALUE_COLOR = EnumChatFormatting.YELLOW; // 数值颜色（如百分比）
     private static final EnumChatFormatting FINISH_COLOR = EnumChatFormatting.GREEN; // 完成消息颜色
-        // ========= 新增：用于延迟自动放置的静态成员变量 =========
+        // ========= 用于延迟自动放置的静态成员变量 =========
     private static GhostBlockData.GhostBlockEntry pendingAutoPlaceEntry = null;
     private static BlockPos pendingAutoPlaceTargetPos = null;
     private static File pendingAutoPlaceFileRef = null; // 存储文件引用以便删除
@@ -76,13 +76,13 @@ public class GhostBlockCommand extends CommandBase {
     // ========= 延迟自动放置成员变量结束 =========
 
 
-    // ================ 新增的撤销记录类 ================
+    // ================ 撤销记录类 ================
     private static class UndoRecord {
         public enum OperationType { SET, CLEAR_BLOCK } // 操作类型枚举
 
         public final String undoFileName;
         public final Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups;
-        public final OperationType operationType; // 新增操作类型标记
+        public final OperationType operationType; // 操作类型标记
 
         public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type) {
             this.undoFileName = undoFileName;
@@ -456,7 +456,7 @@ public class GhostBlockCommand extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) throws CommandException {
         WorldClient world = Minecraft.getMinecraft().theWorld; // 获取 world 实例
 
-        // --- 新增：处理 help 子命令 ---
+        // --- 处理 help 子命令 ---
         if (args.length > 0 && args[0].equalsIgnoreCase("help")) {
             displayHelp(sender); // 调用新的帮助显示方法
             return; // 显示帮助后直接返回，不继续执行后续逻辑
@@ -495,7 +495,7 @@ public class GhostBlockCommand extends CommandBase {
             // 解析可选参数
             String saveFileName = null;
             boolean saveToFile = false;
-            boolean userProvidedSave = false; // 新增：标记用户是否输入了 -s
+            boolean userProvidedSave = false; // 标记用户是否输入了 -s
             if (args.length > 5) {
                  if (args[5].equalsIgnoreCase("-s") || args[5].equalsIgnoreCase("--save")) {
                      userProvidedSave = true; // 用户输入了 -s
@@ -517,7 +517,7 @@ public class GhostBlockCommand extends CommandBase {
                  }
             }
 
-            // 新增：检查自动保存配置 (仅当用户未指定 -s 时)
+            // 检查自动保存配置 (仅当用户未指定 -s 时)
             if (!userProvidedSave && GhostConfig.enableAutoSave) {
                 saveToFile = true; // 启用保存
                 saveFileName = GhostConfig.defaultSaveFileName; // 获取配置的默认文件名
@@ -784,7 +784,7 @@ public class GhostBlockCommand extends CommandBase {
                  System.out.println("[GhostBlock DEBUG] Fill: 使用用户指定的批次大小: " + batchSize);
             }
 
-            // 新增：检查自动保存配置 (仅当用户未指定 -s 时)
+            // 检查自动保存配置 (仅当用户未指定 -s 时)
             if (!userProvidedSave && GhostConfig.enableAutoSave) {
                 saveToFile = true; // 启用保存
                 saveFileName = GhostConfig.defaultSaveFileName; // 获取配置的默认文件名
@@ -1117,7 +1117,7 @@ public class GhostBlockCommand extends CommandBase {
             System.out.println("[GhostBlock-DEBUG LOAD] 创建并推送撤销记录: " + undoFileName);
 
 
-            // --- 新增: 检查是否需要隐式批处理 ---
+            // --- 检查是否需要隐式批处理 ---
             boolean implicitBatchRequired = false;
             if (!useBatch && !entries.isEmpty()) { // 仅在未指定 -b 且有条目时检查
                 System.out.println("[GhostBlock DEBUG Load] 开始隐式批处理检查...");
@@ -1160,7 +1160,7 @@ public class GhostBlockCommand extends CommandBase {
                     implicitBatchRequired = true;
                     // 仅在用户未明确要求批处理时发出通知
                     if (!useBatch) {
-                         sender.addChatMessage(formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.load.implicit_batch_notice")); // 新增语言键
+                         sender.addChatMessage(formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.load.implicit_batch_notice")); // 语言键
                     }
                 }
             }
@@ -1288,7 +1288,7 @@ public class GhostBlockCommand extends CommandBase {
 
             // --- 确认成功，开始执行删除 ---
 
-            // === 新增：备份要删除的文件内容 ===
+            // === 备份要删除的文件内容 ===
             Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups = new HashMap<>();
              // 使用命令中的基础文件名列表进行备份
             for (String baseFileName : commandBaseFileNames) {

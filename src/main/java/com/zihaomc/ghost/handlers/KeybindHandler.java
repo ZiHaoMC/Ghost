@@ -24,8 +24,6 @@ import java.util.List;
 
 public class KeybindHandler {
 
-    // ... (其他方法保持不变) ...
-
     public static KeyBinding toggleAutoSneak;
     public static KeyBinding togglePlayerESP;
     public static KeyBinding toggleBedrockMiner;
@@ -73,7 +71,6 @@ public class KeybindHandler {
             sendToggleMessage("ghost.keybind.toggle.bedrockminer", newState);
         }
         
-        // vvvvvvvvvv 新增代码开始 vvvvvvvvvv
         if (openNoteGui != null && openNoteGui.isPressed()) {
             if (GhostConfig.enableNoteFeature) {
                 // 仅当当前没有打开任何GUI时才打开笔记界面
@@ -82,7 +79,6 @@ public class KeybindHandler {
                 }
             }
         }
-        // ^^^^^^^^^^ 新增代码结束 ^^^^^^^^^^
 
         if (Minecraft.getMinecraft().currentScreen == null && translateItemKey != null && translateItemKey.isPressed()) {
             if (translateItemKey.getKeyCode() == Minecraft.getMinecraft().gameSettings.keyBindChat.getKeyCode()) {
@@ -91,7 +87,6 @@ public class KeybindHandler {
         }
     }
 
-    // ... (其他方法保持不变) ...
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
         if (event.gui instanceof GuiContainer) {
