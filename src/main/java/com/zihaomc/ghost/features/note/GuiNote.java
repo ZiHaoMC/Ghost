@@ -20,63 +20,215 @@ import java.util.ArrayList;
 
 /**
  * 游戏内笔记的GUI界面。
- * Final Version (V6) - Optifine Compatible "What You See Is What You Get" Renderer
- * @version V6
+ * Final Version (V7) - Unified Renderer for Visual Consistency with Optifine
+ * 最终版本 (V7) - 使用统一渲染器以确保在Optifine环境下的视觉一致性
+ * @version V7
  */
 public class GuiNote extends GuiScreen {
 
+    // MARK: - 成员变量
+
+    /** 存储笔记的完整文本内容 */
     private String textContent = "";
+    /** 光标在textContent中的字符索引位置 */
     private int cursorPosition = 0;
+    /** 文本选择的锚点位置，用于实现Shift+方向键选择文本 */
     private int selectionAnchor = 0;
+    
+    /** 文本区域的垂直滚动偏移量 */
     private int scrollOffset = 0;
+    /** 文本内容可滚动的最大距离 */
     private int maxScroll = 0;
 
+    /** 文本区域在屏幕上的坐标和尺寸 */
     private int textAreaX, textAreaY, textAreaWidth, textAreaHeight;
+    /** 用于控制光标闪烁的计时器 */
     private int cursorBlink;
 
+    /** 文本区域的内边距 */
     private static final int PADDING = 4;
+    /** 文本自动换行的宽度，等于文本区域宽度减去两倍的内边距 */
     private int wrappingWidth;
     
+    /** 经过自动换行处理后，用于渲染的每一行文本的列表 */
     private List<String> renderedLines;
+    /** 一个数组，存储renderedLines中每一行在原始textContent中的起始字符索引 */
     private int[] lineStartIndices;
 
-    // V6核心：用于缓存当前行每个字符的精确屏幕X坐标
+    /** 
+     * V6/V7核心：用于缓存当前渲染行中每个字符的精确屏幕X坐标。
+     * 这是对抗Optifine渲染不一致性的关键。
+     */
     private final List<Integer> charXPositions = new ArrayList<>();
 
+    // MARK: - GUI生命周期方法
+
+    /**
+     * GUI初始化时调用。
+     * 设置尺寸、加载笔记内容、创建按钮。
+     */
     @Override
     public void initGui() {
         super.initGui();
-        Keyboard.enableRepeatEvents(true);
+        Keyboard.enableRepeatEvents(true); // 允许长按键盘时连续输入
         this.textAreaX = this.width / 2 - 150;
         this.textAreaY = 40;
         this.textAreaWidth = 300;
         this.textAreaHeight = this.height - 90;
-
         this.wrappingWidth = this.textAreaWidth - PADDING * 2; 
         
         this.textContent = NoteManager.loadNote();
-        updateLinesAndIndices(); // 继续使用我们之前最稳定版本的换行逻辑
-        setCursorPosition(this.textContent.length());
+        updateLinesAndIndices(); // 根据加载的文本内容计算换行
+        setCursorPosition(this.textContent.length()); // 将光标置于末尾
         
         this.buttonList.clear();
         this.buttonList.add(new GuiButton(0, this.width / 2 - 100, this.height - 25, LangUtil.translate("ghost.gui.note.save_and_close")));
     }
 
+    /**
+     * GUI关闭时调用。
+     * 保存笔记内容并清理资源。
+     */
     @Override
     public void onGuiClosed() {
         super.onGuiClosed();
-        Keyboard.enableRepeatEvents(false);
+        Keyboard.enableRepeatEvents(false); // 关闭键盘连续输入
         NoteManager.saveNote(this.textContent);
     }
     
+    /**
+     * 每tick更新一次，用于动画等。
+     * 这里只用于更新光标的闪烁计时器。
+     */
     @Override
     public void updateScreen() {
         super.updateScreen();
         this.cursorBlink++;
     }
 
+    // MARK: - 渲染方法
+
+    /**
+     * 每一帧都调用的主绘制方法。
+     */
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        // 绘制背景和UI框架
+        this.drawDefaultBackground();
+        drawCenteredString(this.fontRendererObj, LangUtil.translate("ghost.gui.note.title"), this.width / 2, 20, 0xFFFFFF);
+        drawRect(textAreaX - 1, textAreaY - 1, textAreaX + textAreaWidth + 1, textAreaY + textAreaHeight + 1, 0xFFC0C0C0);
+        drawRect(textAreaX, textAreaY, textAreaX + textAreaWidth, textAreaY + textAreaHeight, 0xFF000000);
+        
+        // 开启剪裁测试，只在文本区域内绘制文本
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
+        int scaleFactor = new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor();
+        GL11.glScissor(textAreaX * scaleFactor, mc.displayHeight - (textAreaY + textAreaHeight) * scaleFactor, textAreaWidth * scaleFactor, textAreaHeight * scaleFactor);
+        
+        if (this.renderedLines != null) {
+            // 计算滚动条范围
+            this.maxScroll = Math.max(0, this.renderedLines.size() * this.fontRendererObj.FONT_HEIGHT - this.textAreaHeight + PADDING);
+            this.scrollOffset = Math.min(this.maxScroll, Math.max(0, this.scrollOffset));
+
+            int yPos = this.textAreaY + PADDING - this.scrollOffset;
+            int selStart = getSelectionStart();
+            int selEnd = getSelectionEnd();
+            int cursorLineIndex = findLineForPosition(this.cursorPosition);
+
+            // 遍历所有需要渲染的行
+            for (int i = 0; i < this.renderedLines.size(); i++) {
+                String line = this.renderedLines.get(i);
+                
+                // 优化：只对屏幕上可见的行进行绘制和计算
+                if (yPos + this.fontRendererObj.FONT_HEIGHT > this.textAreaY && yPos < this.textAreaY + this.textAreaHeight) {
+                    
+                    // --- V7核心改动：统一渲染路径 ---
+                    // 无论如何，都使用我们自定义的逐字渲染方法来绘制文本并缓存坐标。
+                    // 这确保了所有行的视觉外观都是一致的，解决了切换行时光标/字体间距变化的BUG。
+                    drawStringAndCachePositions(line, this.textAreaX + PADDING, yPos, 0xFFFFFF);
+
+                    // --- 绘制选区 (如果需要) ---
+                    if (hasSelection()) {
+                        int lineStart = this.lineStartIndices[i];
+                        int lineEnd = (i + 1 < this.lineStartIndices.length) ? this.lineStartIndices[i+1] : this.textContent.length();
+                        
+                        // 检查当前行是否与选区有交集
+                        if (selEnd > lineStart && selStart < lineEnd) {
+                            int highlightStartInText = Math.max(selStart, lineStart);
+                            int highlightEndInText = Math.min(selEnd, lineEnd);
+                            int highlightStartInLine = highlightStartInText - lineStart;
+                            int highlightEndInLine = highlightEndInText - lineStart;
+
+                            if (highlightStartInLine < highlightEndInLine && highlightEndInLine < this.charXPositions.size()) {
+                                int x1 = this.charXPositions.get(highlightStartInLine);
+                                int x2 = this.charXPositions.get(highlightEndInLine);
+                                drawSelectionBox(x1, yPos, x2, yPos + this.fontRendererObj.FONT_HEIGHT);
+                            }
+                        }
+                    }
+
+                    // --- 绘制光标 (如果需要) ---
+                    if (i == cursorLineIndex && (this.cursorBlink / 6) % 2 == 0) {
+                        drawCursor(yPos);
+                    }
+                }
+                
+                yPos += this.fontRendererObj.FONT_HEIGHT;
+            }
+        }
+        
+        // 关闭剪裁测试
+        GL11.glDisable(GL11.GL_SCISSOR_TEST);
+        
+        // 绘制底部提示文字和按钮
+        drawCenteredString(this.fontRendererObj, LangUtil.translate("ghost.gui.note.scroll_hint"), this.width / 2, this.height - 40, 0xA0A0A0);
+        super.drawScreen(mouseX, mouseY, partialTicks);
+    }
+    
+    /**
+     * V7核心方法：通过逐个字符绘制来获取每个字符的精确屏幕X坐标，并将它们缓存起来。
+     * 此方法现在是所有行文本的唯一渲染器，以保证视觉一致性。
+     */
+    private void drawStringAndCachePositions(String text, int x, int y, int color) {
+        this.charXPositions.clear();
+        
+        float currentX = (float) x;
+        this.charXPositions.add(x); // 缓存字符串开始的位置（即第0个字符的起始位置）
+
+        for (int i = 0; i < text.length(); ++i) {
+            char character = text.charAt(i);
+            String s = String.valueOf(character);
+            
+            // 逐字符绘制，这是获取真实渲染位置的唯一可靠方法
+            this.fontRendererObj.drawStringWithShadow(s, currentX, (float)y, color);
+            
+            // 累加每个字符的宽度来确定下一个字符的位置
+            currentX += this.fontRendererObj.getStringWidth(s);
+            this.charXPositions.add((int)Math.round(currentX)); // 四舍五入以提高精度
+        }
+    }
+
+    /**
+     * V7版光标绘制：直接从缓存的精确坐标中读取位置。
+     */
+    private void drawCursor(int cursorY) {
+        int lineIndex = findLineForPosition(this.cursorPosition);
+        if (lineIndex < 0 || lineIndex >= this.renderedLines.size()) return;
+        
+        int lineStart = this.lineStartIndices[lineIndex];
+        int posInLine = this.cursorPosition - lineStart;
+        
+        // 从缓存中获取精确的X坐标
+        if (posInLine < this.charXPositions.size()) {
+            int cursorX = this.charXPositions.get(posInLine);
+            drawRect(cursorX, cursorY - 1, cursorX + 1, cursorY + this.fontRendererObj.FONT_HEIGHT, 0xFFFFFFFF);
+        }
+    }
+
+    // MARK: - 输入处理方法
+
     @Override
     public void handleKeyboardInput() throws IOException {
+        // 优先处理回车键，因为它在 keyTyped 中行为不一致
         if (Keyboard.getEventKeyState() && Keyboard.getEventKey() == Keyboard.KEY_RETURN) {
             this.insertText("\n");
             return;
@@ -86,83 +238,56 @@ public class GuiNote extends GuiScreen {
     
     @Override
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        if (keyCode == Keyboard.KEY_ESCAPE) { 
-            this.mc.displayGuiScreen(null); 
-            return; 
-        }
-        
+        if (keyCode == Keyboard.KEY_ESCAPE) { this.mc.displayGuiScreen(null); return; }
+        // 处理Ctrl+A/C/V/X等组合键
         if (GhostConfig.enableAdvancedEditing && GuiScreen.isCtrlKeyDown()) {
-            if (keyCode == Keyboard.KEY_A) { 
-                selectAll(); 
-                return; 
-            }
-            if (keyCode == Keyboard.KEY_C) { 
-                GuiScreen.setClipboardString(getSelectedText()); 
-                return; 
-            }
-            if (keyCode == Keyboard.KEY_X) { 
-                GuiScreen.setClipboardString(getSelectedText()); 
-                deleteSelection(); 
-                return; 
-            }
-            if (keyCode == Keyboard.KEY_V) { 
-                insertText(GuiScreen.getClipboardString()); 
-                return; 
-            }
+            if (keyCode == Keyboard.KEY_A) { selectAll(); return; }
+            if (keyCode == Keyboard.KEY_C) { GuiScreen.setClipboardString(getSelectedText()); return; }
+            if (keyCode == Keyboard.KEY_X) { GuiScreen.setClipboardString(getSelectedText()); deleteSelection(); return; }
+            if (keyCode == Keyboard.KEY_V) { insertText(GuiScreen.getClipboardString()); return; }
         }
-        
+        // 处理功能键
         switch (keyCode) {
             case Keyboard.KEY_BACK:
-                if (hasSelection()) {
-                    deleteSelection();
-                } else if (this.cursorPosition > 0) {
-                    deleteCharBackwards();
-                }
+                if (hasSelection()) deleteSelection();
+                else if (this.cursorPosition > 0) deleteCharBackwards();
                 return;
-                
             case Keyboard.KEY_DELETE:
-                if (hasSelection()) {
-                    deleteSelection();
-                } else if (this.cursorPosition < this.textContent.length()) {
+                if (hasSelection()) deleteSelection();
+                else if (this.cursorPosition < this.textContent.length()) {
                     this.textContent = new StringBuilder(this.textContent).deleteCharAt(this.cursorPosition).toString();
                     updateLinesAndIndices();
                 }
                 return;
-                
-            case Keyboard.KEY_LEFT:
-                moveCursorBy(-1, GuiScreen.isShiftKeyDown());
-                return;
-                
-            case Keyboard.KEY_RIGHT:
-                moveCursorBy(1, GuiScreen.isShiftKeyDown());
-                return;
-                
-            case Keyboard.KEY_HOME:
-                setCursorPosition(0, GuiScreen.isShiftKeyDown());
-                return;
-                
-            case Keyboard.KEY_END:
-                setCursorPosition(this.textContent.length(), GuiScreen.isShiftKeyDown());
-                return;
-                
-            case Keyboard.KEY_RETURN:
-                insertText("\n");
-                return;
+            case Keyboard.KEY_LEFT: moveCursorBy(-1, GuiScreen.isShiftKeyDown()); return;
+            case Keyboard.KEY_RIGHT: moveCursorBy(1, GuiScreen.isShiftKeyDown()); return;
+            case Keyboard.KEY_HOME: setCursorPosition(0, GuiScreen.isShiftKeyDown()); return;
+            case Keyboard.KEY_END: setCursorPosition(this.textContent.length(), GuiScreen.isShiftKeyDown()); return;
+            case Keyboard.KEY_RETURN: insertText("\n"); return;
         }
-        
+        // 处理可打印字符
         if (ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
             insertText(Character.toString(typedChar));
         }
     }
 
     @Override
+    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
+        super.mouseClicked(mouseX, mouseY, mouseButton);
+        if (mouseButton == 0 && mouseX >= textAreaX && mouseX <= textAreaX + textAreaWidth && mouseY >= textAreaY && mouseY <= textAreaY + textAreaHeight) {
+            // 将鼠标点击的屏幕坐标转换为文本索引
+            int charIndex = getCharIndexAt(mouseX, mouseY);
+            this.selectionAnchor = charIndex;
+            this.cursorPosition = charIndex;
+            this.cursorBlink = 0;
+        }
+    }
+
+    @Override
     protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
         super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
-        if (clickedMouseButton == 0 &&
-            mouseX >= textAreaX && mouseX <= textAreaX + textAreaWidth &&
-            mouseY >= textAreaY && mouseY <= textAreaY + textAreaHeight) {
-            
-            // 拖动时也需要精确查找
+        if (clickedMouseButton == 0 && mouseX >= textAreaX && mouseX <= textAreaX + textAreaWidth && mouseY >= textAreaY && mouseY <= textAreaY + textAreaHeight) {
+            // 鼠标拖动时更新光标位置以实现选择
             int charIndex = getCharIndexAt(mouseX, mouseY);
             this.cursorPosition = charIndex;
             this.cursorBlink = 0;
@@ -172,6 +297,7 @@ public class GuiNote extends GuiScreen {
     @Override
     public void handleMouseInput() throws IOException {
         super.handleMouseInput();
+        // 处理鼠标滚轮事件
         int dWheel = Mouse.getEventDWheel();
         if (dWheel != 0) {
             int scrollAmount = this.fontRendererObj.FONT_HEIGHT * 3 * (dWheel < 0 ? 1 : -1);
@@ -181,200 +307,46 @@ public class GuiNote extends GuiScreen {
     
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
+        // 处理按钮点击事件
         if(button.enabled && button.id == 0) this.mc.displayGuiScreen(null);
         super.actionPerformed(button);
     }
-
-    @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-        this.drawDefaultBackground();
-        drawCenteredString(this.fontRendererObj, LangUtil.translate("ghost.gui.note.title"), this.width / 2, 20, 0xFFFFFF);
-        drawRect(textAreaX - 1, textAreaY - 1, textAreaX + textAreaWidth + 1, textAreaY + textAreaHeight + 1, 0xFFC0C0C0);
-        drawRect(textAreaX, textAreaY, textAreaX + textAreaWidth, textAreaY + textAreaHeight, 0xFF000000);
-        
-        GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        int scaleFactor = new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor();
-        GL11.glScissor(textAreaX * scaleFactor, mc.displayHeight - (textAreaY + textAreaHeight) * scaleFactor, textAreaWidth * scaleFactor, textAreaHeight * scaleFactor);
-        
-        if (this.renderedLines != null) {
-            this.maxScroll = Math.max(0, this.renderedLines.size() * this.fontRendererObj.FONT_HEIGHT - this.textAreaHeight + PADDING);
-            this.scrollOffset = Math.min(this.maxScroll, Math.max(0, this.scrollOffset));
-
-            int yPos = this.textAreaY + PADDING - this.scrollOffset;
-            int selStart = getSelectionStart();
-            int selEnd = getSelectionEnd();
-
-            for (int i = 0; i < this.renderedLines.size(); i++) {
-                String line = this.renderedLines.get(i);
-                
-                // 只在行可见时才进行绘制和计算
-                if (yPos + this.fontRendererObj.FONT_HEIGHT > this.textAreaY && yPos < this.textAreaY + this.textAreaHeight) {
-                    
-                    int cursorLineIndex = findLineForPosition(this.cursorPosition);
-                    int selectionStartLine = findLineForPosition(selStart);
-                    int selectionEndLine = findLineForPosition(selEnd);
-
-                    // 判断当前行是否需要进行精确坐标计算（即，光标或选区涉及此行）
-                    boolean isLineInvolved = (i == cursorLineIndex) || (hasSelection() && i >= selectionStartLine && i <= selectionEndLine);
-
-                    if (isLineInvolved) {
-                        // V6核心：绘制文本并实时缓存每个字符的精确X坐标
-                        drawStringAndCachePositions(line, this.textAreaX + PADDING, yPos, 0xFFFFFF);
-
-                        // --- 绘制选区 (使用精确坐标) ---
-                        if (hasSelection()) {
-                            int lineStart = this.lineStartIndices[i];
-                            int lineEnd = (i + 1 < this.lineStartIndices.length) ? this.lineStartIndices[i+1] : this.textContent.length();
-                            
-                            // 检查当前行是否与选区有交集
-                            if (selEnd > lineStart && selStart < lineEnd) {
-                                // 计算选区在本行内的起始和结束字符索引
-                                int highlightStartInText = Math.max(selStart, lineStart);
-                                int highlightEndInText = Math.min(selEnd, lineEnd);
-                                
-                                int highlightStartInLine = highlightStartInText - lineStart;
-                                int highlightEndInLine = highlightEndInText - lineStart;
-
-                                // 从缓存中获取精确的X坐标进行绘制
-                                if (highlightStartInLine < highlightEndInLine && highlightEndInLine < this.charXPositions.size()) {
-                                    int x1 = this.charXPositions.get(highlightStartInLine);
-                                    int x2 = this.charXPositions.get(highlightEndInLine);
-                                    drawSelectionBox(x1, yPos, x2, yPos + this.fontRendererObj.FONT_HEIGHT);
-                                }
-                            }
-                        }
-
-                        // --- 绘制光标 (如果光标在当前行) ---
-                        if (i == cursorLineIndex && (this.cursorBlink / 6) % 2 == 0) {
-                            drawCursor(yPos);
-                        }
-                    } else {
-                        // 对于与光标/选区无关的行，我们还是用老方法快速绘制，以优化性能
-                        this.fontRendererObj.drawStringWithShadow(line, (float)(this.textAreaX + PADDING), (float)yPos, 0xFFFFFF);
-                    }
-                }
-                
-                yPos += this.fontRendererObj.FONT_HEIGHT;
-            }
-        }
-        
-        GL11.glDisable(GL11.GL_SCISSOR_TEST);
-        
-        drawCenteredString(this.fontRendererObj, LangUtil.translate("ghost.gui.note.scroll_hint"), this.width / 2, this.height - 40, 0xA0A0A0);
-        super.drawScreen(mouseX, mouseY, partialTicks);
-    }
     
-    /**
-     * V6核心方法：通过逐个字符绘制来获取每个字符的精确屏幕X坐标，并将它们缓存起来。
-     * 此方法会直接完成文本绘制，避免重复渲染。
-     */
-    private void drawStringAndCachePositions(String text, int x, int y, int color) {
-        this.charXPositions.clear();
-        
-        float currentX = (float) x;
-        
-        // 缓存字符串开始的位置（即第0个字符的起始位置）
-        this.charXPositions.add(x); 
-
-        for (int i = 0; i < text.length(); ++i) {
-            char character = text.charAt(i);
-            String s = String.valueOf(character);
-            
-            // 直接使用带阴影的方法进行绘制，这是最接近真实渲染的方式
-            this.fontRendererObj.drawStringWithShadow(s, currentX, (float)y, color);
-            
-            // 获取刚刚绘制的字符的宽度，并更新下一个字符的起始X坐标
-            // 即使有Optifine，单个字符的getStringWidth通常也是相对准确的，或者其误差与渲染误差方向一致
-            currentX += this.fontRendererObj.getStringWidth(s);
-            this.charXPositions.add((int)Math.round(currentX)); // 四舍五入以提高精度
-        }
-    }
+    // MARK: - 文本/光标/换行核心逻辑
 
     /**
-     * V6版光标绘制：直接从缓存的精确坐标中读取位置。
-     */
-    private void drawCursor(int cursorY) {
-        int lineIndex = findLineForPosition(this.cursorPosition);
-        if (lineIndex < 0 || lineIndex >= this.renderedLines.size()) return;
-        
-        int lineStart = this.lineStartIndices[lineIndex];
-        int posInLine = this.cursorPosition - lineStart;
-        
-        // 如果缓存有效且索引在范围内
-        if (posInLine < this.charXPositions.size()) {
-            int cursorX = this.charXPositions.get(posInLine);
-            
-            // 绘制一个1像素宽的光标
-            drawRect(cursorX, cursorY - 1, cursorX + 1, cursorY + this.fontRendererObj.FONT_HEIGHT, 0xFFFFFFFF);
-        }
-    }
-    
-    private int findLineForPosition(int position) {
-        if (this.lineStartIndices == null) return 0;
-        
-        for (int i = 0; i < this.lineStartIndices.length - 1; i++) {
-            if (position >= this.lineStartIndices[i] && position < this.lineStartIndices[i + 1]) {
-                return i;
-            }
-        }
-        
-        // 如果位置在最后一行
-        if (this.renderedLines != null && !this.renderedLines.isEmpty() && position >= this.lineStartIndices[this.lineStartIndices.length - 1]) {
-            return this.renderedLines.size() - 1;
-        }
-        
-        return 0;
-    }
-    
-    /**
-     * 我们继续使用V4的换行逻辑，因为它在逻辑上是正确的，
-     * 能为我们提供正确的 renderedLines 和 lineStartIndices。
-     * 渲染时的视觉修正由V6的绘制方法完成。
+     * 将原始textContent字符串根据宽度分割成多行，并计算每行的起始索引。
+     * 这是“逻辑”上的换行，为渲染做准备。
      */
     private void updateLinesAndIndices() {
-        if (this.textContent == null || this.fontRendererObj == null) {
-            return;
-        }
-
+        if (this.textContent == null || this.fontRendererObj == null) return;
         this.renderedLines = Lists.newArrayList();
         List<Integer> indices = Lists.newArrayList();
-        
         if (this.textContent.isEmpty()) {
             this.renderedLines.add("");
             this.lineStartIndices = new int[]{0, 0};
             return;
         }
-
         int modelIndex = 0;
         while (modelIndex < this.textContent.length()) {
             indices.add(modelIndex);
-
             String remainingText = this.textContent.substring(modelIndex);
             int lineLength = computeMaxCharsForWidth(remainingText, this.wrappingWidth);
-            
             if (lineLength <= 0 && modelIndex < this.textContent.length()) {
-                if (remainingText.charAt(0) == '\n') {
-                    lineLength = 0;
-                } else {
-                    lineLength = 1;
-                }
+                if (remainingText.charAt(0) == '\n') lineLength = 0;
+                else lineLength = 1;
             }
-            
             String lineContent = this.textContent.substring(modelIndex, modelIndex + lineLength);
             this.renderedLines.add(lineContent);
-            
             modelIndex += lineLength;
-
             if (modelIndex < this.textContent.length() && this.textContent.charAt(modelIndex) == '\n') {
                 modelIndex++;
             }
         }
-        
         if (this.renderedLines.isEmpty() || (this.textContent.length() > 0 && this.textContent.endsWith("\n"))) {
             this.renderedLines.add("");
             indices.add(this.textContent.length());
         }
-
         this.lineStartIndices = new int[indices.size() + 1];
         for (int i = 0; i < indices.size(); i++) {
             this.lineStartIndices[i] = indices.get(i);
@@ -382,59 +354,90 @@ public class GuiNote extends GuiScreen {
         this.lineStartIndices[indices.size()] = this.textContent.length();
     }
     
+    /**
+     * 一个辅助方法，计算在给定宽度内，一个字符串从头开始最多能容纳多少个字符。
+     * @return 字符数量
+     */
     private int computeMaxCharsForWidth(String text, int width) {
-        if (text.isEmpty()) {
-            return 0;
-        }
-        
+        if (text.isEmpty()) return 0;
         int manualNewlinePos = text.indexOf('\n');
-        
         for (int chars = 1; chars <= text.length(); ++chars) {
-            if (manualNewlinePos != -1 && chars > manualNewlinePos) {
-                return manualNewlinePos;
-            }
-
+            if (manualNewlinePos != -1 && chars > manualNewlinePos) return manualNewlinePos;
             String sub = text.substring(0, chars);
-            if (this.fontRendererObj.getStringWidth(sub) > width) {
-                return chars - 1;
-            }
+            if (this.fontRendererObj.getStringWidth(sub) > width) return chars - 1;
         }
-        
-        if (manualNewlinePos != -1) {
-            return manualNewlinePos;
-        }
+        if (manualNewlinePos != -1) return manualNewlinePos;
         return text.length();
     }
     
+    /**
+     * V7版，将屏幕坐标(x,y)转换为textContent中的字符索引。
+     * 依赖于实时计算的字符坐标缓存。
+     */
+    private int getCharIndexAt(int mouseX, int mouseY) {
+        if (this.renderedLines == null || this.renderedLines.isEmpty()) return 0;
+        int relativeY = mouseY - this.textAreaY - PADDING + this.scrollOffset;
+        int clickedLineIndex = relativeY / this.fontRendererObj.FONT_HEIGHT;
+        if (clickedLineIndex < 0) return 0;
+        if (clickedLineIndex >= this.renderedLines.size()) return this.textContent.length();
+        String clickedLine = this.renderedLines.get(clickedLineIndex);
+        
+        // 在后台计算被点击行的字符坐标，以找到最近的插入点
+        this.charXPositions.clear();
+        float currentX = (float) (this.textAreaX + PADDING);
+        this.charXPositions.add((int)currentX); 
+        for (int i = 0; i < clickedLine.length(); ++i) {
+            currentX += this.fontRendererObj.getStringWidth(String.valueOf(clickedLine.charAt(i)));
+            this.charXPositions.add((int)Math.round(currentX));
+        }
+        
+        int bestIndexInLine = 0;
+        int minDistance = Integer.MAX_VALUE;
+        for (int i = 0; i < this.charXPositions.size(); i++) {
+            int charX = this.charXPositions.get(i);
+            int distance = Math.abs(mouseX - charX);
+            if (distance < minDistance) {
+                minDistance = distance;
+                bestIndexInLine = i;
+            }
+        }
+        return this.lineStartIndices[clickedLineIndex] + bestIndexInLine;
+    }
+
+    /**
+     * 根据给定的字符索引，找到它属于哪一行。
+     * @return 行的索引
+     */
+    private int findLineForPosition(int position) {
+        if (this.lineStartIndices == null) return 0;
+        for (int i = 0; i < this.lineStartIndices.length - 1; i++) {
+            if (position >= this.lineStartIndices[i] && position < this.lineStartIndices[i + 1]) return i;
+        }
+        if (this.renderedLines != null && !this.renderedLines.isEmpty() && position >= this.lineStartIndices[this.lineStartIndices.length - 1]) {
+            return this.renderedLines.size() - 1;
+        }
+        return 0;
+    }
+
+    // MARK: - 文本和光标操作方法
+
     private void insertText(String text) {
-        if (hasSelection()) {
-            deleteSelection();
-        }
-        
+        if (hasSelection()) deleteSelection();
         String textToInsert = ChatAllowedCharacters.filterAllowedCharacters(text);
-        if (textToInsert.isEmpty() && !text.equals("\n")) {
-            return;
-        }
-        
-        if (text.equals("\n")) {
-            textToInsert = "\n";
-        }
-        
+        if (textToInsert.isEmpty() && !text.equals("\n")) return;
+        if (text.equals("\n")) textToInsert = "\n";
         StringBuilder sb = new StringBuilder(this.textContent);
         sb.insert(this.cursorPosition, textToInsert);
         this.textContent = sb.toString();
-        
         this.cursorPosition += textToInsert.length();
         this.selectionAnchor = this.cursorPosition;
         this.cursorBlink = 0;
-        
         updateLinesAndIndices();
     }
     
     private void deleteCharBackwards() {
-        if (hasSelection()) {
-            deleteSelection();
-        } else if (this.cursorPosition > 0) {
+        if (hasSelection()) deleteSelection();
+        else if (this.cursorPosition > 0) {
             StringBuilder sb = new StringBuilder(this.textContent);
             sb.deleteCharAt(this.cursorPosition - 1);
             this.textContent = sb.toString();
@@ -447,55 +450,42 @@ public class GuiNote extends GuiScreen {
     
     private void deleteSelection() {
         if (!hasSelection()) return;
-        
         int start = getSelectionStart();
         int end = getSelectionEnd();
-        
         StringBuilder sb = new StringBuilder(this.textContent);
         sb.delete(start, end);
         this.textContent = sb.toString();
-        
         this.cursorPosition = start;
         this.selectionAnchor = start;
         this.cursorBlink = 0;
-        
         updateLinesAndIndices();
     }
     
     private void moveCursorBy(int amount, boolean extendSelection) {
-        int newPosition = this.cursorPosition + amount;
-        setCursorPosition(newPosition, extendSelection);
+        setCursorPosition(this.cursorPosition + amount, extendSelection);
     }
     
-    private void setCursorPosition(int newPosition) {
-        setCursorPosition(newPosition, false);
-    }
+    private void setCursorPosition(int newPosition) { setCursorPosition(newPosition, false); }
     
     private void setCursorPosition(int newPosition, boolean extendSelection) {
         newPosition = Math.max(0, Math.min(this.textContent.length(), newPosition));
         this.cursorPosition = newPosition;
-        if (!extendSelection) {
-            this.selectionAnchor = this.cursorPosition;
-        }
+        if (!extendSelection) this.selectionAnchor = this.cursorPosition;
         this.cursorBlink = 0;
-        
         ensureCursorVisible();
     }
     
+    /** 确保光标始终在可见的文本区域内，如果超出则自动滚动 */
     private void ensureCursorVisible() {
         int lineIndex = findLineForPosition(this.cursorPosition);
         if (lineIndex < 0) return;
-        
         int cursorY = lineIndex * this.fontRendererObj.FONT_HEIGHT;
         int visibleTop = this.scrollOffset;
         int visibleBottom = this.scrollOffset + this.textAreaHeight - PADDING * 2;
-        
-        if (cursorY < visibleTop) {
-            this.scrollOffset = cursorY;
-        } else if (cursorY + this.fontRendererObj.FONT_HEIGHT > visibleBottom) {
+        if (cursorY < visibleTop) this.scrollOffset = cursorY;
+        else if (cursorY + this.fontRendererObj.FONT_HEIGHT > visibleBottom) {
             this.scrollOffset = cursorY + this.fontRendererObj.FONT_HEIGHT - this.textAreaHeight + PADDING * 2;
         }
-        
         this.scrollOffset = Math.max(0, Math.min(this.maxScroll, this.scrollOffset));
     }
     
@@ -505,22 +495,17 @@ public class GuiNote extends GuiScreen {
         this.cursorBlink = 0;
     }
     
-    private boolean hasSelection() {
-        return this.cursorPosition != this.selectionAnchor;
-    }
+    private boolean hasSelection() { return this.cursorPosition != this.selectionAnchor; }
     
-    private int getSelectionStart() {
-        return Math.min(this.cursorPosition, this.selectionAnchor);
-    }
+    private int getSelectionStart() { return Math.min(this.cursorPosition, this.selectionAnchor); }
     
-    private int getSelectionEnd() {
-        return Math.max(this.cursorPosition, this.selectionAnchor);
-    }
+    private int getSelectionEnd() { return Math.max(this.cursorPosition, this.selectionAnchor); }
     
     private String getSelectedText() {
         return hasSelection() ? this.textContent.substring(getSelectionStart(), getSelectionEnd()) : "";
     }
 
+    /** 使用Tessellator绘制蓝色半透明的选区矩形 */
     private void drawSelectionBox(int startX, int startY, int endX, int endY) {
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer worldrenderer = tessellator.getWorldRenderer();
@@ -536,61 +521,5 @@ public class GuiNote extends GuiScreen {
         tessellator.draw();
         GlStateManager.disableColorLogic();
         GlStateManager.enableTexture2D();
-    }
-    
-    @Override
-    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
-        super.mouseClicked(mouseX, mouseY, mouseButton);
-        if (mouseButton == 0 &&
-            mouseX >= textAreaX && mouseX <= textAreaX + textAreaWidth &&
-            mouseY >= textAreaY && mouseY <= textAreaY + textAreaHeight) {
-            
-            int charIndex = getCharIndexAt(mouseX, mouseY);
-            this.selectionAnchor = charIndex;
-            this.cursorPosition = charIndex;
-            this.cursorBlink = 0;
-        }
-    }
-    
-    /**
-     * V6版字符索引查找：同样依赖于实时渲染和坐标缓存来找到鼠标点击位置。
-     */
-    private int getCharIndexAt(int mouseX, int mouseY) {
-        if (this.renderedLines == null || this.renderedLines.isEmpty()) {
-            return 0;
-        }
-
-        int relativeY = mouseY - this.textAreaY - PADDING + this.scrollOffset;
-        int clickedLineIndex = relativeY / this.fontRendererObj.FONT_HEIGHT;
-
-        if (clickedLineIndex < 0) return 0;
-        if (clickedLineIndex >= this.renderedLines.size()) return this.textContent.length();
-
-        String clickedLine = this.renderedLines.get(clickedLineIndex);
-        int lineY = this.textAreaY + PADDING - this.scrollOffset + (clickedLineIndex * this.fontRendererObj.FONT_HEIGHT);
-        
-        // 为了定位，我们需要在后台计算这一行的坐标缓存
-        // 我们传入一个假的颜色(0)并且不实际绘制，只为了计算坐标
-        this.charXPositions.clear();
-        float currentX = (float) (this.textAreaX + PADDING);
-        this.charXPositions.add((int)currentX); 
-        for (int i = 0; i < clickedLine.length(); ++i) {
-            currentX += this.fontRendererObj.getStringWidth(String.valueOf(clickedLine.charAt(i)));
-            this.charXPositions.add((int)Math.round(currentX));
-        }
-
-        // 寻找离鼠标X坐标最近的字符边界
-        int bestIndexInLine = 0;
-        int minDistance = Integer.MAX_VALUE;
-        for (int i = 0; i < this.charXPositions.size(); i++) {
-            int charX = this.charXPositions.get(i);
-            int distance = Math.abs(mouseX - charX);
-            if (distance < minDistance) {
-                minDistance = distance;
-                bestIndexInLine = i;
-            }
-        }
-        
-        return this.lineStartIndices[clickedLineIndex] + bestIndexInLine;
     }
 }
