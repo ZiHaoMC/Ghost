@@ -36,6 +36,7 @@ import org.lwjgl.input.Mouse;
 // ---- 本项目工具类导入 ----
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.utils.NiuTransUtil;
 
 /**
  * 处理与聊天建议相关的事件，包括：
@@ -115,7 +116,7 @@ public class ChatSuggestEventHandler {
             }
         }
 
-        // --- 翻译按钮逻辑 (优先级低) ---
+        // --- 翻译逻辑 ---
         String unformattedText = event.message.getUnformattedText();
         String translatedPrefix = LangUtil.translate("ghost.generic.prefix.translation");
 
@@ -125,8 +126,13 @@ public class ChatSuggestEventHandler {
             return;
         }
 
-        if (GhostConfig.enableChatTranslation && (event.type == 0 || event.type == 1)) {
-            if (!unformattedText.trim().isEmpty()) {
+        if ((event.type == 0 || event.type == 1) && !unformattedText.trim().isEmpty()) {
+            if (GhostConfig.enableAutomaticTranslation) {
+                // 自动翻译模式
+                triggerAutomaticChatTranslation(unformattedText);
+                processedMessageHashes.add(messageHash);
+            } else if (GhostConfig.enableChatTranslation) {
+                // 手动翻译模式（添加按钮）
                 appendTranslateButton(event.message, unformattedText);
                 processedMessageHashes.add(messageHash);
             }
@@ -288,6 +294,27 @@ public class ChatSuggestEventHandler {
     // ====================
     // === 辅助方法 ===
     // ====================
+    private void triggerAutomaticChatTranslation(String originalText) {
+        new Thread(() -> {
+            final String result = NiuTransUtil.translate(originalText);
+            
+            // 调度回主线程来发送聊天消息
+            Minecraft.getMinecraft().addScheduledTask(() -> {
+                // 只有成功翻译的结果才显示
+                if (!result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                    ChatComponentText resultMessage = new ChatComponentText("");
+                    ChatComponentText resultPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.translation") + " ");
+                    resultPrefix.getChatStyle().setColor(EnumChatFormatting.AQUA);
+                    ChatComponentText resultContent = new ChatComponentText(result);
+                    resultMessage.appendSibling(resultPrefix).appendSibling(resultContent);
+                    
+                    // 向玩家自己发送一条新的聊天消息
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(resultMessage);
+                }
+            });
+        }).start();
+    }
+
     private void appendTranslateButton(IChatComponent targetComponent, String textToTranslate) {
         try {
             String buttonText = String.format(" %s", LangUtil.translate("ghostblock.chat.button.translate"));

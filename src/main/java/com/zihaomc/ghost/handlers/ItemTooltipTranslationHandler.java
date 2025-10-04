@@ -3,6 +3,7 @@ package com.zihaomc.ghost.handlers;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.TranslationCacheManager;
 import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.utils.NiuTransUtil;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
@@ -10,6 +11,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.input.Keyboard;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +51,7 @@ public class ItemTooltipTranslationHandler {
 
     @SubscribeEvent
     public void onItemTooltip(ItemTooltipEvent event) {
-        if (!GhostConfig.enableItemTranslation || event.itemStack == null || event.toolTip.isEmpty()) {
+        if ((!GhostConfig.enableItemTranslation && !GhostConfig.enableAutomaticTranslation) || event.itemStack == null || event.toolTip.isEmpty()) {
             resetHoveredItem();
             return;
         }
@@ -77,7 +79,11 @@ public class ItemTooltipTranslationHandler {
         }
         
         if (!translationCache.containsKey(unformattedItemName)) {
-            if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+            if (GhostConfig.enableAutomaticTranslation) {
+                // 自动触发翻译
+                triggerAutomaticTranslation(unformattedItemName, lastHoveredItemLore);
+                event.toolTip.add(EnumChatFormatting.GRAY + LangUtil.translate("ghost.tooltip.translating"));
+            } else if (!GhostConfig.hideTranslationKeybindTooltip) {
                 event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.translate", keyName));
             }
             return;
@@ -87,7 +93,7 @@ public class ItemTooltipTranslationHandler {
         if (cachedLines != null && !cachedLines.isEmpty() && cachedLines.get(0).startsWith(EnumChatFormatting.RED.toString())) {
             event.toolTip.add("");
             event.toolTip.add(cachedLines.get(0));
-            if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+            if (!GhostConfig.hideTranslationKeybindTooltip) {
                 event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.retryAndClear", keyName, keyName, keyName));
             }
             return;
@@ -110,17 +116,56 @@ public class ItemTooltipTranslationHandler {
                     }
                 }
                 event.toolTip.add("");
-                if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+                if (!GhostConfig.hideTranslationKeybindTooltip) {
                     event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
                 }
             } else {
                 displayTranslation(event, cachedLines, keyName);
             }
         } else {
-            if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+            if (!GhostConfig.hideTranslationKeybindTooltip) {
                 event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.showAndClear", keyName, keyName, keyName));
             }
         }
+    }
+
+    private void triggerAutomaticTranslation(String itemName, List<String> itemLore) {
+        if (pendingTranslations.contains(itemName)) {
+            return;
+        }
+        
+        StringBuilder fullTextBuilder = new StringBuilder(itemName);
+        for (String line : itemLore) {
+            fullTextBuilder.append("\n").append(line);
+        }
+        String textToTranslate = fullTextBuilder.toString();
+
+        if (textToTranslate.trim().isEmpty()) {
+            return;
+        }
+        
+        pendingTranslations.add(itemName);
+
+        new Thread(() -> {
+            try {
+                String result = NiuTransUtil.translate(textToTranslate);
+                List<String> translatedLines;
+                
+                if (result == null || result.trim().isEmpty()) {
+                    translatedLines = Collections.singletonList(EnumChatFormatting.RED + LangUtil.translate("ghost.error.translation.network"));
+                } else if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                    String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
+                    translatedLines = Collections.singletonList(EnumChatFormatting.RED + errorContent);
+                } else {
+                    translatedLines = Arrays.asList(result.split("\n"));
+                }
+                
+                translationCache.put(itemName, translatedLines);
+
+            } finally {
+                pendingTranslations.remove(itemName);
+            }
+        }).start();
     }
 
     private void displayTranslation(ItemTooltipEvent event, List<String> translatedLines, String keyName) {
@@ -131,7 +176,7 @@ public class ItemTooltipTranslationHandler {
                 event.toolTip.add(EnumChatFormatting.AQUA + line);
             }
         }
-        if (!GhostConfig.hideTranslationKeybindTooltip) { // <-- 修改点
+        if (!GhostConfig.hideTranslationKeybindTooltip) {
             event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
         }
     }

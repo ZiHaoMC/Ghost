@@ -34,6 +34,7 @@ public class GhostConfig {
     public static boolean enableChatTranslation = false;
     public static boolean enableSignTranslation = false;
     public static boolean enableItemTranslation = false;
+    public static boolean enableAutomaticTranslation = false; // 新增：全局自动翻译开关
     public static boolean autoShowCachedTranslation = true;
     public static boolean showTranslationOnly = false;
     public static boolean hideTranslationKeybindTooltip = false; 
@@ -162,6 +163,9 @@ public class GhostConfig {
 
         String enableItemTransComment = LangUtil.translate("ghost.config.comment.enableItemTranslation");
         enableItemTranslation = config.getBoolean("enableItemTranslation", CATEGORY_TRANSLATION, false, enableItemTransComment);
+        
+        String enableAutoTransComment = LangUtil.translate("ghost.config.comment.enableAutomaticTranslation");
+        enableAutomaticTranslation = config.getBoolean("enableAutomaticTranslation", CATEGORY_TRANSLATION, false, enableAutoTransComment);
 
         String autoShowComment = LangUtil.translate("ghost.config.comment.autoShowCachedTranslation");
         autoShowCachedTranslation = config.getBoolean("autoShowCachedTranslation", CATEGORY_TRANSLATION, true, autoShowComment);
@@ -204,6 +208,7 @@ public class GhostConfig {
     public static void setEnableChatTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableChatTranslation", false); prop.set(value); enableChatTranslation = value; config.save(); }
     public static void setEnableSignTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableSignTranslation", false); prop.set(value); enableSignTranslation = value; config.save(); }
     public static void setEnableItemTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableItemTranslation", false); prop.set(value); enableItemTranslation = value; config.save(); }
+    public static void setEnableAutomaticTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableAutomaticTranslation", false); prop.set(value); enableAutomaticTranslation = value; config.save(); }
     public static void setAutoShowCachedTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true); prop.set(value); autoShowCachedTranslation = value; config.save(); }
     public static void setShowTranslationOnly(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "showTranslationOnly", false); prop.set(value); showTranslationOnly = value; config.save(); }
     public static void setHideTranslationKeybindTooltip(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false); prop.set(value); hideTranslationKeybindTooltip = value; config.save(); }
