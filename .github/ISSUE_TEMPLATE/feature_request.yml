@@ -3,7 +3,6 @@ name: 功能请求 (Feature Request)
 description: 建议一个新功能或进行改进。
 title: "[Feature]: " # 自动为标题添加前缀
 labels: ["enhancement", "suggestion"] # 自动添加 "enhancement" 和 "suggestion" 标签
-assignees: "" # 功能请求通常无需自动指派，留空即可
 
 # 表单主体
 body:
