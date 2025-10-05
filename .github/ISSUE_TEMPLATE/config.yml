@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 提问、讨论或寻求帮助
+    # 跳转到 Discussions 链接
+    url: https://github.com/ZiHaoMC/Ghost/discussions
+    about: 请在这里提问或发起一般性讨论，而不是创建Issue
