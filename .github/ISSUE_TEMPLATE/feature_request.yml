@@ -1,0 +1,54 @@
+# 表单的元数据
+name: 功能请求 (Feature Request)
+description: 建议一个新功能或进行改进。
+title: "[Feature]: " # 自动为标题添加前缀
+labels: ["enhancement", "suggestion"] # 自动添加 "enhancement" 和 "suggestion" 标签
+
+# 表单主体
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您抽出宝贵时间提出建议，帮助我们把这个Mod变得更好！
+        一个好的功能请求应该清晰地描述一个问题以及您期望的解决方案
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: 您的功能请求是否与某个问题有关？
+      description: "请描述一下您遇到的问题或不便之处。例如：当我进行...操作时，我总是感到麻烦，因为..."
+      placeholder: "例如：在修改配置文件时，输入指令效率很低..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution-description
+    attributes:
+      label: 描述您想要的解决方案
+      description: "请清晰、简洁地描述您希望实现的功能是什么样的，以及它将如何解决您上面提到的问题"
+      placeholder: "例如：我希望新增界面改善效率问题"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: 描述您考虑过的替代方案
+      description: "您是否考虑过其他方式来解决这个问题？如果有，请简单描述一下"
+      placeholder: "例如：我曾尝试使用其他Mod来辅助，但它们存在兼容性问题"
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 其他信息
+      description: "还有其他任何您想补充的上下文吗？例如相关的游戏截图、视频，或者其他Mod中类似功能作为参考"
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: 确认项
+      options:
+        - label: 我已经搜索过现有的Issues，确认这不是一个重复的功能请求
+          required: true
+        - label: 我明白这不是在许愿
+          required: true

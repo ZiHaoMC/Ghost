@@ -1,0 +1,61 @@
+# 表单的元数据
+name: 报告一个Bug (Bug Report)
+description: 提交一个详细的Bug报告来帮助我们改进
+title: "[Bug]: " # 用户提交时会自动填充的标题前缀
+labels: ["bug", "triage"] # 提交后会自动打上的标签
+assignees:
+  - ZiHaoMC # 自动指派给某人
+  
+# 表单主体，由多个元素组成
+body:
+  # 第一个元素：Markdown文本块，用于提供说明
+  - type: markdown
+    attributes:
+      value: |
+        感谢您花时间填写这份Bug报告！请尽可能详细地描述问题...
+
+  # 第二个元素：文本输入框
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod 版本
+      description: "请输入您正在使用的Mod版本号 (例如: 0.1.0)"
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+
+  # 第三个元素：文本区域，用于详细描述
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Bug描述
+      description: 请详细描述发生了什么
+      placeholder: 我尝试做...，但我预期...，结果却发生了...
+    validations:
+      required: true
+
+  # 第四个元素：文本区域，用于复现步骤
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: 复现步骤
+      description: 请一步步告诉我们如何复现这个Bug
+      value: |
+        1. 
+        2. 
+        3. 
+        ...
+    validations:
+      required: true
+
+  # 第五个元素：复选框
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: 确认项
+      description: 在提交之前，请确认以下几点。
+      options:
+        - label: 我已经搜索过现有的Issues，确认这不是一个重复的Bug。
+          required: true # 这个选项必须勾选
+        - label: 我在仅安装了这一个Mod的情况下测试过，问题依然存在。
+          required: false
