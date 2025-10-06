@@ -52,7 +52,6 @@ public class KeybindHandler {
             return;
         }
 
-        // ... (其他按键处理逻辑保持不变) ...
         if (toggleAutoSneak != null && toggleAutoSneak.isPressed()) {
             boolean newState = !GhostConfig.enableAutoSneakAtEdge;
             GhostConfig.setEnableAutoSneakAtEdge(newState);
@@ -206,7 +205,7 @@ public class KeybindHandler {
         statusComponent.getChatStyle().setColor(statusColor);
         
         ChatComponentText message = new ChatComponentText("");
-        ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default") + " ");
+        ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
         prefix.getChatStyle().setColor(EnumChatFormatting.AQUA);
         
         ChatComponentTranslation content = new ChatComponentTranslation(

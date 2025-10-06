@@ -1011,7 +1011,6 @@ public class GhostBlockCommand extends CommandBase {
             boolean useBatch = false;
             boolean explicitFilesProvided = false;
 
-            // --- 参数解析 (保持不变) ---
             for (int i = 1; i < args.length; i++) {
                 String arg = args[i];
                 if (arg.equalsIgnoreCase("-b") || arg.equalsIgnoreCase("--batch")) {
@@ -1040,7 +1039,6 @@ public class GhostBlockCommand extends CommandBase {
                 }
             }
 
-            // --- 文件名决策逻辑 (保持不变) ---
             if (args.length == 1) { // 只输入 /cgb load
                 String defaultFile = GhostBlockData.getWorldIdentifier(world);
                 if (!defaultFile.toLowerCase().startsWith("clear_") && !defaultFile.toLowerCase().startsWith("undo_")) {
@@ -1438,7 +1436,7 @@ public class GhostBlockCommand extends CommandBase {
         EnumChatFormatting us = EnumChatFormatting.YELLOW; // 用法颜色
 
         // --- 标题 ---
-        sender.addChatMessage(new ChatComponentText(hl + "--- GhostBlock 命令帮助 (/cgb) ---"));
+        sender.addChatMessage(new ChatComponentText(hl + LangUtil.translate("ghostblock.commands.cghostblock.help.header")));
 
         // --- 描述 ---
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.cghostblock.help.description")));
@@ -2091,8 +2089,7 @@ public class GhostBlockCommand extends CommandBase {
         // 在确认消息中显示基础文件名
         .appendSibling(new ChatComponentText(EnumChatFormatting.WHITE + String.join(", ", validFileNamesForMessage) + "\n"))
         .appendSibling(
-            // 使用 LangUtil 获取翻译
-            new ChatComponentText("[" + LangUtil.translate("ghostblock.commands.clear.confirm.button") + "]")
+            new ChatComponentText(LangUtil.translate("ghostblock.commands.clear.confirm.button"))
                 .setChatStyle(new ChatStyle()
                     .setColor(EnumChatFormatting.RED)
                     .setBold(true)
@@ -2723,8 +2720,7 @@ public class GhostBlockCommand extends CommandBase {
                  // 使用 LangUtil 获取翻译
                 LangUtil.translate("ghostblock.commands.clear.block.confirm.question") + "\n")) // 确认问题
             .appendSibling(
-                 // 使用 LangUtil 获取翻译
-                new ChatComponentText("[" + LangUtil.translate("ghostblock.commands.clear.block.confirm.button") + "]") // 确认按钮文字
+                new ChatComponentText(LangUtil.translate("ghostblock.commands.clear.block.confirm.button")) // 确认按钮文字
                     .setChatStyle(new ChatStyle()
                         .setColor(EnumChatFormatting.RED) // 按钮颜色
                         .setBold(true) // 加粗
@@ -2742,7 +2738,7 @@ public class GhostBlockCommand extends CommandBase {
         String[] parts = rawMessage.split("\\{(\\d)\\}", -1);
 
         IChatComponent message = new ChatComponentText("");
-        message.appendSibling(new ChatComponentText("[GhostBlock] ")
+        message.appendSibling(new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"))
             .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.DARK_GRAY)));
 
         if (parts.length > 0) {
@@ -2795,7 +2791,7 @@ public class GhostBlockCommand extends CommandBase {
         String messageKey,              // 参数2: 语言文件中的翻译键
         Object... args                  // 参数3: 动态替换语言文件中占位符的值
     ) {
-        ChatComponentText prefix = new ChatComponentText("[GhostBlock] ");
+        ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
         prefix.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.DARK_GRAY));
         // 调用 LangUtil 进行翻译和格式化
         ChatComponentText content = new ChatComponentText(LangUtil.translate(messageKey, args));
@@ -3117,7 +3113,6 @@ public class GhostBlockCommand extends CommandBase {
             return finished;
         }
 
-        // sendProgressIfNeeded, sendFinalProgress, cancel, getTaskId 方法保持不变 (无需修改)
         private void sendProgressIfNeeded(float currentPercent, boolean forceSend) {
              if (totalBlocks == 0) {
                  currentPercent = 100.0f;
@@ -3392,7 +3387,6 @@ public class GhostBlockCommand extends CommandBase {
             return finished;
         }
 
-        // sendProgressIfNeeded, sendFinalProgress 方法保持不变 (无需修改)
         private void sendProgressIfNeeded(float currentPercent, boolean forceSend) {
              if (entries.isEmpty()) {
                  currentPercent = 100.0f;

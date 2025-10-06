@@ -8,6 +8,7 @@ key.ghost.toggleAutoSneak=切换 自动边缘下蹲
 key.ghost.togglePlayerESP=切换 玩家透视 (ESP)
 key.ghost.toggleBedrockMiner=切换 破基岩模式
 key.ghost.translateItem=翻译物品
+key.ghost.openNote=打开笔记
 
 # ==================================
 # ===         通用文本           ===
@@ -15,7 +16,7 @@ key.ghost.translateItem=翻译物品
 ghost.generic.enabled=启用
 ghost.generic.disabled=禁用
 ghost.generic.toggle.feedback=%s 已 %s
-ghost.generic.prefix.default=[Ghost]
+ghost.generic.prefix.default=[Ghost] 
 ghost.generic.prefix.translation=[翻译]
 
 # ==================================
@@ -59,14 +60,9 @@ ghost.cache.cleared_all=[Ghost] 已清除所有物品的翻译缓存。
 # ==================================
 # ===         笔记功能           ===
 # ==================================
-key.ghost.openNote=打开笔记
 ghost.gui.note.title=游戏内笔记
 ghost.gui.note.save_and_close=保存并关闭
-ghost.config.comment.enableNoteFeature=启用游戏内笔记功能。启用后，可通过指定按键打开一个可以随时记录文本的界面。
-ghost.commands.gconfig.help.setting.enableNoteFeature=启用游戏内笔记功能。
 ghost.gui.note.scroll_hint=(使用鼠标滚轮滚动)
-ghost.config.comment.enableAdvancedEditing=启用笔记界面的高级编辑功能(如鼠标选择、Ctrl+A/C/X)。
-ghost.commands.gconfig.help.setting.enableAdvancedEditing=启用笔记界面的高级编辑功能。
 
 # ==================================
 # ===      通用命令和错误      ===
@@ -78,6 +74,7 @@ ghostblock.commands.error.invalid_batch_size=错误: 无效的批次大小。请
 ghostblock.commands.error.batch_size_too_small=错误: 批次大小必须大于 0。
 ghostblock.commands.error.unloaded=错误: 目标坐标所在区块未加载。
 ghostblock.commands.error.out_of_world=错误: 目标坐标超出了世界边界 (Y轴应在 0-255 之间)。
+ghostblock.commands.error.invalid_coordinate_format=错误: 无效的坐标格式 '%1$s'。
 ghostblock.commands.task.cancelled_world_change=警告: 由于世界更改/卸载，所有活动任务已被取消。
 ghostblock.commands.error.internal_sync_place_failed=内部错误：同步放置方块时出错，请检查日志。 位置: %s
 
@@ -119,7 +116,7 @@ ghostblock.commands.clear.usage=用法: /cgb clear <block|file> [参数...]
 ghostblock.commands.clear.usage.file_missing_args=用法: /cgb clear file <文件名...>。请提供至少一个文件名。
 ghostblock.commands.clear.usage.block=用法: /cgb clear block [-b [大小]] [confirm]
 ghostblock.commands.clear.confirm.question=警告: 您确定要永久删除以下文件吗？此操作可以通过 /cgb undo 撤销！
-ghostblock.commands.clear.confirm.button=确认删除
+ghostblock.commands.clear.confirm.button=[确认删除]
 ghostblock.commands.clear.success=成功删除了文件: %1$s
 ghostblock.commands.clear.failed=删除文件失败: %1$s
 ghostblock.commands.clear.missing_files=警告: 以下文件不存在或已被忽略: %1$s
@@ -130,7 +127,7 @@ ghostblock.commands.clear.finish=✔ 清除任务完成，共处理 %1$d 个方�
 # clear block 子命令
 ghostblock.commands.clear.block.no_blocks=信息: 当前世界/维度没有记录任何幽灵方块可供清除。
 ghostblock.commands.clear.block.confirm.question=警告: 您确定要清除当前世界/维度的所有幽灵方块，并将它们恢复为原始状态吗？此操作可以通过 /cgb undo 撤销。
-ghostblock.commands.clear.block.confirm.button=确认清除所有
+ghostblock.commands.clear.block.confirm.button=[确认清除所有]
 ghostblock.commands.clear.block.success=成功清除了 %1$d 个幽灵方块，并恢复了它们的原始状态。
 ghostblock.commands.clear.block.partial_fail=清除了 %1$d 个幽灵方块，但有 %2$d 个恢复失败。
 ghostblock.commands.clear.block.delete_failed=错误: 清除幽灵方块后，未能删除自动记录文件: %1$s
@@ -169,6 +166,7 @@ ghostblock.commands.undo.success_clear=成功撤销清除操作，恢复了 %1$d
 ghostblock.commands.undo.record_created_clear=已为文件删除操作创建撤销记录。
 
 # /cgb help
+ghostblock.commands.cghostblock.help.header=--- GhostBlock 命令帮助 (/cgb) ---
 ghostblock.commands.cghostblock.help.description=管理客户端幽灵方块。
 ghostblock.commands.cghostblock.help.usage.main=主要用法
 ghostblock.commands.cghostblock.help.subcommands.header=可用子命令:
@@ -216,6 +214,8 @@ ghost.config.comment.blink=在执行任务时是否启用Blink (数据包暂存)
 ghost.config.comment.blockWhitelist=可以作为目标的方块列表 (例如 'minecraft:bedrock').
 ghost.config.comment.dependWhitelist=可以作为支撑/依赖的方块列表 (例如 'minecraft:slime_block').
 ghost.config.comment.hideArrowsOnPlayers=启用后，将隐藏射在其他玩家身上的箭，但保留自己身上的。
+ghost.config.comment.enableNoteFeature=启用游戏内笔记功能。启用后，可通过指定按键打开一个可以随时记录文本的界面。
+ghost.config.comment.enableAdvancedEditing=启用笔记界面的高级编辑功能(如鼠标选择、Ctrl+A/C/X)。
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -258,10 +258,10 @@ ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll=启用Shift+
 ghost.commands.gconfig.help.setting.enableChatTranslation=启用聊天消息翻译按钮。
 ghost.commands.gconfig.help.setting.enableSignTranslation=启用告示牌右键翻译功能。
 ghost.commands.gconfig.help.setting.enableItemTranslation=启用物品提示框名称翻译。
-ghost.commands.gconfig.help.setting.autoShowCachedTranslation=自动显示已缓存的翻译。
-ghostblock.commands.gconfig.help.setting.showTranslationOnly=仅显示物品翻译（替换原文）。
 ghost.commands.gconfig.help.setting.enableAutomaticTranslation=开启/关闭对所有内容的自动翻译。
-ghostblock.commands.gconfig.help.setting.hideTranslationKeybindTooltip=隐藏物品翻译的按键提示。
+ghost.commands.gconfig.help.setting.autoShowCachedTranslation=自动显示已缓存的物品翻译。
+ghost.commands.gconfig.help.setting.showTranslationOnly=仅显示物品翻译（会覆盖原文）。
+ghost.commands.gconfig.help.setting.hideTranslationKeybindTooltip=隐藏物品提示框中的翻译按键提示。
 ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=在加入世界时自动放置脚下的幽灵方块。
 ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge=启用走到方块边缘时自动蹲下。
 ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset=自动蹲伏的向前偏移量 (触发灵敏度)。
@@ -269,10 +269,12 @@ ghostblock.commands.gconfig.help.setting.autoSneakVerticalCheckDepth=自动蹲�
 ghostblock.commands.gconfig.help.setting.enablePlayerESP=启用玩家透视功能。
 ghostblock.commands.gconfig.help.setting.enableBedrockMiner=启用破基岩功能。
 ghostblock.commands.gconfig.help.setting.fastPistonBreaking=启用镐可快速破坏活塞的特性。
+ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers=隐藏射在其他玩家身上的箭。
+ghost.commands.gconfig.help.setting.enableNoteFeature=启用游戏内笔记功能。
+ghost.commands.gconfig.help.setting.enableAdvancedEditing=启用笔记界面的高级编辑功能。
 ghostblock.commands.gconfig.help.setting.niuTransApiKey=设置小牛翻译的API Key。
 ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的源语言。
 ghostblock.commands.gconfig.help.setting.translationTargetLang=设置翻译的目标语言。
-ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers=隐藏射在其他玩家身上的箭。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.g-config.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
@@ -286,6 +288,7 @@ ghostblock.commands.gconfig.help.example.enablePlayerESP=/gconfig enablePlayerES
 ghostblock.commands.gconfig.help.example.enableBedrockMiner=/gconfig enableBedrockMiner true
 ghostblock.commands.gconfig.help.example.fastPistonBreaking=/gconfig fastPistonBreaking true
 ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers=/gconfig hideArrowsOnPlayers true
+ghostblock.commands.gconfig.help.aliases=别名
 
 # ==================================
 # ===         其他文本         ===
@@ -300,7 +303,6 @@ ghostblock.commands.task.sync_skipped=警告: 同步操作跳过了 %1$d 个位�
 # 注意 下面这个回车键后面的两个空格是为了更好地让玩家按到按钮 不要删除！
 ghostblock.commands.suggest.text= ↩  
 ghostblock.commands.suggest.hovertext=点击重新输入: %s
-
 
 # 按键切换功能名称
 ghost.keybind.toggle.autosneak=自动边缘下蹲

@@ -50,7 +50,7 @@ public class TranslateCommand extends CommandBase {
         final String sourceText = String.join(" ", args);
         
         ChatComponentText translatingMessage = new ChatComponentText("");
-        ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default") + " ");
+        ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
         prefix.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.DARK_GRAY));
         ChatComponentText content = new ChatComponentText(LangUtil.translate("ghostblock.commands.gtranslate.translating", sourceText));
         content.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GRAY));
@@ -66,7 +66,7 @@ public class TranslateCommand extends CommandBase {
                 if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
                     // 错误消息：使用通用前缀和红色
                     String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
-                    ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default") + " ");
+                    ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
                     errorPrefix.getChatStyle().setColor(EnumChatFormatting.RED);
                     ChatComponentText errorText = new ChatComponentText(errorContent);
                     errorText.getChatStyle().setColor(EnumChatFormatting.RED);

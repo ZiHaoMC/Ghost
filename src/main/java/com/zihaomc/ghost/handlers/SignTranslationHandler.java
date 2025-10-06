@@ -46,7 +46,7 @@ public class SignTranslationHandler {
                             if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
                                 // 错误消息
                                 String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
-                                ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default") + " ");
+                                ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
                                 errorPrefix.getChatStyle().setColor(EnumChatFormatting.RED);
                                 ChatComponentText errorText = new ChatComponentText(errorContent);
                                 errorText.getChatStyle().setColor(EnumChatFormatting.RED);
