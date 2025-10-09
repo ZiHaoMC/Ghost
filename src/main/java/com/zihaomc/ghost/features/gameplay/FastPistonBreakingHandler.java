@@ -1,6 +1,7 @@
 package com.zihaomc.ghost.features.gameplay;
 
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
@@ -41,8 +42,8 @@ public class FastPistonBreakingHandler {
         EntityPlayer player = event.entityPlayer;
 
         if (DEBUG_HANDLER_SPEED) {
-            System.out.println("--- FastPistonBreakingHandler: Recalculating speed ---");
-            System.out.println("Original event speed (newSpeed from game): " + event.newSpeed);
+            LogUtil.debug("log.debug.fastpiston.recalculating");
+            LogUtil.debug("log.debug.fastpiston.originalSpeed", event.newSpeed);
         }
 
         // 步骤 1: 计算理论上的总挖掘速度 (s*m)
@@ -62,7 +63,7 @@ public class FastPistonBreakingHandler {
         }
         
         float sm = s * m;
-        if (DEBUG_HANDLER_SPEED) System.out.println("Calculated sm (speed * multiplier) = " + sm);
+        if (DEBUG_HANDLER_SPEED) LogUtil.debug("log.debug.fastpiston.calculatedSM", sm);
 
         // 步骤 2: 校正速度值以适应游戏错误的硬度
         // 我们需要设置的 newSpeed，应该满足: newSpeed / (错误的硬度) = (我们计算的速度) / (正确的硬度)
@@ -71,8 +72,8 @@ public class FastPistonBreakingHandler {
         float correctedSpeed = sm * correctionFactor;
         
         if (DEBUG_HANDLER_SPEED) {
-            System.out.println("Correction Factor (incorrect_h / correct_h) = " + correctionFactor);
-            System.out.println("Final Corrected Speed to set = " + correctedSpeed);
+            LogUtil.debug("log.debug.fastpiston.correctionFactor", correctionFactor);
+            LogUtil.debug("log.debug.fastpiston.finalSpeed", correctedSpeed);
         }
 
         // 步骤 3: 直接用我们校正后的速度覆盖事件的速度

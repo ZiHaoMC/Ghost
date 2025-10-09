@@ -308,3 +308,176 @@ ghostblock.commands.suggest.hovertext=点击重新输入: %s
 ghost.keybind.toggle.autosneak=自动边缘下蹲
 ghost.keybind.toggle.playeresp=玩家透视 (ESP)
 ghost.keybind.toggle.bedrockminer=破基岩模式
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ==================================
+# ===          日志记录          ===
+# ==================================
+# --- 生命周期 ---
+log.lifecycle.preinit=[%s] 预初始化阶段
+log.lifecycle.init=[%s] 初始化阶段
+log.lifecycle.postinit=[%s] 后初始化阶段
+
+# --- 处理器注册 ---
+log.handler.registered.chatSuggest=聊天建议事件处理器已在 PreInit 中注册。
+log.handler.registered.autoSneak=自动蹲伏事件处理器 (AutoSneakHandler) 已在 PreInit 中注册。
+log.handler.registered.playerEsp=玩家ESP事件处理器 (PlayerESPHandler) 已在 PreInit 中注册。
+log.handler.registered.fastPiston=快速破坏活塞事件处理器 (FastPistonBreakingHandler) 已在 PreInit 中注册。
+log.handler.registered.playerArrow=玩家箭矢渲染事件处理器 (PlayerArrowRendererHandler) 已在 PreInit 中注册。
+log.handler.registered.keybind=按键绑定事件处理器 (KeybindHandler) 已在 PreInit 中注册。
+log.handler.registered.signTranslation=告示牌翻译事件处理器 (SignTranslationHandler) 已在 PreInit 中注册。
+log.handler.registered.itemTooltip=物品提示框翻译事件处理器 (ItemTooltipTranslationHandler) 已在 PreInit 中注册。
+log.handler.registered.ghostBlockCommand=GhostBlockCommand 事件处理器已注册。
+
+# --- 命令注册 ---
+log.command.registering.eventListener=注册 GhostBlockCommand 事件监听...
+log.command.registering.client=正在注册客户端命令...
+log.command.registered.ghostConfig=GhostConfigCommand (/gconfig) 已注册。
+log.command.registered.cgb=/cgb 命令实例已注册。
+log.command.registered.gtranslate=TranslateCommand (/gtranslate) 已注册。
+log.command.skipping.server=在服务端跳过客户端命令注册。
+log.command.handler.initialized=CommandEventHandler 已初始化 (处理Tick事件)。
+log.info.command.parse.success=方块解析成功: %s (ID=%d), meta=%d
+log.warn.command.set.meta.invalid=方块 '%s' 的元数据 '%s' 无效，使用 0。
+log.error.command.parse.failed=解析方块状态时发生意外错误: %s
+
+# --- 配置 ---
+log.config.notInitialized=配置尚未初始化！
+log.config.loaded=配置已加载或创建并保存更改。
+
+# --- 缓存 ---
+log.feature.cache.init=翻译缓存已加载，并已注册保存事件处理器。
+log.info.cache.loaded=已加载 %d 条翻译缓存。
+log.info.cache.saving=世界卸载，触发翻译缓存保存...
+log.info.cache.saving.count=正在保存 %d 条翻译缓存...
+log.info.cache.saved=翻译缓存已保存。
+log.info.cache.file.notFound=翻译缓存文件不存在，将创建一个新的缓存。
+log.error.cache.loadFailed=加载翻译缓存时出错: %s
+log.info.cache.save.skipped=内存中无翻译缓存，无需保存。
+log.error.cache.saveFailed=保存翻译缓存时出错: %s
+
+# --- 任务 ---
+log.info.task.fill.complete=填充任务 #%d 完成
+log.info.task.load.complete=加载任务 #%d 完成
+log.info.task.clear.complete=清除任务 #%d 完成
+log.info.task.fill.init=FillTask #%d 初始化 (带距离检查策略): total=%d, batch=%d
+log.error.task.fill.invalidBlock=FillTask #%d 错误：无效方块 ID %d 或尝试填充空气。任务取消。
+log.info.task.fill.playerInvalid=FillTask #%d: 命令发送者玩家已失效或不在当前世界，取消任务。
+log.info.task.fill.posReady=FillTask #%d: 位置现已就绪: %s. 尝试放置...
+log.info.task.fill.posWaiting=FillTask #%d: 等待放置: %s (原因: %s)
+log.info.task.fill.posInvalidY=FillTask #%d: 无效Y坐标 (%d)，从任务移除: %s
+log.warn.task.fill.notClient=FillTask #%d 警告: 尝试在非客户端世界执行任务！Pos: %s
+log.warn.task.fill.placeError=FillTask #%d 警告: 在位置就绪后设置方块时出错 %s: %s
+log.info.task.fill.complete.log=FillTask #%d 任务完成。成功放置: %d / 初始总数: %d
+log.info.task.fill.complete.waitingList=FillTask #%d 注意: 任务完成时仍有 %d 个方块在等待列表中。
+log.info.task.fill.playerLeft.progress=FillTask #%d: 玩家已离开或无效，停止发送进度消息，并取消任务。
+log.error.task.fill.progress.sendFailed=FillTask #%d: 发送进度消息失败: %s
+log.info.task.fill.save.userFile=FillTask #%d 任务完成，尝试保存 %d 个条目到用户文件: %s
+log.info.task.fill.playerLeft.save=FillTask #%d: 玩家已离开或无效，跳过发送保存成功消息。
+log.error.task.fill.save.sendFailed=FillTask #%d: 发送保存成功消息失败: %s
+log.warn.task.fill.save.noEntries=FillTask #%d 警告: 任务标记为保存，但没有提供或生成用户文件条目。
+log.info.task.fill.playerLeft.finish=FillTask #%d: 玩家已离开或无效，跳过发送完成消息。
+log.error.task.fill.finish.sendFailed=FillTask #%d: 发送完成消息失败: %s
+log.info.task.fill.cancelled=FillTask #%d 任务已被取消，不发送完成或保存消息。
+log.info.task.fill.markedCancelled=FillTask #%d 标记为取消。
+log.info.task.cancel.fill=填充任务 #%d 已取消并暂停。
+log.info.task.cancel.load=加载任务 #%d 已取消并暂停。
+log.info.task.cancel.clear=清除任务 #%d 已取消。
+log.info.tasks.cancelled.count=取消了 %d 个活动/暂停任务。
+
+# --- 自动放置 ---
+log.debug.autoplace.tick.dataMissing=AutoPlaceTick Tick %d: 玩家/世界/目标数据不完整，取消。
+log.debug.autoplace.tick.dimensionMismatch=AutoPlaceTick Tick %d: 维度检查失败或不符 (玩家:%d, 文件:%d)，取消。
+log.debug.autoplace.tick.attempt=AutoPlaceTick Tick %d/%d: 尝试在以 %s 为中心的3x3平台 (原记录中心: %s) 放置幽灵方块。
+log.debug.autoplace.tick.playerInRangeCheck=玩家当前实体格: %s, 期望站立格(中心): %s, 是否在水平范围: %b, 是否在垂直合理范围: %b
+log.debug.autoplace.tick.inRangePlacing=玩家在期望范围内。开始尝试放置3x3平台...
+log.debug.autoplace.tick.invalidBlock=文件记录的幽灵方块类型无效或为空气。无法构成平台。
+log.debug.autoplace.tick.firstSuccess=平台部分在 %s 首次尝试成功。
+log.debug.autoplace.tick.notAir=平台部分 %s 非空气 (%s)，跳过。
+log.debug.autoplace.tick.platformPlaced=3x3幽灵平台部分或全部放置 (tick: %d)
+log.error.autoplace.tick.exception=AutoPlaceTick Tick %d: 持续放置3x3平台时发生异常:
+log.debug.autoplace.tick.playerOutOfRange=AutoPlaceTick Tick %d: 玩家不在期望的恢复范围内。
+log.debug.autoplace.tick.outOfRangeTimeout=玩家持续不在范围内且已超时，放弃并清理。
+log.debug.autoplace.tick.timeout=AutoPlaceTick Tick %d: 超过最大尝试Tick数 (%d)，强制结束。
+log.debug.autoplace.cleanup.file.deleted=已成功删除自动放置文件: %s
+log.error.autoplace.cleanup.file.deleteFailed=未能删除自动放置文件: %s
+log.debug.autoplace.cleanup.cleaned=已清理待处理的自动放置状态。autoPlaceInProgress 设置为 false。
+log.debug.autoplace.cleanup.handlingFirstJoin=自动放置处理结束，且仍是 isFirstJoin。处理首次加入逻辑...
+log.debug.autoplace.cleanup.dimensionChanged=自动放置处理结束，但玩家维度已改变，不执行 isFirstJoin 的 cleanupAndRestoreOnLoad。
+log.debug.autoplace.cleanup.dimCheck.fallback=用于维度检查的文件名未知，将使用当前玩家维度。
+log.debug.autoplace.cleanup.dimCheck.mismatch=自动放置处理结束，但玩家维度 (%d) 与文件先前维度 (%d) 不符，不执行 isFirstJoin 的 cleanupAndRestoreOnLoad。
+
+# --- 加入/离开世界 ---
+log.debug.joinWorld.worldNull=onEntityJoinWorld: 世界为 null，无法继续。
+log.debug.joinWorld.entry=玩家加入世界/切换维度 - 当前维度: %d, 上次跟踪维度: %d
+log.debug.joinWorld.autoplaceInProgress=检测到 autoPlaceInProgress 为 true，等待Tick处理完成。
+log.warn.joinWorld.pendingEntry=进入时发现残留的 pendingAutoPlaceEntry，强制清理。
+log.debug.joinWorld.autoplaceEnabled=自动放置功能已启用。
+log.debug.joinWorld.loadingFile=尝试加载自动放置文件: %s.json
+log.debug.joinWorld.loadedEntries=从自动放置文件加载了 %d 个条目。
+log.debug.joinWorld.pendingSet=已设置待处理的自动放置条目在 %s。将由Tick事件持续处理。onEntityJoinWorld 返回。
+log.debug.joinWorld.noFile=未找到自动放置文件或文件为空。不会启动延迟/持续放置。
+log.debug.joinWorld.autoplaceDisabled=自动放置功能被禁用。
+log.debug.joinWorld.standardFlow.start=未启动自动放置流程 (autoPlaceInProgress=%b)。继续执行标准的加入世界逻辑...
+log.debug.joinWorld.standardFlow.firstJoin=(标准流程) 首次进入世界。初始化维度为 %d
+log.debug.joinWorld.standardFlow.executingCleanupFirstJoin=(标准流程) 执行 cleanupAndRestoreOnLoad (首次加入)。
+log.debug.joinWorld.standardFlow.dimensionChange=(标准流程) 检测到维度变化: %d → %d
+log.debug.joinWorld.standardFlow.executingCleanupDimChange=(标准流程) 执行 cleanupAndRestoreOnLoad (维度切换)。
+log.debug.joinWorld.standardFlow.rejoinSameDim=(标准流程) 重新加入相同维度 (%d)。
+log.debug.joinWorld.standardFlow.executingCleanupRejoin=(标准流程) 执行 cleanupAndRestoreOnLoad (同维度重进)。
+log.info.worldUnload.entry=世界卸载事件触发。当前 autoPlaceInProgress: %b
+log.info.worldUnload.pendingAutoplace=检测到有待处理的自动放置任务，世界正在卸载，将进行清理。
+log.info.worldUnload.autoplaceCleanupCalled=已调用静态方法清理待处理的自动放置。
+log.info.worldUnload.autoplace.playerCoords=玩家精确坐标: (%f, %f, %f)
+log.info.worldUnload.autoplace.logicalFeetPos=计算出的用于查找的“逻辑脚下”坐标: %s
+log.info.worldUnload.autoplace.loadingClearFile=从 %s.json 加载了 %d 个条目。
+log.info.worldUnload.autoplace.saved=玩家逻辑脚下位置 (%s) 是已记录的幽灵方块 (方块: %s)。信息已保存到 %s.json。
+log.info.worldUnload.autoplace.notGhostBlock=玩家逻辑脚下位置 (%s) 不是已记录的幽灵方块 (或clear文件中无记录)。删除旧的 %s.json (如果存在)。
+log.error.worldUnload.autoplace.deleteFailed=未能删除旧的自动放置文件: %s
+log.info.worldUnload.autoplace.deleteSuccess=成功删除旧的自动放置文件: %s
+log.info.worldUnload.autoplace.playerNull=玩家为空或不在卸载的世界中。尝试清理可能存在的自动放置文件。
+log.info.worldUnload.autoplace.residualDeleted=删除了可能残留的自动放置文件: %s
+log.error.worldUnload.autoplace.residualDeleteFailed=未能删除残留的自动放置文件: %s
+log.info.worldUnload.standardCleanup.entry=正在卸载世界: %s Dim: %d
+log.info.worldUnload.standardCleanup.clearFileDeleted=删除 clear 文件 (%s) 结果: %b
+log.error.worldUnload.standardCleanup.clearFileFailed=删除 clear 文件 (%s) 失败!
+log.info.worldUnload.standardCleanup.undoFileDeleted=尝试删除 undo 文件: %s 结果: %b
+log.info.worldUnload.standardCleanup.cancellingTasks=世界卸载，取消所有活动任务...
+log.info.worldUnload.standardCleanup.resettingState=重置 isFirstJoin 和 autoPlaceInProgress。
+
+# --- 其他 ---
+log.debug.fastpiston.recalculating=--- FastPistonBreakingHandler: Recalculating speed ---
+log.debug.fastpiston.originalSpeed=Original event speed (newSpeed from game): %f
+log.debug.fastpiston.calculatedSM=Calculated sm (speed * multiplier) = %f
+log.debug.fastpiston.correctionFactor=Correction Factor (incorrect_h / correct_h) = %f
+log.debug.fastpiston.finalSpeed=Final Corrected Speed to set = %f
+log.debug.handler.chatSuggest.created=ChatSuggestEventHandler 实例已创建。
+log.error.reflection.drawnChatLines=无法找到 drawnChatLines 字段！
+log.error.reflection.chatComponent=无法找到 chatComponent 字段！
+log.warn.reflection.updateCounter=无法找到 updateCounter 字段，将使用Fallback逻辑。
+log.error.reflection.inputField=无法找到 inputField 字段！
+log.error.chat.attachButton.failed=附加翻译按钮时出错: %s
+log.error.note.loadFailed=加载笔记时出错: %s
+log.error.note.saveFailed=保存笔记时出错: %s
+log.error.translation.exception=翻译时发生异常: %s
+log.error.data.deleteEmpty.failed=删除空数据文件失败: %s
+log.info.data.deleteEmpty.success=已删除空数据文件: %s
+log.error.data.save.failed=保存数据到文件时出错: %s
+log.error.data.load.internal.failed=内部加载失败: %s
+log.info.data.load.notFound=文件不存在: %s
+log.error.data.load.failed=加载文件失败: %s
+log.error.data.getDim.nullFilename=getDimensionFromFileName: 文件名为空！
+log.error.data.getDim.parseFailed=解析文件名中的维度时出错: '%s' -> 解析出的维度字符串: '%s'
+log.warn.data.getDim.notFound=无法从文件名中找到或解析维度标记 '_dim_': %s

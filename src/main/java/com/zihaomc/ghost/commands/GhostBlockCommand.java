@@ -3,14 +3,16 @@ package com.zihaomc.ghost.commands;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.config.GhostConfig; // 引入配置类
+import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+
 import java.io.Writer;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import net.minecraft.block.Block; // 需要引入 Block
-import net.minecraft.block.state.IBlockState; // 需要引入 IBlockState
+import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ChunkProviderClient;
 import net.minecraft.client.multiplayer.ServerData;
@@ -22,7 +24,7 @@ import net.minecraft.command.WrongUsageException;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.event.ClickEvent;
 import net.minecraft.event.ClickEvent.Action;
-import net.minecraft.init.Blocks; // 需要引入 Blocks
+import net.minecraft.init.Blocks;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.IChatComponent;
@@ -105,7 +107,7 @@ public class GhostBlockCommand extends CommandBase {
     }
 
     public static void register() {
-        System.out.println("[GhostBlock-DEBUG] 注册事件监听...");
+        LogUtil.debug("log.command.registering.eventListener");
         GhostBlockCommand instance = new GhostBlockCommand(); // 创建实例以注册非静态事件处理器
         MinecraftForge.EVENT_BUS.register(instance);
         MinecraftForge.EVENT_BUS.register(new CommandEventHandler()); // 注册静态事件处理器
@@ -114,7 +116,7 @@ public class GhostBlockCommand extends CommandBase {
     // 静态内部类用于处理静态事件和注册命令
     private static class CommandEventHandler {
         public CommandEventHandler() {
-            System.out.println("[GhostBlock-DEBUG] CommandEventHandler 已初始化 (处理Tick事件)");
+            LogUtil.debug("log.command.handler.initialized");
         }
 
         @SubscribeEvent
@@ -136,7 +138,7 @@ public class GhostBlockCommand extends CommandBase {
                     FillTask task = taskIter.next();
                     if (task.processBatch()) {
                         taskIter.remove();
-                        if (!task.cancelled) System.out.println("[GhostBlock] 填充任务 #" + task.getTaskId() + " 完成");
+                        if (!task.cancelled) LogUtil.info("log.info.task.fill.complete", task.getTaskId());
                     }
                 }
             }
@@ -146,7 +148,7 @@ public class GhostBlockCommand extends CommandBase {
                     LoadTask task = taskIter.next();
                     if (task.processBatch()) {
                         taskIter.remove();
-                        if (!task.cancelled) System.out.println("[GhostBlock] 加载任务 #" + task.getTaskId() + " 完成");
+                        if (!task.cancelled) LogUtil.info("log.info.task.load.complete", task.getTaskId());
                     }
                 }
             }
@@ -156,7 +158,7 @@ public class GhostBlockCommand extends CommandBase {
                     ClearTask task = taskIter.next();
                     if (task.processBatch()) {
                         taskIter.remove();
-                        if (!task.cancelled) System.out.println("[GhostBlock] 清除任务 #" + task.getTaskId() + " 完成");
+                        if (!task.cancelled) LogUtil.info("log.info.task.clear.complete", task.getTaskId());
                     }
                 }
             }
@@ -174,14 +176,14 @@ public class GhostBlockCommand extends CommandBase {
             File autoPlaceFile = GhostBlockCommand.pendingAutoPlaceFileRef;
 
             if (player == null || world == null || centerOriginalRecordedPos == null || autoPlaceFile == null) {
-                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 玩家/世界/目标数据不完整，取消。");
+                LogUtil.debug("log.debug.autoplace.tick.dataMissing", GhostBlockCommand.autoPlaceTickDelayCounter);
                 GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
                 return;
             }
 
             int fileDimension = GhostBlockData.getDimensionFromFileName(autoPlaceFile.getName());
             if (fileDimension == Integer.MIN_VALUE || player.dimension != fileDimension) {
-                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 维度检查失败或不符 (玩家:" + player.dimension + ", 文件:" + fileDimension + ")，取消。");
+                LogUtil.debug("log.debug.autoplace.tick.dimensionMismatch", GhostBlockCommand.autoPlaceTickDelayCounter, player.dimension, fileDimension);
                 GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
                 return;
             }
@@ -190,8 +192,7 @@ public class GhostBlockCommand extends CommandBase {
             BlockPos centerActualPlacePos = centerOriginalRecordedPos.down(1); // <--- Y轴偏移量，可以调整为1或2
 
             if (GhostBlockCommand.autoPlaceTickDelayCounter <= AUTO_PLACE_DURATION_TICKS) {
-                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + "/" + AUTO_PLACE_DURATION_TICKS +
-                                   ": 尝试在以 " + centerActualPlacePos + " 为中心的3x3平台 (原记录中心: " + centerOriginalRecordedPos + ") 放置幽灵方块。");
+                LogUtil.debug("log.debug.autoplace.tick.attempt", GhostBlockCommand.autoPlaceTickDelayCounter, AUTO_PLACE_DURATION_TICKS, centerActualPlacePos, centerOriginalRecordedPos);
 
                 BlockPos playerCurrentBlockPos = player.getPosition();
                 BlockPos expectedPlayerStandPos = centerOriginalRecordedPos.up(); // 玩家应该站在原始中心幽灵方块的上面
@@ -206,18 +207,16 @@ public class GhostBlockCommand extends CommandBase {
                                                  playerCurrentBlockPos.getY() <= centerActualPlacePos.getY() + 5;   // 不高于平台上方太多 (允许出生在更高处然后掉下来)
 
 
-                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 玩家当前实体格: " + playerCurrentBlockPos +
-                                   ", 期望站立格(中心): " + expectedPlayerStandPos +
-                                   ", 是否在水平范围: " + isInHorizontalRange + ", 是否在垂直合理范围: " + isVerticallyReasonable);
+                LogUtil.debug("log.debug.autoplace.tick.playerInRangeCheck", playerCurrentBlockPos, expectedPlayerStandPos, isInHorizontalRange, isVerticallyReasonable);
 
                 if (isInHorizontalRange && isVerticallyReasonable) {
-                    System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 玩家在期望范围内。开始尝试放置3x3平台...");
+                    LogUtil.debug("log.debug.autoplace.tick.inRangePlacing");
                     Block ghostBlockToPlace = Block.getBlockFromName(entryToRestore.blockId);
                     IBlockState stateToSet = null;
                     if (ghostBlockToPlace != null && ghostBlockToPlace != Blocks.air) {
                         stateToSet = ghostBlockToPlace.getStateFromMeta(entryToRestore.metadata);
                     } else {
-                        System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 文件记录的幽灵方块类型无效或为空气。无法构成平台。");
+                        LogUtil.debug("log.debug.autoplace.tick.invalidBlock");
                         GhostBlockCommand.cleanupPendingAutoPlaceStatic(true); // 清理并退出
                         return;
                     }
@@ -244,17 +243,17 @@ public class GhostBlockCommand extends CommandBase {
                                         );
                                     }
                                     if (GhostBlockCommand.autoPlaceTickDelayCounter == 1 && successThisBlock) {
-                                        System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 平台部分在 " + currentPlatformPos + " 首次尝试成功。");
+                                        LogUtil.debug("log.debug.autoplace.tick.firstSuccess", currentPlatformPos);
                                     }
                                 } else if (GhostBlockCommand.autoPlaceTickDelayCounter == 1){
-                                     System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 平台部分 " + currentPlatformPos + " 非空气 ("+stateAtPlatformPos.getBlock().getRegistryName()+")，跳过。");
+                                     LogUtil.debug("log.debug.autoplace.tick.notAir", currentPlatformPos, stateAtPlatformPos.getBlock().getRegistryName());
                                 }
                             }
                         }
 
                         if (platformPartiallyPlaced && (GhostBlockCommand.autoPlaceTickDelayCounter == 1 || (GhostBlockCommand.autoPlaceTickDelayCounter == AUTO_PLACE_DURATION_TICKS && GhostBlockCommand.autoPlaceInProgress))) {
                             player.addChatMessage(GhostBlockCommand.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.autoplace.platform_success", centerActualPlacePos.getX(), centerActualPlacePos.getY(), centerActualPlacePos.getZ()));
-                            System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 3x3幽灵平台部分或全部放置 (tick: " + GhostBlockCommand.autoPlaceTickDelayCounter + ")");
+                            LogUtil.debug("log.debug.autoplace.tick.platformPlaced", GhostBlockCommand.autoPlaceTickDelayCounter);
                         }
                         
                         // 如果在持续时间内成功放置了部分平台，我们让它持续到结束
@@ -263,15 +262,14 @@ public class GhostBlockCommand extends CommandBase {
                         }
 
                     } catch (Exception e) {
-                        System.err.println("[GhostBlock-ERROR AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 持续放置3x3平台时发生异常:");
-                        e.printStackTrace();
+                        LogUtil.printStackTrace("log.error.autoplace.tick.exception", e, GhostBlockCommand.autoPlaceTickDelayCounter);
                         GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
                     }
                 } else { // 玩家不在范围内
-                    System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 玩家不在期望的恢复范围内。");
+                    LogUtil.debug("log.debug.autoplace.tick.playerOutOfRange", GhostBlockCommand.autoPlaceTickDelayCounter);
                     // 如果超时了，即使不在范围内也要清理
                      if (GhostBlockCommand.autoPlaceTickDelayCounter > AUTO_PLACE_MAX_ATTEMPT_TICKS) {
-                        System.out.println("[GhostBlock-DEBUG AutoPlaceTick] 玩家持续不在范围内且已超时，放弃并清理。");
+                        LogUtil.debug("log.debug.autoplace.tick.outOfRangeTimeout");
                         GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
                     }
                 }
@@ -279,7 +277,7 @@ public class GhostBlockCommand extends CommandBase {
 
             // 总超时检查 (如果上面的逻辑没有提前清理)
             if (GhostBlockCommand.autoPlaceInProgress && GhostBlockCommand.autoPlaceTickDelayCounter > AUTO_PLACE_MAX_ATTEMPT_TICKS) {
-                System.out.println("[GhostBlock-DEBUG AutoPlaceTick] Tick " + GhostBlockCommand.autoPlaceTickDelayCounter + ": 超过最大尝试Tick数 ("+AUTO_PLACE_MAX_ATTEMPT_TICKS+")，强制结束。");
+                LogUtil.debug("log.debug.autoplace.tick.timeout", GhostBlockCommand.autoPlaceTickDelayCounter, AUTO_PLACE_MAX_ATTEMPT_TICKS);
                 GhostBlockCommand.cleanupPendingAutoPlaceStatic(true);
             }
         }
@@ -294,9 +292,9 @@ public class GhostBlockCommand extends CommandBase {
         private void cleanupPendingAutoPlace(boolean deleteFile) {
             if (deleteFile && GhostBlockCommand.pendingAutoPlaceFileRef != null && GhostBlockCommand.pendingAutoPlaceFileRef.exists()) {
                 if (GhostBlockCommand.pendingAutoPlaceFileRef.delete()) {
-                    System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 已成功删除自动放置文件: " + GhostBlockCommand.pendingAutoPlaceFileRef.getName());
+                    LogUtil.debug("log.debug.autoplace.cleanup.file.deleted", GhostBlockCommand.pendingAutoPlaceFileRef.getName());
                 } else {
-                    System.err.println("[GhostBlock-ERROR AutoPlaceCleanup] 未能删除自动放置文件: " + GhostBlockCommand.pendingAutoPlaceFileRef.getName());
+                    LogUtil.error("log.error.autoplace.cleanup.file.deleteFailed", GhostBlockCommand.pendingAutoPlaceFileRef.getName());
                 }
             }
             GhostBlockCommand.pendingAutoPlaceEntry = null;
@@ -305,7 +303,7 @@ public class GhostBlockCommand extends CommandBase {
             GhostBlockCommand.autoPlaceTickDelayCounter = 0;
             boolean wasInProgress = GhostBlockCommand.autoPlaceInProgress; // 记录清理前的状态
             GhostBlockCommand.autoPlaceInProgress = false; // 标记过程结束
-            System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 已清理待处理的自动放置状态。autoPlaceInProgress 设置为 false。");
+            LogUtil.debug("log.debug.autoplace.cleanup.cleaned");
 
             // 关键：如果自动放置过程（无论成功、失败或超时）结束了，
             // 并且之前 onEntityJoinWorld 因为 autoPlaceInProgress=true 而提前返回了，
@@ -320,7 +318,7 @@ public class GhostBlockCommand extends CommandBase {
                     int fileDim = (GhostBlockCommand.pendingAutoPlaceFileRef != null) ?
                                   GhostBlockData.getDimensionFromFileName(GhostBlockCommand.pendingAutoPlaceFileRef.getName()) : player.dimension; // Fallback
                     if (player.dimension == fileDim || fileDim == Integer.MIN_VALUE) { // 如果维度匹配或无法从文件名解析
-                        System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 自动放置处理结束，且仍是 isFirstJoin。处理首次加入逻辑...");
+                        LogUtil.debug("log.debug.autoplace.cleanup.handlingFirstJoin");
                         GhostBlockCommand.isFirstJoin = false;
                         GhostBlockCommand.lastTrackedDimension = player.dimension;
                         // 调用者 (GhostBlockCommand的实例) 的 cleanupAndRestoreOnLoad
@@ -333,7 +331,7 @@ public class GhostBlockCommand extends CommandBase {
                         // 但为了保持当前结构，我们先这样：
                         GhostBlockCommand.cleanupAndRestoreOnLoad(world); // 直接通过类名调用静态方法
                     } else {
-                        System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 自动放置处理结束，但玩家维度已改变，不执行 isFirstJoin 的 cleanupAndRestoreOnLoad。");
+                        LogUtil.debug("log.debug.autoplace.cleanup.dimensionChanged");
                     }
                 }
             }
@@ -356,30 +354,30 @@ public class GhostBlockCommand extends CommandBase {
 
     WorldClient world = (WorldClient) event.world;
     if (world == null) {
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 世界为 null，无法继续。");
+        LogUtil.debug("log.debug.joinWorld.worldNull");
         return;
     }
 
     int currentDim = player.dimension;
-    System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 玩家加入世界/切换维度 - 当前维度: " + currentDim + ", 上次跟踪维度: " + lastTrackedDimension);
+    LogUtil.debug("log.debug.joinWorld.entry", currentDim, lastTrackedDimension);
 
     if (autoPlaceInProgress) {
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 检测到 autoPlaceInProgress 为 true，等待Tick处理完成。");
+        LogUtil.debug("log.debug.joinWorld.autoplaceInProgress");
         return;
     }
     if (pendingAutoPlaceEntry != null) {
-        System.out.println("[GhostBlock-WARN onEntityJoinWorld] 进入时发现残留的 pendingAutoPlaceEntry，强制清理。");
+        LogUtil.warn("log.warn.joinWorld.pendingEntry");
         cleanupPendingAutoPlaceStatic(true);
     }
 
     if (GhostConfig.enableAutoPlaceOnJoin) {
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 自动放置功能已启用。");
+        LogUtil.debug("log.debug.joinWorld.autoplaceEnabled");
         String autoPlaceFileName = getAutoPlaceSaveFileName(world);
         File autoPlaceFile = GhostBlockData.getDataFile(world, autoPlaceFileName);
 
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 尝试加载自动放置文件: " + autoPlaceFileName + ".json");
+        LogUtil.debug("log.debug.joinWorld.loadingFile", autoPlaceFileName);
         List<GhostBlockData.GhostBlockEntry> autoPlaceEntries = GhostBlockData.loadData(world, Collections.singletonList(autoPlaceFileName));
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 从自动放置文件加载了 " + autoPlaceEntries.size() + " 个条目。");
+        LogUtil.debug("log.debug.joinWorld.loadedEntries", autoPlaceEntries.size());
 
         if (!autoPlaceEntries.isEmpty()) {
             pendingAutoPlaceEntry = autoPlaceEntries.get(0);
@@ -388,36 +386,36 @@ public class GhostBlockCommand extends CommandBase {
             autoPlaceTickDelayCounter = 0; // 重置计数器
             autoPlaceInProgress = true;   // 标记开始Tick处理
 
-            System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 已设置待处理的自动放置条目在 " + pendingAutoPlaceTargetPos + "。将由Tick事件持续处理。onEntityJoinWorld 返回。");
+            LogUtil.debug("log.debug.joinWorld.pendingSet", pendingAutoPlaceTargetPos);
             // 返回，让Tick事件接管后续的放置、isFirstJoin判断等
             return;
         } else {
-            System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 未找到自动放置文件或文件为空。不会启动延迟/持续放置。");
+            LogUtil.debug("log.debug.joinWorld.noFile");
             autoPlaceInProgress = false; // 确保标记为false
         }
     } else {
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 自动放置功能被禁用。");
+        LogUtil.debug("log.debug.joinWorld.autoplaceDisabled");
         autoPlaceInProgress = false; // 确保标记为false
     }
 
     // 只有当不进行自动放置时，才执行标准的 isFirstJoin/维度切换逻辑
-    System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] 未启动自动放置流程 (autoPlaceInProgress=" + autoPlaceInProgress + ")。继续执行标准的加入世界逻辑...");
+    LogUtil.debug("log.debug.joinWorld.standardFlow.start", autoPlaceInProgress);
     if (isFirstJoin) {
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 首次进入世界。初始化维度为 " + currentDim);
+        LogUtil.debug("log.debug.joinWorld.standardFlow.firstJoin", currentDim);
         lastTrackedDimension = currentDim;
         isFirstJoin = false;
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 执行 cleanupAndRestoreOnLoad (首次加入)。");
+        LogUtil.debug("log.debug.joinWorld.standardFlow.executingCleanupFirstJoin");
         cleanupAndRestoreOnLoad(world);
         return;
     }
     if (lastTrackedDimension != currentDim) {
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 检测到维度变化: " + lastTrackedDimension + " → " + currentDim);
+        LogUtil.debug("log.debug.joinWorld.standardFlow.dimensionChange", lastTrackedDimension, currentDim);
         cancelAllTasks(player);
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 执行 cleanupAndRestoreOnLoad (维度切换)。");
+        LogUtil.debug("log.debug.joinWorld.standardFlow.executingCleanupDimChange");
         cleanupAndRestoreOnLoad(world);
     } else {
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 重新加入相同维度 (" + currentDim + ")。");
-        System.out.println("[GhostBlock-DEBUG onEntityJoinWorld] (标准流程) 执行 cleanupAndRestoreOnLoad (同维度重进)。");
+        LogUtil.debug("log.debug.joinWorld.standardFlow.rejoinSameDim", currentDim);
+        LogUtil.debug("log.debug.joinWorld.standardFlow.executingCleanupRejoin");
         cleanupAndRestoreOnLoad(world);
     }
     lastTrackedDimension = currentDim;
@@ -527,7 +525,7 @@ public class GhostBlockCommand extends CommandBase {
                 }
                 // 可选：发送提示消息，告知用户自动保存已激活
                 // sender.addChatMessage(formatMessage(EnumChatFormatting.ITALIC, "ghostblock.commands.autosave.activated"));
-                System.out.println("[GhostBlock-DEBUG SET] 自动保存已启用，将保存到: " + (saveFileName == null ? "默认文件" : saveFileName));
+                LogUtil.debug("log.debug.set.autosave.activated", (saveFileName == null ? LangUtil.translate("log.debug.set.autosave.defaultFile") : saveFileName));
             }
 
 
@@ -545,9 +543,9 @@ public class GhostBlockCommand extends CommandBase {
                     getAutoClearFileName(world),
                     false // 合并模式
                 );
-                 System.out.println("[GhostBlock-DEBUG SET] 自动保存 " + autoEntries.size() + " 个条目。");
+                 LogUtil.debug("log.debug.set.autosaved.count", autoEntries.size());
             } else {
-                System.out.println("[GhostBlock-DEBUG SET] 无需自动保存 (可能已存在于自动文件)。");
+                LogUtil.debug("log.debug.set.autosave.skipped");
             }
 
             // === 创建撤销记录 ===
@@ -556,7 +554,7 @@ public class GhostBlockCommand extends CommandBase {
             "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
             // 撤销文件保存的是 *将被覆盖* 的原始方块信息 (来自 autoEntries)
             GhostBlockData.saveData(world, autoEntries, undoFileName, true); // 覆盖模式写入撤销文件
-            System.out.println("[GhostBlock-DEBUG SET] 创建撤销文件: " + undoFileName);
+            LogUtil.debug("log.debug.set.undo.created", undoFileName);
 
             // === 备份用户文件 (如果需要) ===
             Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups = new HashMap<>();
@@ -565,7 +563,7 @@ public class GhostBlockCommand extends CommandBase {
                  actualSaveFileNameForBackup = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
                  List<GhostBlockData.GhostBlockEntry> existingEntries = GhostBlockData.loadData(world, Collections.singletonList(actualSaveFileNameForBackup));
                  fileBackups.put(actualSaveFileNameForBackup, existingEntries); // 备份
-                 System.out.println("[GhostBlock-DEBUG SET] 备份用户文件: " + actualSaveFileNameForBackup);
+                 LogUtil.debug("log.debug.set.backup.created", actualSaveFileNameForBackup);
             }
 
             // === 推送撤销记录 ===
@@ -575,7 +573,7 @@ public class GhostBlockCommand extends CommandBase {
                  fileBackups,  // 包含用户文件的备份（如果保存了）
                  UndoRecord.OperationType.SET // 标记为 SET 操作
              ));
-             System.out.println("[GhostBlock-DEBUG SET] 推送撤销记录。");
+             LogUtil.debug("log.debug.set.undo.pushed");
 
 
             // --- 检查区块是否加载 ---
@@ -594,12 +592,12 @@ public class GhostBlockCommand extends CommandBase {
                  }
             }
 
-             System.out.println("[GhostBlock-DEBUG SET] 检查坐标 " + pos + ", sectionIsReady=" + sectionIsReady);
+             LogUtil.debug("log.debug.set.checking.coords", pos, sectionIsReady);
 
             // --- 根据区块加载状态执行 ---
             if (sectionIsReady) {
                  // --- 区块已加载：直接放置 ---
-                 System.out.println("[GhostBlock-DEBUG SET] 区块已加载，直接设置。");
+                 LogUtil.debug("log.debug.set.directSet");
 
                  // ================ 用户保存逻辑 (立即执行) ================
                  if (saveToFile) {
@@ -622,7 +620,7 @@ public class GhostBlockCommand extends CommandBase {
 
                      // 保存到用户文件，使用合并模式 (false)
                      GhostBlockData.saveData(world, userEntryToSave, actualSaveFileName, false);
-                      System.out.println("[GhostBlock-DEBUG SET] 保存到用户文件: " + actualSaveFileName);
+                      LogUtil.debug("log.debug.set.saving.userFile", actualSaveFileName);
 
                      String displayName = (saveFileName == null) ?
                         LangUtil.translate("ghostblock.displayname.default_file", GhostBlockData.getWorldIdentifier(world))
@@ -638,14 +636,14 @@ public class GhostBlockCommand extends CommandBase {
                         "ghostblock.commands.cghostblock.set.success", pos.getX(), pos.getY(), pos.getZ()));
                  } catch (CommandException e) {
                      // 理论上不应在这里失败，因为我们检查了 sectionIsReady
-                     System.err.println("[GhostBlock SET ERROR] 在已加载区块设置失败: " + e.getMessage());
+                     LogUtil.error("log.error.set.loadedChunk.failed", e.getMessage());
                      // 也许需要撤销之前的保存操作？（目前不处理，但可以考虑）
                      throw e; // 重新抛出异常
                  }
 
             } else {
                  // --- 区块未加载：创建任务 ---
-                 System.out.println("[GhostBlock-DEBUG SET] 区块未加载，创建 FillTask。");
+                 LogUtil.debug("log.debug.set.creating.task");
 
                  int taskId = taskIdCounter.incrementAndGet();
 
@@ -669,7 +667,7 @@ public class GhostBlockCommand extends CommandBase {
                              currentOriginalBlock.getRegistryName().toString(), // 当前获取的原始方块
                              currentOriginalBlock.getMetaFromState(currentOriginalState) // 当前获取的元数据
                       ));
-                       System.out.println("[GhostBlock-DEBUG SET] autoEntries 为空，为任务保存创建了新条目。");
+                       LogUtil.debug("log.debug.set.task.entryCreated");
                  }
 
 
@@ -690,7 +688,7 @@ public class GhostBlockCommand extends CommandBase {
                  synchronized (activeTasks) {
                      activeTasks.add(task);
                  }
-                  System.out.println("[GhostBlock-DEBUG SET] 添加任务 #" + taskId + " 到 activeTasks。");
+                  LogUtil.debug("log.debug.set.task.added", taskId);
 
                  // 发送延迟放置的消息
                  sender.addChatMessage(formatMessage(EnumChatFormatting.YELLOW,
@@ -774,14 +772,14 @@ public class GhostBlockCommand extends CommandBase {
                 if (configForceBatch && configForcedSize > 0) {
                     // 如果配置强制批处理且配置了强制大小，则使用配置的大小
                     batchSize = configForcedSize;
-                    System.out.println("[GhostBlock DEBUG] Fill: 使用配置文件强制的批次大小: " + batchSize);
+                    LogUtil.debug("log.debug.fill.batch.config", batchSize);
                 } else {
                     // 否则（配置没强制大小，或用户只输入了-b），使用默认大小 100
                     batchSize = 100;
-                     System.out.println("[GhostBlock DEBUG] Fill: 使用默认批次大小: " + batchSize);
+                     LogUtil.debug("log.debug.fill.batch.default", batchSize);
                 }
             } else if (useBatch && userProvidedBatchSize) {
-                 System.out.println("[GhostBlock DEBUG] Fill: 使用用户指定的批次大小: " + batchSize);
+                 LogUtil.debug("log.debug.fill.batch.user", batchSize);
             }
 
             // 检查自动保存配置 (仅当用户未指定 -s 时)
@@ -794,13 +792,13 @@ public class GhostBlockCommand extends CommandBase {
                 }
                 // 可选：发送提示消息
                 // sender.addChatMessage(formatMessage(EnumChatFormatting.ITALIC, "ghostblock.commands.autosave.activated"));
-                System.out.println("[GhostBlock-DEBUG FILL] 自动保存已启用，将保存到: " + (saveFileName == null ? "默认文件" : saveFileName));
+                LogUtil.debug("log.debug.fill.autosave.activated", (saveFileName == null ? LangUtil.translate("log.debug.set.autosave.defaultFile") : saveFileName));
             }
 
              // --- 添加配置相关的调试信息 ---
-             System.out.println("[GhostBlock DEBUG] Fill Config: alwaysBatchFill=" + configForceBatch + ", forcedBatchSize=" + configForcedSize);
-             System.out.println("[GhostBlock DEBUG] Fill Params: userProvidedBatchFlag=" + userProvidedBatchFlag + ", userProvidedBatchSize=" + userProvidedBatchSize);
-             System.out.println("[GhostBlock DEBUG] Fill Final Decision: useBatch=" + useBatch + ", finalBatchSize=" + (useBatch ? batchSize : "N/A"));
+             LogUtil.debug("log.debug.fill.config.info", configForceBatch, configForcedSize);
+             LogUtil.debug("log.debug.fill.params.info", userProvidedBatchFlag, userProvidedBatchSize);
+             LogUtil.debug("log.debug.fill.decision.info", useBatch, (useBatch ? batchSize : "N/A"));
 
 
             // 计算所有方块位置
@@ -813,10 +811,10 @@ public class GhostBlockCommand extends CommandBase {
             int maxZ = Math.max(from.getZ(), to.getZ());
 
             long volume = (long)(maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
-            System.out.println("[GhostBlock DEBUG] Fill: 计算体积: " + volume + " 方块。");
+            LogUtil.debug("log.debug.fill.volume.calculated", volume);
              // 对过大的同步填充增加一个警告或检查点 (可选，但建议保留)
             if (volume > 32768 && !useBatch) {
-                 System.out.println("[GhostBlock WARN] Fill: 尝试进行大型同步填充 (" + volume + " 方块)。这可能导致延迟或失败。考虑使用 -b。");
+                 LogUtil.warn("log.warn.fill.largeSync", volume);
             }
 
             for (int x = minX; x <= maxX; x++) {
@@ -831,49 +829,49 @@ public class GhostBlockCommand extends CommandBase {
                   sender.addChatMessage(formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.fill.empty_area"));
                  return;
              }
-             System.out.println("[GhostBlock DEBUG] Fill: 总计需处理方块: " + allBlocks.size());
+             LogUtil.debug("log.debug.fill.totalBlocks", allBlocks.size());
 
             // ================ 自动保存逻辑 (填充前收集) ================
             List<GhostBlockData.GhostBlockEntry> autoEntries = collectOriginalBlocks(world, allBlocks, state);
             if (!autoEntries.isEmpty()) {
-                System.out.println("[GhostBlock DEBUG] Fill: 已收集 " + autoEntries.size() + " 个原始方块用于自动保存/撤销。");
+                LogUtil.debug("log.debug.fill.autosave.collected", autoEntries.size());
                 GhostBlockData.saveData( world, autoEntries, getAutoClearFileName(world), false );
             } else {
-                 System.out.println("[GhostBlock DEBUG] Fill: 无新的原始方块可收集。");
+                 LogUtil.debug("log.debug.fill.autosave.skipped");
             }
 
             // === 创建撤销记录 ===
             String baseId = GhostBlockData.getWorldBaseIdentifier(world);
             String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
             GhostBlockData.saveData(world, autoEntries, undoFileName, true); // 覆盖模式
-            System.out.println("[GhostBlock DEBUG] Fill: 已将撤销数据保存到 " + undoFileName + ".json");
+            LogUtil.debug("log.debug.fill.undo.saved", undoFileName);
 
             // ================ 用户文件备份 (用于撤销) ================
             Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups = new HashMap<>();
             if (saveToFile) {
                 String actualSaveFileName = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
-                System.out.println("[GhostBlock DEBUG] Fill: 指定了 -s。正在备份文件: " + actualSaveFileName);
+                LogUtil.debug("log.debug.fill.backup.created", actualSaveFileName);
                 List<GhostBlockData.GhostBlockEntry> existingEntries = GhostBlockData.loadData(world, Collections.singletonList(actualSaveFileName));
                 fileBackups.put(actualSaveFileName, existingEntries);
             }
 
              // === 创建并推送撤销记录 ===
              undoHistory.push(new UndoRecord( undoFileName, fileBackups, UndoRecord.OperationType.SET ));
-             System.out.println("[GhostBlock DEBUG] Fill: 已推送撤销记录。");
+             LogUtil.debug("log.debug.fill.undo.pushed");
 
 
             // --- 修改后的检查逻辑: 检查 ExtendedBlockStorage ---
             boolean implicitBatchRequired = false;
             if (!useBatch && !allBlocks.isEmpty()) {
                 boolean foundNotReady = false;
-                System.out.println("[GhostBlock DEBUG] Fill: 开始使用 ExtendedBlockStorage 进行隐式批处理检查 (useBatch=" + useBatch + ")");
+                LogUtil.debug("log.debug.fill.check.ebs.start", useBatch);
                 ChunkProviderClient chunkProvider = (ChunkProviderClient) world.getChunkProvider();
                 int checkLimit = 5000; // 保持检查上限
                 int checkedCount = 0;
 
                 for (BlockPos pos : allBlocks) {
                     if (checkedCount >= checkLimit) {
-                        System.out.println("[GhostBlock DEBUG] Fill: 达到检查限制 (" + checkLimit + "), 假设可能存在未就绪的区块。");
+                        LogUtil.debug("log.debug.fill.check.ebs.limitReached", checkLimit);
                         foundNotReady = true;
                         break;
                     }
@@ -897,55 +895,55 @@ public class GhostBlockCommand extends CommandBase {
 
                     // 打印调试信息
                     if (!sectionReady || checkedCount < 10 || checkedCount % 1000 == 0) {
-                         System.out.println("[GhostBlock DEBUG] Fill Check EBS: Pos=" + pos + ", sectionReady=" + sectionReady);
+                         LogUtil.debug("log.debug.fill.check.ebs.progress", pos, sectionReady);
                     }
 
                     if (!sectionReady) {
-                        System.out.println("[GhostBlock DEBUG] Fill: *** 在检查 " + checkedCount + " 个方块后发现未就绪的区块位于 " + pos + "。 ***");
+                        LogUtil.debug("log.debug.fill.check.ebs.foundNotReady", checkedCount, pos);
                         foundNotReady = true;
                         break; // 找到一个未就绪的就足够了
                     }
                 }
-                System.out.println("[GhostBlock DEBUG] Fill: EBS 检查完成。总检查数: " + checkedCount + ", foundNotReady=" + foundNotReady);
+                LogUtil.debug("log.debug.fill.check.ebs.complete", checkedCount, foundNotReady);
 
                 if (foundNotReady) {
                     implicitBatchRequired = true;
-                    System.out.println("[GhostBlock DEBUG] Fill: 由于发现未就绪区块，设置 implicitBatchRequired = true。");
+                    LogUtil.debug("log.debug.fill.check.ebs.implicitRequired");
                     // 仅在用户未指定 -b 时才提示 (因为 -b 优先级更高)
                     if (!userProvidedBatchFlag) {
                         sender.addChatMessage(formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.fill.implicit_batch_notice"));
                     }
                 } else {
-                     System.out.println("[GhostBlock DEBUG] Fill: 所有已检查区块似乎都已就绪。implicitBatchRequired 保持 false。");
+                     LogUtil.debug("log.debug.fill.check.ebs.allReady");
                 }
             } else {
-                 System.out.println("[GhostBlock DEBUG] Fill: 跳过隐式批处理检查，因为 useBatch=" + useBatch + " 或 allBlocks 为空。");
+                 LogUtil.debug("log.debug.fill.check.ebs.skipped", useBatch);
             }
             // --- 检查结束 ---
 
-            System.out.println("[GhostBlock DEBUG] Fill: 决策点 -> useBatch(最终)=" + useBatch + ", implicitBatchRequired=" + implicitBatchRequired);
+            LogUtil.debug("log.debug.fill.decision.final", useBatch, implicitBatchRequired);
 
             // ================ 执行填充 (同步或异步, 使用最终的 useBatch 和 batchSize) ================
             if (useBatch || implicitBatchRequired) { // <--- 使用最终决定的 useBatch
-                 System.out.println("[GhostBlock DEBUG] Fill: === 进入批处理执行路径 ===");
+                 LogUtil.debug("log.debug.fill.exec.batch");
                  int fillTaskId = taskIdCounter.incrementAndGet();
                  int actualBatchSize = batchSize; // <--- 使用最终决定的 batchSize
 
                  // 如果是隐式批处理触发，但最终批次大小仍是默认值，而配置中有强制大小，优先使用配置大小
                  if (implicitBatchRequired && !userProvidedBatchSize && configForceBatch && configForcedSize > 0) {
                      actualBatchSize = configForcedSize;
-                     System.out.println("[GhostBlock DEBUG] Fill: 隐式批处理触发，使用配置文件强制大小: " + actualBatchSize);
+                     LogUtil.debug("log.debug.fill.exec.batch.implicit.configSize", actualBatchSize);
                  } else if (implicitBatchRequired && actualBatchSize == 100) {
-                      System.out.println("[GhostBlock DEBUG] Fill: 隐式批处理触发，使用默认大小: 100");
+                      LogUtil.debug("log.debug.fill.exec.batch.implicit.defaultSize");
                  }
 
 
-                 System.out.println("[GhostBlock DEBUG] Fill: 启动 FillTask #" + fillTaskId + "，实际批次大小=" + actualBatchSize);
+                 LogUtil.debug("log.debug.fill.exec.batch.task.started", fillTaskId, actualBatchSize);
                  activeTasks.add(new FillTask(world, state, allBlocks, allBlocks.size(), actualBatchSize, saveToFile, saveFileName, sender, fillTaskId, autoEntries));
                  sender.addChatMessage(formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.fill.batch_started", fillTaskId, allBlocks.size(), actualBatchSize));
                  sender.addChatMessage(formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.task.chunk_aware_notice"));
             } else {
-                 System.out.println("[GhostBlock DEBUG] Fill: === 进入同步执行路径 ===");
+                 LogUtil.debug("log.debug.fill.exec.sync");
                 int count = 0;
                 long startTime = System.currentTimeMillis();
 
@@ -963,8 +961,7 @@ public class GhostBlockCommand extends CommandBase {
                         count++;
                     } catch (Exception e) { // 捕捉更广泛的异常以防万一
                         // 理论上这个错误不应该在这个分支发生，因为 EBS 检查通过了
-                        System.err.println("[GhostBlock Fill Sync FATAL] 设置方块时发生意外错误 (本应已就绪) " + pos + ": " + e.getMessage());
-                        e.printStackTrace();
+                        LogUtil.printStackTrace("log.fatal.fill.exec.sync.error", e, pos, e.getMessage());
                         sender.addChatMessage(formatMessage(EnumChatFormatting.RED, "ghostblock.commands.error.internal_sync_place_failed", pos.toString()));
                         // 考虑是否中断
                         // return;
@@ -972,12 +969,12 @@ public class GhostBlockCommand extends CommandBase {
                 }
 
                 long endTime = System.currentTimeMillis();
-                System.out.println("[GhostBlock DEBUG] Fill: 同步执行在 " + (endTime - startTime) + " ms 内完成 " + count + " 个方块。");
+                LogUtil.debug("log.debug.fill.exec.sync.complete", (endTime - startTime), count);
 
                 // 同步填充完成后执行用户保存逻辑
                 if (saveToFile) {
                      String actualSaveFileName = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
-                     System.out.println("[GhostBlock DEBUG] Fill SYNC: 保存用户数据到 " + actualSaveFileName);
+                     LogUtil.debug("log.debug.fill.exec.sync.saving", actualSaveFileName);
                      // --- 修正：传递给 saveData 的应该是 autoEntries ---
                      // 因为 autoEntries 包含了每个位置对应的原始方块信息，这才是用户保存时需要的
                      if (autoEntries != null && !autoEntries.isEmpty()) {
@@ -989,7 +986,7 @@ public class GhostBlockCommand extends CommandBase {
                          sender.addChatMessage(formatMessage(EnumChatFormatting.GREEN,
                             "ghostblock.commands.save.success", displayName));
                      } else {
-                         System.out.println("[GhostBlock DEBUG] Fill SYNC WARN: autoEntries 为空，无法保存用户文件。");
+                         LogUtil.warn("log.warn.fill.exec.sync.saveFailed");
                          // 可以选择性地通知用户保存失败
                           sender.addChatMessage(formatMessage(EnumChatFormatting.YELLOW,
                               "ghostblock.commands.save.warn.no_data",
@@ -1101,7 +1098,7 @@ public class GhostBlockCommand extends CommandBase {
             }
             if (!validAutoSaveEntries.isEmpty()) {
                 GhostBlockData.saveData( world, validAutoSaveEntries, autoFileName, false ); // 合并模式
-                System.out.println("[GhostBlock-DEBUG LOAD] 自动保存 " + validAutoSaveEntries.size() + " 个新条目。");
+                LogUtil.debug("log.debug.load.autosave.newEntries", validAutoSaveEntries.size());
             }
 
             // === 创建撤销记录 ===
@@ -1112,13 +1109,13 @@ public class GhostBlockCommand extends CommandBase {
             GhostBlockData.saveData(world, validAutoSaveEntries, undoFileName, true); // 覆盖模式
             Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups = new HashMap<>(); // load 不修改用户文件
             undoHistory.push(new UndoRecord( undoFileName, fileBackups, UndoRecord.OperationType.SET ));
-            System.out.println("[GhostBlock-DEBUG LOAD] 创建并推送撤销记录: " + undoFileName);
+            LogUtil.debug("log.debug.load.undo.created", undoFileName);
 
 
             // --- 检查是否需要隐式批处理 ---
             boolean implicitBatchRequired = false;
             if (!useBatch && !entries.isEmpty()) { // 仅在未指定 -b 且有条目时检查
-                System.out.println("[GhostBlock DEBUG Load] 开始隐式批处理检查...");
+                LogUtil.debug("log.debug.load.check.implicit.start");
                 ChunkProviderClient chunkProvider = (ChunkProviderClient) world.getChunkProvider();
                 int checkLimit = 5000; // 检查上限，防止卡顿
                 int checkedCount = 0;
@@ -1126,7 +1123,7 @@ public class GhostBlockCommand extends CommandBase {
 
                 for (GhostBlockData.GhostBlockEntry entry : entries) {
                     if (checkedCount >= checkLimit) {
-                        System.out.println("[GhostBlock DEBUG Load] 达到检查上限 (" + checkLimit + "), 强制使用批处理模式。");
+                        LogUtil.debug("log.debug.load.check.implicit.limitReached", checkLimit);
                         foundNotReady = true;
                         break;
                     }
@@ -1148,12 +1145,12 @@ public class GhostBlockCommand extends CommandBase {
                     }
 
                     if (!sectionIsReady) {
-                        System.out.println("[GhostBlock DEBUG Load] 在检查了 " + checkedCount + " 个条目后发现未就绪的 Section: " + pos + ". 强制使用批处理模式。");
+                        LogUtil.debug("log.debug.load.check.implicit.foundNotReady", checkedCount, pos);
                         foundNotReady = true;
                         break; // 找到一个就够了
                     }
                 }
-                System.out.println("[GhostBlock DEBUG Load] 隐式批处理检查完成。已检查: " + checkedCount + ", foundNotReady=" + foundNotReady);
+                LogUtil.debug("log.debug.load.check.implicit.complete", checkedCount, foundNotReady);
                 if (foundNotReady) {
                     implicitBatchRequired = true;
                     // 仅在用户未明确要求批处理时发出通知
@@ -1168,7 +1165,7 @@ public class GhostBlockCommand extends CommandBase {
             // --- 执行加载 (同步或异步) ---
             if (useBatch || implicitBatchRequired) {
                  // === 批处理模式 (LoadTask) ===
-                 System.out.println("[GhostBlock DEBUG Load] 进入 BATCH 执行路径。");
+                 LogUtil.debug("log.debug.load.exec.batch");
                  int loadTaskId = taskIdCounter.incrementAndGet();
                  // 如果是隐式批处理，使用默认批次大小；否则使用用户指定的或默认的
                  int actualBatchSize = useBatch ? loadBatchSize : 100;
@@ -1178,7 +1175,7 @@ public class GhostBlockCommand extends CommandBase {
 
             } else {
                 // === 同步加载模式 ===
-                 System.out.println("[GhostBlock DEBUG Load] 进入 SYNC 执行路径。");
+                 LogUtil.debug("log.debug.load.exec.sync");
                 int successCount = 0;
                 int failCount = 0;
                 int skippedCount = 0; // 用于记录理论上不应发生的跳过
@@ -1196,25 +1193,24 @@ public class GhostBlockCommand extends CommandBase {
                                  setGhostBlock(world, pos, new BlockStateProxy(Block.getIdFromBlock(block), entry.metadata));
                                  successCount++;
                             } catch (CommandException e) { // setGhostBlock 内部可能抛出
-                                 System.out.println("[GhostBlock Load Sync WARN] 在已加载区块设置方块时失败: " + pos + " (" + e.getMessage() + ")");
+                                 LogUtil.warn("log.warn.load.exec.sync.failedSet", pos, e.getMessage());
                                  failCount++;
                             } catch (Exception e) { // 捕获意外错误
-                                System.err.println("[GhostBlock Load Sync FATAL] 设置方块时发生意外错误 " + pos + ": " + e.getMessage());
-                                e.printStackTrace();
+                                LogUtil.printStackTrace("log.fatal.load.exec.sync.error", e, pos, e.getMessage());
                                 failCount++;
                            }
                         } else {
-                            System.out.println("[GhostBlock Load Sync WARN] 无效的方块 ID '" + entry.blockId + "' 或尝试在 " + pos + " 加载空气方块。");
+                            LogUtil.warn("log.warn.load.exec.sync.invalidBlock", entry.blockId, pos);
                             failCount++;
                         }
                     } else {
                         // 这个情况理论上不应该发生，因为预检查通过了
-                        System.out.println("[GhostBlock Load Sync WARN] 方块 " + pos + " 未加载，跳过 (这可能表示预检查逻辑或时序问题)。");
+                        LogUtil.warn("log.warn.load.exec.sync.notLoaded", pos);
                         skippedCount++;
                     }
                 }
                 long endTime = System.currentTimeMillis();
-                System.out.println("[GhostBlock DEBUG Load] 同步执行在 " + (endTime - startTime) + " ms 内完成。");
+                LogUtil.debug("log.debug.load.exec.sync.complete", (endTime - startTime));
 
                 // 发送同步加载结果
                 sender.addChatMessage(formatMessage(EnumChatFormatting.GREEN,
@@ -1323,7 +1319,7 @@ public class GhostBlockCommand extends CommandBase {
                     }
                 } else {
                     // 文件在确认后被删除？可以忽略或记录
-                    System.out.println("[GhostBlock] 文件在确认删除时已不存在: " + file.getName());
+                    LogUtil.info("log.info.clear.file.alreadyDeleted", file.getName());
                     // 也可以算作删除成功？或者单独记录
                 }
             }
@@ -1537,7 +1533,7 @@ public class GhostBlockCommand extends CommandBase {
                             restoredCount++;
                             affectedPositionsForSet.add(pos); // 添加位置以便从自动清除文件中移除
                         } catch (Exception e) { // 捕获更通用的异常
-                             System.err.println("[GhostBlock Undo Error] Restoring SET failed at " + pos + ": " + e.getMessage());
+                             LogUtil.error("log.error.undo.restore.set.failed", pos, e.getMessage());
                               // 使用 formatMessage 发送带翻译的消息
                              sender.addChatMessage(formatMessage(EnumChatFormatting.RED,"ghostblock.commands.undo.error.restore_failed", pos.getX(), pos.getY(), pos.getZ(), e.getMessage()));
                         }
@@ -1584,7 +1580,7 @@ public class GhostBlockCommand extends CommandBase {
                                  // 将这个 幽灵->原始 映射添加到列表中，以便重新填充自动清除文件
                                  restoredGhostEntriesForAutoClear.add(entry);
                              } catch (Exception e) { // 捕获更通用的异常
-                                 System.err.println("[GhostBlock Undo Error] Restoring CLEAR_BLOCK failed at " + pos + ": " + e.getMessage());
+                                 LogUtil.error("log.error.undo.restore.clear.failed", pos, e.getMessage());
                                    // 使用 formatMessage 发送带翻译的消息
                                  sender.addChatMessage(formatMessage(EnumChatFormatting.RED,"ghostblock.commands.undo.error.restore_ghost_failed", pos.getX(), pos.getY(), pos.getZ(), e.getMessage()));
                              }
@@ -1610,14 +1606,14 @@ public class GhostBlockCommand extends CommandBase {
         // 3. 删除撤销数据文件本身（如果它存在）
         if (undoDataFile.exists()) {
             if (!undoDataFile.delete()) {
-                 System.err.println("[GhostBlock] 删除撤销文件失败: " + undoDataFile.getPath());
+                 LogUtil.error("log.error.undo.deleteFile.failed", undoDataFile.getPath());
                  // 可以选择性地通知用户
                  // sender.addChatMessage(formatMessage(EnumChatFormatting.RED, "ghostblock.commands.undo.error.delete_undo_file", record.undoFileName));
             } else {
-                 System.out.println("[GhostBlock] 已删除撤销文件: " + undoDataFile.getPath());
+                 LogUtil.info("log.info.undo.deleteFile.success", undoDataFile.getPath());
             }
         } else {
-            System.out.println("[GhostBlock] 撤销文件未找到或无需删除: " + record.undoFileName);
+            LogUtil.info("log.info.undo.deleteFile.notFound", record.undoFileName);
         }
     }
 
@@ -1654,7 +1650,7 @@ public class GhostBlockCommand extends CommandBase {
         }
         String autoFileName = getAutoClearFileName((WorldClient) world);
         removeEntriesFromFile(world, autoFileName, positionsToRemove); // 复用通用方法
-        System.out.println("[GhostBlock] 撤销操作后更新了自动清除文件 (" + autoFileName + ")，移除了 " + positionsToRemove.size() + " 个条目。");
+        LogUtil.info("log.info.undo.autoClearFile.updated", autoFileName, positionsToRemove.size());
     }
 
     // 辅助方法：恢复方块列表到原始状态（似乎未被直接使用，但保留可能有价值）
@@ -1669,7 +1665,7 @@ public class GhostBlockCommand extends CommandBase {
                     world.markBlockForUpdate(pos);
                     count.incrementAndGet();
                 } catch (Exception e) {
-                    System.err.println("[GhostBlock restoreBlocks Error] Failed at " + pos + ": " + e.getMessage());
+                    LogUtil.error("log.error.restoreBlocks.failed", pos, e.getMessage());
                 }
             }
         });
@@ -1851,7 +1847,7 @@ public class GhostBlockCommand extends CommandBase {
 
                 // 允许 originalBlock 为 null (表示无效ID) 或 air，尝试恢复
                 if (originalBlock == null) {
-                     System.err.println("[GhostBlock 同步清除错误] 无法找到原始方块: " + entry.originalBlockId + " at " + pos);
+                     LogUtil.error("log.error.clear.task.originalBlock.notFound", entry.originalBlockId, pos);
                      failed++;
                      continue; // 跳过这个方块
                 }
@@ -1862,8 +1858,7 @@ public class GhostBlockCommand extends CommandBase {
                 restored++;
             } catch (Exception e) {
                 failed++;
-                System.err.println("[GhostBlock 同步清除错误] 恢复方块时发生异常 " + entry.x + "," + entry.y + "," + entry.z + ": " + e.getMessage());
-                e.printStackTrace();
+                LogUtil.printStackTrace("log.error.clear.task.restore.failed", e, entry.x + "," + entry.y + "," + entry.z, e.getMessage());
             }
         }
 
@@ -1964,7 +1959,7 @@ public class GhostBlockCommand extends CommandBase {
                     fillIter.remove(); // 从活动列表移除
                     pausedTasks.put(taskId, snapshot); // 添加到暂停列表
                     found = true;
-                    System.out.println("[GhostBlock] 填充任务 #" + taskId + " 已取消并暂停。");
+                    LogUtil.info("log.info.task.cancel.fill", taskId);
                     break;
                 }
             }
@@ -1982,7 +1977,7 @@ public class GhostBlockCommand extends CommandBase {
                         loadIter.remove(); // 从活动列表移除
                         pausedTasks.put(taskId, snapshot); // 添加到暂停列表
                         found = true;
-                        System.out.println("[GhostBlock] 加载任务 #" + taskId + " 已取消并暂停。");
+                        LogUtil.info("log.info.task.cancel.load", taskId);
                         break;
                     }
                 }
@@ -1999,7 +1994,7 @@ public class GhostBlockCommand extends CommandBase {
                         task.cancel(); // 标记为取消
                         clearIter.remove(); // 直接从活动列表移除
                         found = true;
-                        System.out.println("[GhostBlock] 清除任务 #" + taskId + " 已取消。");
+                        LogUtil.info("log.info.task.cancel.clear", taskId);
                         break;
                     }
                 }
@@ -2152,10 +2147,10 @@ public class GhostBlockCommand extends CommandBase {
                         world.markBlockForUpdate(pos);
                         processedInBatch++;
                     } catch (Exception e) {
-                         System.err.println("[GhostBlock 清除任务错误] 恢复方块失败 " + pos + ": " + e.getMessage());
+                         LogUtil.error("log.error.clear.task.restore.failed", pos, e.getMessage());
                     }
                 } else {
-                     System.err.println("[GhostBlock 清除任务错误] 无法找到原始方块: " + entry.originalBlockId + " at " + pos);
+                     LogUtil.error("log.error.clear.task.originalBlock.notFound", entry.originalBlockId, pos);
                 }
             }
             currentIndex = endIndex;
@@ -2209,14 +2204,13 @@ public class GhostBlockCommand extends CommandBase {
             // 删除自动清除文件
             if (autoClearFile != null && autoClearFile.exists()) {
                 boolean deleted = autoClearFile.delete();
-                System.out.println("[GhostBlock] 自动清理文件 " + autoClearFile.getName() +
-                                 " 删除结果: " + deleted);
+                LogUtil.info("log.info.clear.task.file.deleted", autoClearFile.getName(), deleted);
                  if (!deleted && !cancelled) { // 如果删除失败且任务未被取消
                        // 使用 formatMessage 发送带翻译的消息
                       sender.addChatMessage(formatMessage(EnumChatFormatting.RED, "ghostblock.commands.clear.block.delete_failed", autoClearFile.getName()));
                  }
             } else if (autoClearFile != null) {
-                 System.out.println("[GhostBlock] 自动清理文件 " + autoClearFile.getName() + " 在清除任务完成时已不存在。");
+                 LogUtil.info("log.info.clear.task.file.notFound", autoClearFile.getName());
             }
         }
 
@@ -2673,11 +2667,11 @@ public class GhostBlockCommand extends CommandBase {
                 // 同步清除完成后删除自动文件
                 if (autoFile.exists()) {
                     if (!autoFile.delete()) {
-                         System.err.println("[GhostBlock] 同步清除后未能删除自动清除文件: " + autoFile.getPath());
+                         LogUtil.error("log.error.worldLoad.clearFile.deleteFailed", autoFile.getPath());
                           // 使用 formatMessage 发送带翻译的消息
                          sender.addChatMessage(formatMessage(EnumChatFormatting.RED, "ghostblock.commands.clear.block.delete_failed", autoFile.getName()));
                     } else {
-                        System.out.println("[GhostBlock] 同步清除后已删除自动清除文件: " + autoFile.getPath());
+                        LogUtil.info("log.info.worldLoad.clearFile.deleted", autoFile.getPath());
                     }
                 }
             }
@@ -2696,7 +2690,7 @@ public class GhostBlockCommand extends CommandBase {
             backupMap, // 空的用户文件备份
             UndoRecord.OperationType.CLEAR_BLOCK // 标记为 CLEAR_BLOCK 操作
         ));
-         System.out.println("[GhostBlock] 已创建 clear block 的撤销记录: " + undoFileName);
+         LogUtil.info("log.info.undo.created.clearBlock", undoFileName);
     }
 
     // 验证批次大小
@@ -2843,7 +2837,7 @@ public class GhostBlockCommand extends CommandBase {
                                      block.getStateFromMeta(parsedMeta); // 验证
                                      meta = parsedMeta;
                                 } catch (IllegalArgumentException e) {
-                                      System.out.println("[GhostBlock WARN] 方块 '" + block.getRegistryName() + "' 的元数据 '" + potentialMetaStr + "' 无效，使用 0。");
+                                      LogUtil.warn("log.warn.command.set.meta.invalid", block.getRegistryName(), potentialMetaStr);
                                      meta = 0;
                                 }
                           }
@@ -2855,15 +2849,13 @@ public class GhostBlockCommand extends CommandBase {
                 meta = 0;
             }
 
-             System.out.println("[GhostBlock 解析成功] 结果: " + block.getRegistryName() + " (ID=" + Block.getIdFromBlock(block) + "), meta=" + meta);
+             LogUtil.debug("log.info.command.parse.success", block.getRegistryName(), Block.getIdFromBlock(block), meta);
             return new BlockStateProxy(Block.getIdFromBlock(block), meta);
 
         } catch (CommandException ce) {
             throw ce; // 重新抛出命令异常
         } catch (Exception e) {
-             System.err.println("[GhostBlock 解析错误] 解析方块状态时发生意外错误: " + input);
-             e.printStackTrace();
-             // 使用 LangUtil 获取错误信息
+             LogUtil.printStackTrace("log.error.command.parse.failed", e, input);
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block")); // 通用错误
         }
     }
@@ -2879,7 +2871,7 @@ public class GhostBlockCommand extends CommandBase {
                 world.checkLightFor(EnumSkyBlock.BLOCK, pos);
                 world.checkLightFor(EnumSkyBlock.SKY, pos);
             } else {
-                System.out.println("[GhostBlock 错误] 无效方块 ID: " + state.blockId + "，无法设置幽灵方块。");
+                LogUtil.error("log.error.setGhostBlock.invalidId", state.blockId);
                   // 使用 LangUtil 获取错误信息
                  throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block"));
             }
@@ -2918,7 +2910,7 @@ public class GhostBlockCommand extends CommandBase {
         }
         if (skipped > 0) {
              // 这个警告可以考虑也用 LangUtil，但作为日志输出可能还好
-            System.out.println("[GhostBlock 填充警告] 跳过了 " + skipped + " 个无效或未加载的位置。");
+            LogUtil.warn("log.warn.fillGhostBlocks.skipped", skipped);
         }
         return count; // 返回成功设置的数量
     }
@@ -2980,7 +2972,7 @@ public class GhostBlockCommand extends CommandBase {
             this.taskId = taskId;
             this.entriesToSaveForUserFile = entriesToSaveForUserFile != null ? new ArrayList<>(entriesToSaveForUserFile) : new ArrayList<>();
             this.processedCount = 0;
-            System.out.println("[GhostBlock FillTask #" + taskId + "] 初始化 (带距离检查策略): total=" + this.totalBlocks + ", batch=" + this.batchSize);
+            LogUtil.info("log.info.task.fill.init", taskId, this.totalBlocks, this.batchSize);
         }
 
 
@@ -2993,7 +2985,7 @@ public class GhostBlockCommand extends CommandBase {
             if (block == null || block == Blocks.air) {
                 if (processedCount == 0 && !cancelled) {
                     sender.addChatMessage(formatMessage(EnumChatFormatting.RED, "ghostblock.commands.error.invalid_block"));
-                    System.err.println("[GhostBlock FillTask #" + taskId + "] 错误：无效方块 ID " + state.blockId + " 或尝试填充空气。任务取消。");
+                    LogUtil.error("log.error.task.fill.invalidBlock", taskId, state.blockId);
                     this.cancel();
                 }
                 return true;
@@ -3011,7 +3003,7 @@ public class GhostBlockCommand extends CommandBase {
                 if (cmdSenderPlayer.isEntityAlive() && cmdSenderPlayer.worldObj == this.world) {
                     currentPlayer = cmdSenderPlayer;
                 } else if (!cancelled) { // 如果玩家已不在，且任务未被取消，则取消任务
-                    System.out.println("[GhostBlock FillTask #" + taskId + "] 命令发送者玩家已失效或不在当前世界，取消任务。");
+                    LogUtil.info("log.info.task.fill.playerInvalid", taskId);
                     this.cancel();
                     return true;
                 }
@@ -3054,7 +3046,7 @@ public class GhostBlockCommand extends CommandBase {
 
                 if (canPlaceNow) {
                     if (previouslyWaitingForLoadOrProximity.contains(pos)) {
-                        System.out.println("[GhostBlock FillTask #" + taskId + "] 位置现已就绪: " + pos + ". 尝试放置...");
+                        LogUtil.debug("log.info.task.fill.posReady", taskId, pos);
                         previouslyWaitingForLoadOrProximity.remove(pos);
                     }
 
@@ -3063,7 +3055,7 @@ public class GhostBlockCommand extends CommandBase {
                             IBlockState blockStateToSet = block.getStateFromMeta(state.metadata);
                             world.setBlockState(pos, blockStateToSet, 3);
                         } else {
-                            System.err.println("[GhostBlock FillTask #" + taskId + " WARN] 尝试在非客户端世界执行任务！Pos: " + pos);
+                            LogUtil.warn("log.warn.task.fill.notClient", taskId, pos);
                         }
 
                         iterator.remove();
@@ -3071,22 +3063,21 @@ public class GhostBlockCommand extends CommandBase {
                         processedCount++;
 
                     } catch (Exception e) {
-                        System.err.println("[GhostBlock FillTask #" + taskId + " WARN] 在位置就绪后设置方块时出错 " + pos + ": " + e.getMessage());
-                        e.printStackTrace();
+                        LogUtil.printStackTrace("log.warn.task.fill.placeError", e, taskId, pos, e.getMessage());
                         iterator.remove(); // 即使失败也移除
                     }
                 } else {
                     // 未能放置 (Y无效，或未加载，或加载了但距离远)
                     if (pos.getY() >= 0 && pos.getY() < 256) { // Y有效，但因其他原因等待
                         if (!previouslyWaitingForLoadOrProximity.contains(pos)) {
-                            System.out.println("[GhostBlock FillTask #" + taskId + "] 等待放置: " + pos + " (原因: " + waitReason + ")");
+                            LogUtil.debug("log.info.task.fill.posWaiting", taskId, pos, waitReason);
                             previouslyWaitingForLoadOrProximity.add(pos);
                         }
                         // 中断当前批次，让其他任务有机会执行或等待玩家移动
                         // 如果不break，这个批次可能会因为大量远距离方块而空耗ticks
                         if (attemptsThisTick > 0) break; // 如果本次tick至少尝试了一个，就退出让下一tick重试
                     } else { // Y轴无效
-                        System.out.println("[GhostBlock FillTask #" + taskId + "] 无效Y坐标 ("+pos.getY()+")，从任务移除: " + pos);
+                        LogUtil.debug("log.info.task.fill.posInvalidY", taskId, pos.getY(), pos);
                         iterator.remove(); // 无效Y坐标，直接从任务中移除
                         // totalBlocks 保持不变，但这个方块不会被计入 processedCount
                     }
@@ -3100,9 +3091,9 @@ public class GhostBlockCommand extends CommandBase {
             boolean finished = remainingBlocks.isEmpty();
 
             if (finished) {
-                System.out.println("[GhostBlock FillTask #" + taskId + "] 任务完成。成功放置: " + processedCount + " / 初始总数: " + totalBlocks);
+                LogUtil.info("log.info.task.fill.complete.log", taskId, processedCount, totalBlocks);
                 if (!previouslyWaitingForLoadOrProximity.isEmpty()) {
-                    System.out.println("[GhostBlock FillTask #" + taskId + "] 注意: 任务完成时仍有 " + previouslyWaitingForLoadOrProximity.size() + " 个方块在等待列表中 (可能已在最后批次处理)。");
+                    LogUtil.info("log.info.task.fill.complete.waitingList", taskId, previouslyWaitingForLoadOrProximity.size());
                 }
                 sendFinalProgress();
             } else {
@@ -3138,7 +3129,7 @@ public class GhostBlockCommand extends CommandBase {
                          EntityPlayer player = (EntityPlayer) sender;
                          // 确保玩家仍然有效且在当前世界
                          if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
-                             if(!cancelled) System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，停止发送进度消息，并取消任务。");
+                             if(!cancelled) LogUtil.info("log.info.task.fill.playerLeft.progress", taskId);
                              this.cancel(); // 取消任务
                              return;
                          }
@@ -3146,7 +3137,7 @@ public class GhostBlockCommand extends CommandBase {
                      try {
                         sender.addChatMessage(message);
                      } catch (Exception e) {
-                        System.err.println("[GhostBlock FillTask #" + taskId + "] 发送进度消息失败: " + e.getMessage());
+                        LogUtil.error("log.error.task.fill.progress.sendFailed", taskId, e.getMessage());
                      }
                     lastReportedPercent = currentPercent;
                 }
@@ -3163,7 +3154,7 @@ public class GhostBlockCommand extends CommandBase {
             if (saveToFile && !cancelled) {
                 String actualSaveFileName = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
                  if (this.entriesToSaveForUserFile != null && !this.entriesToSaveForUserFile.isEmpty()) {
-                    System.out.println("[GhostBlock FillTask #" + taskId + "] 任务完成，尝试保存 " + this.entriesToSaveForUserFile.size() + " 个条目到用户文件: " + actualSaveFileName);
+                    LogUtil.debug("log.info.task.fill.save.userFile", taskId, this.entriesToSaveForUserFile.size(), actualSaveFileName);
                     GhostBlockData.saveData(world, this.entriesToSaveForUserFile, actualSaveFileName, false);
                     String displayName = (saveFileName == null) ?
                         LangUtil.translate("ghostblock.displayname.default_file", GhostBlockData.getWorldIdentifier(world))
@@ -3175,7 +3166,7 @@ public class GhostBlockCommand extends CommandBase {
                          EntityPlayer player = (EntityPlayer) sender;
                          if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
                              senderStillValid = false;
-                             if(!cancelled) System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，跳过发送保存成功消息。");
+                             if(!cancelled) LogUtil.info("log.info.task.fill.playerLeft.save", taskId);
                          }
                      }
                      if(senderStillValid){
@@ -3183,11 +3174,11 @@ public class GhostBlockCommand extends CommandBase {
                             sender.addChatMessage(formatMessage(EnumChatFormatting.GREEN,
                                 "ghostblock.commands.save.success", displayName));
                          } catch (Exception e) {
-                             System.err.println("[GhostBlock FillTask #" + taskId + "] 发送保存成功消息失败: " + e.getMessage());
+                             LogUtil.error("log.error.task.fill.save.sendFailed", taskId, e.getMessage());
                          }
                      }
                  } else {
-                     System.out.println("[GhostBlock FillTask #" + taskId + "] WARN: 任务标记为保存，但没有提供或生成用户文件条目。");
+                     LogUtil.warn("log.warn.task.fill.save.noEntries", taskId);
                  }
             }
 
@@ -3198,7 +3189,7 @@ public class GhostBlockCommand extends CommandBase {
                      EntityPlayer player = (EntityPlayer) sender;
                      if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
                          senderStillValid = false;
-                         if(!cancelled) System.out.println("[GhostBlock FillTask #" + taskId + "] 玩家已离开或无效，跳过发送完成消息。");
+                         if(!cancelled) LogUtil.info("log.info.task.fill.playerLeft.finish", taskId);
                      }
                  }
                  if(senderStillValid){
@@ -3206,17 +3197,17 @@ public class GhostBlockCommand extends CommandBase {
                         String finishKey = (totalBlocks == 1 && processedCount <= 1) ? "ghostblock.commands.fill.finish_single" : "ghostblock.commands.fill.finish";
                         sender.addChatMessage(formatMessage(FINISH_COLOR, finishKey, processedCount));
                      } catch (Exception e) {
-                         System.err.println("[GhostBlock FillTask #" + taskId + "] 发送完成消息失败: " + e.getMessage());
+                         LogUtil.error("log.error.task.fill.finish.sendFailed", taskId, e.getMessage());
                      }
                  }
             } else {
-                 System.out.println("[GhostBlock FillTask #" + taskId + "] 任务已被取消，不发送完成或保存消息。");
+                 LogUtil.info("log.info.task.fill.cancelled", taskId);
             }
         }
 
         public void cancel() {
             if (!this.cancelled) {
-                 System.out.println("[GhostBlock FillTask #" + taskId + "] 标记为取消。");
+                 LogUtil.info("log.info.task.fill.markedCancelled", taskId);
                 this.cancelled = true;
                  previouslyWaitingForLoadOrProximity.clear();
             }
@@ -3250,12 +3241,12 @@ public class GhostBlockCommand extends CommandBase {
             this.sender = sender; // 保存 sender
             this.currentIndex = 0;
             this.taskId = taskId;
-            System.out.println("[GhostBlock LoadTask #" + taskId + "] 初始化 (带距离检查策略): total=" + this.entries.size() + ", batch=" + this.batchSize);
+            LogUtil.info("log.info.task.load.init", taskId, this.entries.size(), this.batchSize);
         }
 
         public void cancel() {
              if (!this.cancelled) {
-                 System.out.println("[GhostBlock LoadTask #" + taskId + "] 标记为取消。");
+                 LogUtil.info("log.info.task.load.markedCancelled", taskId);
                  this.cancelled = true;
                  previouslyWaitingForLoadOrProximityIndices.clear();
              }
@@ -3269,7 +3260,7 @@ public class GhostBlockCommand extends CommandBase {
                  if (entries.isEmpty() || (lastReportedPercent >= 100.0f || (lastReportedPercent == -1 && entries.isEmpty()) )) {
                      // 任务开始就为空，或已报告100%
                  } else if (!cancelled){
-                     System.out.println("[GhostBlock Load Task #" + taskId + "] 所有条目处理完毕或列表为空，发送最终进度。");
+                     LogUtil.debug("log.info.task.load.complete.log", taskId);
                      sendFinalProgress(); // 确保发送最终消息
                  }
                  return true;
@@ -3283,7 +3274,7 @@ public class GhostBlockCommand extends CommandBase {
                 if (cmdSenderPlayer.isEntityAlive() && cmdSenderPlayer.worldObj == this.world) {
                     currentPlayer = cmdSenderPlayer;
                 } else if(!cancelled) {
-                    System.out.println("[GhostBlock LoadTask #" + taskId + "] 命令发送者玩家已失效或不在当前世界，取消任务。");
+                    LogUtil.info("log.info.task.load.playerInvalid", taskId);
                     this.cancel();
                     return true;
                 }
@@ -3322,7 +3313,7 @@ public class GhostBlockCommand extends CommandBase {
 
                 if (canPlaceNow) {
                     if (previouslyWaitingForLoadOrProximityIndices.contains(currentIndex)) {
-                        System.out.println("[GhostBlock LoadTask #" + taskId + "] 位置现已就绪: " + pos + " (Index: " + currentIndex + "). 尝试放置...");
+                        LogUtil.debug("log.info.task.load.posReady", taskId, pos, currentIndex);
                         previouslyWaitingForLoadOrProximityIndices.remove(currentIndex);
                     }
 
@@ -3333,15 +3324,14 @@ public class GhostBlockCommand extends CommandBase {
                                 IBlockState blockStateToSet = block.getStateFromMeta(entry.metadata);
                                 world.setBlockState(pos, blockStateToSet, 3);
                             } else {
-                                System.err.println("[GhostBlock LoadTask #" + taskId + " WARN] 尝试在非客户端世界执行任务！Pos: " + pos);
+                                LogUtil.warn("log.warn.task.load.notClient", taskId, pos);
                             }
                             successfullyProcessedThisTick++;
                         } catch (Exception e) {
-                            System.err.println("[GhostBlock LoadTask #" + taskId + " WARN] 在位置就绪后设置方块时出错 " + pos + " (Index: " + currentIndex + "): " + e.getMessage());
-                            e.printStackTrace();
+                            LogUtil.printStackTrace("log.warn.task.load.placeError", e, taskId, pos, currentIndex, e.getMessage());
                         }
                     } else {
-                        System.out.println("[GhostBlock LoadTask #" + taskId + " WARN] 加载时发现无效方块ID '" + entry.blockId + "' 或空气方块，位于 " + pos + " (Index: " + currentIndex + "). 跳过.");
+                        LogUtil.warn("log.warn.task.load.invalidBlock", taskId, entry.blockId, pos, currentIndex);
                     }
                     currentIndex++; // 无论成功、失败还是跳过无效方块，都前进到下一个条目
                     i++; // 增加批次内处理计数
@@ -3349,13 +3339,13 @@ public class GhostBlockCommand extends CommandBase {
                     // 未能放置 (Y无效，或未加载，或加载了但距离远)
                     if (pos.getY() >= 0 && pos.getY() < 256) { // Y有效，但因其他原因等待
                         if (!previouslyWaitingForLoadOrProximityIndices.contains(currentIndex)) {
-                            System.out.println("[GhostBlock LoadTask #" + taskId + "] 等待放置: " + pos + " (Index: " + currentIndex + ", 原因: " + waitReason + ")");
+                            LogUtil.debug("log.info.task.load.posWaiting", taskId, pos, currentIndex, waitReason);
                             previouslyWaitingForLoadOrProximityIndices.add(currentIndex);
                         }
                          // 中断当前批次，让其他任务有机会执行或等待玩家移动
                         if (i > 0 || currentIndex < entries.size()-1 ) break; // 如果本次tick至少尝试了一个，或者后面还有条目，就退出让下一tick重试
                     } else { // Y轴无效
-                        System.out.println("[GhostBlock LoadTask #" + taskId + "] 无效Y坐标 ("+pos.getY()+")，从任务跳过: " + pos + " (Index: " + currentIndex + ")");
+                        LogUtil.debug("log.info.task.load.posInvalidY", taskId, pos.getY(), pos, currentIndex);
                         currentIndex++; // 对于无效Y，我们跳过这个条目
                         i++; // 也计入当前批次，因为它被“处理”了（通过跳过）
                     }
@@ -3374,10 +3364,10 @@ public class GhostBlockCommand extends CommandBase {
 
             if (finished) {
                  if (lastReportedPercent < 100.0f && !cancelled) {
-                     System.out.println("[GhostBlock Load Task #" + taskId + "] 所有条目处理完毕 (循环结束)，发送最终进度。");
+                     LogUtil.debug("log.info.task.load.complete.loopEnd", taskId);
                      sendFinalProgress();
                  } else if(!cancelled) {
-                      System.out.println("[GhostBlock Load Task #" + taskId + "] 任务已完成 (循环结束)。");
+                      LogUtil.debug("log.info.task.load.complete.logFinished", taskId);
                  }
             } else {
                 float currentPercent = entries.isEmpty() ? 100.0f : (currentIndex * 100.0f) / entries.size();
@@ -3413,7 +3403,7 @@ public class GhostBlockCommand extends CommandBase {
                      if (sender instanceof EntityPlayer) {
                          EntityPlayer player = (EntityPlayer) sender;
                          if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
-                              if(!cancelled) System.out.println("[GhostBlock LoadTask #" + taskId + "] 玩家已离开或无效，停止发送进度消息，并取消任务。");
+                              if(!cancelled) LogUtil.info("log.info.task.load.playerLeft.progress", taskId);
                               this.cancel(); // 取消任务
                               return;
                          }
@@ -3421,7 +3411,7 @@ public class GhostBlockCommand extends CommandBase {
                     try {
                          sender.addChatMessage(message);
                     } catch (Exception e) {
-                         System.err.println("[GhostBlock LoadTask #" + taskId + "] 发送进度消息失败: " + e.getMessage());
+                         LogUtil.error("log.error.task.load.progress.sendFailed", taskId, e.getMessage());
                     }
                     lastReportedPercent = currentPercent;
                 }
@@ -3440,22 +3430,22 @@ public class GhostBlockCommand extends CommandBase {
                      EntityPlayer player = (EntityPlayer) sender;
                      if (Minecraft.getMinecraft().theWorld == null || !player.isEntityAlive() || player.worldObj != Minecraft.getMinecraft().theWorld) {
                          senderStillValid = false;
-                         if(!cancelled) System.out.println("[GhostBlock LoadTask #" + taskId + "] 玩家已离开或无效，跳过发送完成消息。");
+                         if(!cancelled) LogUtil.info("log.info.task.load.playerLeft.finish", taskId);
                      }
                  }
                  if (senderStillValid) {
                      try {
                          sender.addChatMessage(formatMessage(FINISH_COLOR, "ghostblock.commands.load.finish", entries.size()));
                      } catch (Exception e) {
-                          System.err.println("[GhostBlock LoadTask #" + taskId + "] 发送完成消息失败: " + e.getMessage());
+                          LogUtil.error("log.error.task.load.finish.sendFailed", taskId, e.getMessage());
                      }
                  }
 
                  if (!previouslyWaitingForLoadOrProximityIndices.isEmpty()) {
-                    System.out.println("[GhostBlock LoadTask #" + taskId + "] 注意: 任务完成时仍有 " + previouslyWaitingForLoadOrProximityIndices.size() + " 个索引在等待列表中。");
+                    LogUtil.info("log.info.task.load.complete.waitingList", taskId, previouslyWaitingForLoadOrProximityIndices.size());
                  }
             } else {
-                  System.out.println("[GhostBlock LoadTask #" + taskId + "] 任务已被取消，不发送完成消息。");
+                  LogUtil.info("log.info.task.load.cancelled", taskId);
             }
         }
         public int getTaskId() {
@@ -3476,7 +3466,7 @@ public class GhostBlockCommand extends CommandBase {
         // 如果启用了自动放置，则 onEntityJoinWorld 会处理恢复逻辑，这里就不处理了
         // 避免重复恢复或恢复原始方块覆盖掉自动放置的幽灵方块
         if (GhostConfig.enableAutoPlaceOnJoin) {
-            System.out.println("[GhostBlock] onWorldLoad: 自动放置已启用，跳过此处的 cleanupAndRestoreOnLoad。");
+            LogUtil.info("log.info.worldLoad.skipCleanup");
             return;
         }
 
@@ -3493,9 +3483,9 @@ public class GhostBlockCommand extends CommandBase {
 
         if (deleteFile && GhostBlockCommand.pendingAutoPlaceFileRef != null && GhostBlockCommand.pendingAutoPlaceFileRef.exists()) {
             if (GhostBlockCommand.pendingAutoPlaceFileRef.delete()) {
-                System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 已成功删除自动放置文件: " + fileNameForDimCheck);
+                LogUtil.debug("log.debug.autoplace.cleanup.file.deleted", fileNameForDimCheck);
             } else {
-                System.err.println("[GhostBlock-ERROR AutoPlaceCleanup] 未能删除自动放置文件: " + fileNameForDimCheck);
+                LogUtil.error("log.error.autoplace.cleanup.file.deleteFailed", fileNameForDimCheck);
             }
         }
         GhostBlockCommand.pendingAutoPlaceEntry = null;
@@ -3504,7 +3494,7 @@ public class GhostBlockCommand extends CommandBase {
         GhostBlockCommand.autoPlaceTickDelayCounter = 0;
         boolean wasInProgress = GhostBlockCommand.autoPlaceInProgress;
         GhostBlockCommand.autoPlaceInProgress = false;
-        System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 已清理待处理的自动放置状态。autoPlaceInProgress 设置为 false。");
+        LogUtil.debug("log.debug.autoplace.cleanup.cleaned");
 
         if (wasInProgress && GhostBlockCommand.isFirstJoin) {
             WorldClient world = Minecraft.getMinecraft().theWorld;
@@ -3515,16 +3505,16 @@ public class GhostBlockCommand extends CommandBase {
                     fileDim = GhostBlockData.getDimensionFromFileName(fileNameForDimCheck);
                 } else {
                     fileDim = player.dimension; // Fallback，如果文件名未知
-                    System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 用于维度检查的文件名未知，将使用当前玩家维度。");
+                    LogUtil.debug("log.debug.autoplace.cleanup.dimCheck.fallback");
                 }
 
                 if (player.dimension == fileDim || fileDim == Integer.MIN_VALUE) {
-                    System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 自动放置处理结束，且仍是 isFirstJoin。处理首次加入逻辑...");
+                    LogUtil.debug("log.debug.autoplace.cleanup.handlingFirstJoin");
                     GhostBlockCommand.isFirstJoin = false;
                     GhostBlockCommand.lastTrackedDimension = player.dimension;
                     cleanupAndRestoreOnLoad(world); // 调用本类的静态方法
                 } else {
-                     System.out.println("[GhostBlock-DEBUG AutoPlaceCleanup] 自动放置处理结束，但玩家维度 ("+player.dimension+") 与文件先前维度 ("+fileDim+") 不符，不执行 isFirstJoin 的 cleanupAndRestoreOnLoad。");
+                     LogUtil.debug("log.debug.autoplace.cleanup.dimCheck.mismatch", player.dimension, fileDim);
                 }
             }
         }
@@ -3535,12 +3525,12 @@ public class GhostBlockCommand extends CommandBase {
          if (world == null) {
              return;
          }
-         System.out.println("[GhostBlock] 世界加载/切换，检查并恢复维度 " + world.provider.getDimensionId());
+         LogUtil.info("log.worldLoad.checking", world.provider.getDimensionId());
          String autoFileName = getAutoClearFileName(world); // "clear_..."
          File autoFile = GhostBlockData.getDataFile(world, autoFileName);
 
          if (autoFile.exists()) {
-              System.out.println("[GhostBlock] 发现自动清除文件 " + autoFileName + "，尝试恢复原始方块...");
+              LogUtil.info("log.worldLoad.foundClearFile", autoFileName);
               List<GhostBlockData.GhostBlockEntry> entries = GhostBlockData.loadData(world, Collections.singletonList(autoFileName));
               int restored = 0;
               int failed = 0;
@@ -3555,27 +3545,27 @@ public class GhostBlockCommand extends CommandBase {
                                world.checkLightFor(EnumSkyBlock.SKY, pos);
                                restored++;
                            } catch (Exception e) {
-                               System.err.println("[GhostBlock 恢复错误] " + pos + ": " + e.getMessage());
+                               LogUtil.error("log.error.worldLoad.restoreFailed", pos, e.getMessage());
                                failed++;
                            }
                       } else {
-                           System.err.println("[GhostBlock 恢复警告] 无法找到原始方块 ID: " + entry.originalBlockId + " at " + pos);
+                           LogUtil.warn("log.warn.worldLoad.originalBlock.notFound", entry.originalBlockId, pos);
                            failed++;
                       }
                   }
-                  System.out.println("[GhostBlock] 恢复完成: " + restored + " 个成功, " + failed + " 个失败。");
+                  LogUtil.info("log.worldLoad.restoreComplete", restored, failed);
               } else {
-                   System.out.println("[GhostBlock] 自动清除文件为空。");
+                   LogUtil.info("log.worldLoad.clearFile.empty");
               }
 
               // 删除自动保存文件
               if (!autoFile.delete()) {
-                   System.err.println("[GhostBlock] 未能删除自动清除文件: " + autoFile.getPath());
+                   LogUtil.error("log.error.worldLoad.clearFile.deleteFailed", autoFile.getPath());
               } else {
-                   System.out.println("[GhostBlock] 已删除自动清除文件: " + autoFile.getPath());
+                   LogUtil.info("log.info.worldLoad.clearFile.deleted", autoFile.getPath());
               }
          } else {
-              System.out.println("[GhostBlock] 未发现自动清除文件: " + autoFileName);
+              LogUtil.info("log.info.worldLoad.clearFile.notFound", autoFileName);
          }
     }
 
@@ -3588,13 +3578,13 @@ public class GhostBlockCommand extends CommandBase {
     if (unloadedWorld == null || !(unloadedWorld instanceof WorldClient)) return;
     WorldClient clientWorld = (WorldClient) unloadedWorld;
 
-    System.out.println("[GhostBlock onWorldUnload] 世界卸载事件触发。当前 autoPlaceInProgress: " + autoPlaceInProgress);
+    LogUtil.info("log.info.worldUnload.entry", autoPlaceInProgress);
 
     // 首先，如果存在任何待处理的自动放置任务，立即清理它
     if (pendingAutoPlaceEntry != null || autoPlaceInProgress) {
-        System.out.println("[GhostBlock onWorldUnload] 检测到有待处理的自动放置任务，世界正在卸载，将进行清理。");
+        LogUtil.info("log.info.worldUnload.pendingAutoplace");
         cleanupPendingAutoPlaceStatic(true); // 调用静态清理方法
-        System.out.println("[GhostBlock onWorldUnload] 已调用静态方法清理待处理的自动放置。");
+        LogUtil.info("log.info.worldUnload.autoplaceCleanupCalled");
         // 清理后，autoPlaceInProgress 应该为 false
     }
 
@@ -3617,12 +3607,12 @@ public class GhostBlockCommand extends CommandBase {
                 Math.floor(playerExactZ)         // ~ 的 Z
             );
 
-            System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 玩家精确坐标: (" + playerExactX + ", " + playerExactY + ", " + playerExactZ + ")");
-            System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 计算出的用于查找的“逻辑脚下”坐标: " + logicalPlayerFeetPos);
+            LogUtil.debug("log.info.worldUnload.autoplace.playerCoords", playerExactX, playerExactY, playerExactZ);
+            LogUtil.debug("log.info.worldUnload.autoplace.logicalFeetPos", logicalPlayerFeetPos);
 
             String tempClearFileName = getAutoClearFileName(clientWorld); // 调用静态方法
             List<GhostBlockData.GhostBlockEntry> clearEntries = GhostBlockData.loadData(clientWorld, Collections.singletonList(tempClearFileName));
-            System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 从 " + tempClearFileName + ".json 加载了 " + clearEntries.size() + " 个条目。");
+            LogUtil.debug("log.info.worldUnload.autoplace.loadingClearFile", tempClearFileName, clearEntries.size());
 
             // 在 clear_*.json 中查找是否存在一个幽灵方块，其坐标与我们计算出的 logicalPlayerFeetPos 匹配
             final BlockPos finalLogicalPlayerFeetPos = logicalPlayerFeetPos; // lambda需要final或effectively final
@@ -3641,27 +3631,27 @@ public class GhostBlockCommand extends CommandBase {
                 // entryToSave 的 x,y,z 就是 logicalPlayerFeetPos
                 // 我们将这个完整的 GhostBlockEntry 保存到 autoplace 文件
                 GhostBlockData.saveData(clientWorld, Collections.singletonList(entryToSave), autoPlaceSaveFileName, true); // 覆盖模式
-                System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 玩家逻辑脚下位置 (" + logicalPlayerFeetPos + ") 是已记录的幽灵方块 (方块: " + entryToSave.blockId + ")。信息已保存到 " + autoPlaceSaveFileName + ".json。");
+                LogUtil.info("log.info.worldUnload.autoplace.saved", logicalPlayerFeetPos, entryToSave.blockId, autoPlaceSaveFileName);
             } else {
                 // 如果玩家的“逻辑脚下”不是已知的幽灵方块，则删除任何旧的 autoplace 文件
-                System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 玩家逻辑脚下位置 (" + logicalPlayerFeetPos + ") 不是已记录的幽灵方块 (或clear文件中无记录)。删除旧的 " + autoPlaceSaveFileName + ".json (如果存在)。");
+                LogUtil.info("log.info.worldUnload.autoplace.notGhostBlock", logicalPlayerFeetPos, autoPlaceSaveFileName);
                 if (autoPlaceFileToSaveTo.exists()) {
                     if (!autoPlaceFileToSaveTo.delete()) {
-                        System.err.println("[GhostBlock onWorldUnload ERROR] (保存逻辑) 未能删除旧的自动放置文件: " + autoPlaceFileToSaveTo.getName());
+                        LogUtil.error("log.error.worldUnload.autoplace.deleteFailed", autoPlaceFileToSaveTo.getName());
                     } else {
-                        System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 成功删除旧的自动放置文件: " + autoPlaceFileToSaveTo.getName());
+                        LogUtil.info("log.info.worldUnload.autoplace.deleteSuccess", autoPlaceFileToSaveTo.getName());
                     }
                 }
             }
         } else {
-            System.out.println("[GhostBlock onWorldUnload] (保存逻辑) 玩家为空或不在卸载的世界中。尝试清理可能存在的自动放置文件。");
+            LogUtil.info("log.info.worldUnload.autoplace.playerNull");
             String autoPlaceSaveFileName = getAutoPlaceSaveFileName(clientWorld); // 调用静态方法
             File autoPlaceFileToClean = GhostBlockData.getDataFile(clientWorld, autoPlaceSaveFileName);
             if (autoPlaceFileToClean.exists()) {
                 if (autoPlaceFileToClean.delete()) {
-                    System.out.println("[GhostBlock onWorldUnload] (保存逻辑，玩家不在) 删除了可能残留的自动放置文件: " + autoPlaceFileToClean.getName());
+                    LogUtil.info("log.info.worldUnload.autoplace.residualDeleted", autoPlaceFileToClean.getName());
                 } else {
-                     System.err.println("[GhostBlock onWorldUnload ERROR] (保存逻辑，玩家不在) 未能删除残留的自动放置文件: " + autoPlaceFileToClean.getName());
+                     LogUtil.error("log.error.worldUnload.autoplace.residualDeleteFailed", autoPlaceFileToClean.getName());
                 }
             }
         }
@@ -3671,14 +3661,14 @@ public class GhostBlockCommand extends CommandBase {
     // --- 原有的清理与卸载的世界相关的文件 ---
     String baseId = GhostBlockData.getWorldBaseIdentifier(clientWorld);
     int unloadedDim = clientWorld.provider.getDimensionId();
-    System.out.println("[GhostBlock onWorldUnload] (标准清理) 正在卸载世界: " + baseId + " Dim: " + unloadedDim);
+    LogUtil.debug("log.info.worldUnload.standardCleanup.entry", baseId, unloadedDim);
 
     File tempClearFileObject = GhostBlockData.getDataFile(clientWorld, getAutoClearFileName(clientWorld)); // 调用静态方法
     if (tempClearFileObject.exists()) {
         if (tempClearFileObject.delete()) {
-            System.out.println("[GhostBlock onWorldUnload] (标准清理) 删除 clear 文件 (" + tempClearFileObject.getName() + ") 结果: true");
+            LogUtil.debug("log.info.worldUnload.standardCleanup.clearFileDeleted", tempClearFileObject.getName(), true);
         } else {
-            System.err.println("[GhostBlock onWorldUnload ERROR] (标准清理) 删除 clear 文件 (" + tempClearFileObject.getName() + ") 失败!");
+            LogUtil.error("log.error.worldUnload.standardCleanup.clearFileFailed", tempClearFileObject.getName());
         }
     }
 
@@ -3687,21 +3677,18 @@ public class GhostBlockCommand extends CommandBase {
     File[] undoFiles = savesDir.listFiles((dir, name) -> name.startsWith(undoPrefix) && name.endsWith(".json"));
     if (undoFiles != null) {
         for (File file : undoFiles) {
-            if (file.delete()) {
-                System.out.println("[GhostBlock onWorldUnload] (标准清理) 尝试删除 undo 文件: " + file.getName() + " 结果: true");
-            } else {
-                System.out.println("[GhostBlock onWorldUnload] (标准清理) 尝试删除 undo 文件: " + file.getName() + " 结果: false");
-            }
+            boolean deleted = file.delete();
+            LogUtil.debug("log.info.worldUnload.standardCleanup.undoFileDeleted", file.getName(), deleted);
         }
     }
 
-    System.out.println("[GhostBlock onWorldUnload] (标准清理) 世界卸载，取消所有活动任务...");
+    LogUtil.info("log.info.worldUnload.standardCleanup.cancellingTasks");
     ICommandSender feedbackSender = Minecraft.getMinecraft().thePlayer;
     cancelAllTasks(feedbackSender); // 调用静态方法
 
     isFirstJoin = true;
     autoPlaceInProgress = false; // 再次确保重置，以防万一
-    System.out.println("[GhostBlock onWorldUnload] (标准清理) 重置 isFirstJoin 和 autoPlaceInProgress。");
+    LogUtil.info("log.info.worldUnload.standardCleanup.resettingState");
 }
 
     // 辅助方法：取消所有类型的活动任务
@@ -3726,7 +3713,7 @@ public class GhostBlockCommand extends CommandBase {
          pausedTasks.clear(); // 在世界切换或卸载时，也清除所有暂停的任务
          cancelledCount += pausedCount;
 
-         System.out.println("[GhostBlock] 取消了 " + cancelledCount + " 个活动/暂停任务。");
+         LogUtil.info("log.info.tasks.cancelled.count", cancelledCount);
           // 如果有发送者且确实取消了任务，发送反馈
           if (feedbackSender != null && cancelledCount > 0) {
                // 使用 formatMessage 发送带翻译的消息

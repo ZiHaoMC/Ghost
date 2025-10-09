@@ -1,6 +1,7 @@
 package com.zihaomc.ghost.config;
 
 import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
 import net.minecraft.block.Block;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.config.Configuration;
@@ -74,7 +75,7 @@ public class GhostConfig {
 
     public static void loadConfig() {
         if (config == null) {
-            System.err.println("[Ghost-Config] 配置尚未初始化！");
+            LogUtil.error("log.config.notInitialized");
             return;
         }
 
@@ -187,7 +188,7 @@ public class GhostConfig {
 
         if (config.hasChanged()) {
             config.save();
-            System.out.println("[Ghost-Config] 配置已加载或创建并保存更改。");
+            LogUtil.info("log.config.loaded");
         }
     }
 

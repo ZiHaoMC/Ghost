@@ -3,7 +3,8 @@ package com.zihaomc.ghost.utils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.LangUtil; // <-- 导入 LangUtil
+import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -89,7 +90,7 @@ public class NiuTransUtil {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtil.printStackTrace("log.error.translation.exception", e, e.getMessage());
             return ERROR_PREFIX + LangUtil.translate("ghost.error.translation.internal_error", e.getMessage());
         }
     }

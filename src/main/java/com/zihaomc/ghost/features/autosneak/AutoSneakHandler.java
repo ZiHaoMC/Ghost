@@ -1,6 +1,7 @@
 package com.zihaomc.ghost.features.autosneak;
 
 import com.zihaomc.ghost.config.GhostConfig;
+// import com.zihaomc.ghost.utils.LogUtil; // 如果需要调试，取消此行注释
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
@@ -56,7 +57,7 @@ public class AutoSneakHandler {
         // 玩家是否真实地、物理地按下了潜行键
         boolean isPhysicalSneakKeyPressedByPlayer = false;
         int sneakKeyCode = mc.gameSettings.keyBindSneak.getKeyCode();
-        if (sneakKeyCode != 0 && sneakKeyCode < Keyboard.KEYBOARD_SIZE) { // 确保keyCode有效且在Keyboard数组范围内
+        if (sneakKeyCode > 0 && sneakKeyCode < Keyboard.KEYBOARD_SIZE) { // 确保keyCode有效且在Keyboard数组范围内
             isPhysicalSneakKeyPressedByPlayer = Keyboard.isKeyDown(sneakKeyCode);
         }
 
@@ -164,7 +165,7 @@ public class AutoSneakHandler {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), true);
         }
         modIsControllingSneakKey = true;
-        // System.out.println("[AutoSneak] Mod: Pressing sneak key.");
+        // LogUtil.debug("log.debug.autosneak.press");
     }
 
     /**
@@ -176,6 +177,6 @@ public class AutoSneakHandler {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
         }
         modIsControllingSneakKey = false;
-        // System.out.println("[AutoSneak] Mod: Releasing sneak key.");
+        // LogUtil.debug("log.debug.autosneak.release");
     }
 }

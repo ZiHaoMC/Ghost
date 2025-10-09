@@ -1,5 +1,7 @@
 package com.zihaomc.ghost.features.notes;
 
+import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -39,7 +41,7 @@ public class NoteManager {
             // 使用Stream API一次性读取所有行并用'\n'连接，这是最稳定可靠的方式
             return reader.lines().collect(Collectors.joining("\n"));
         } catch (IOException e) {
-            System.err.println("[Ghost-Note] 加载笔记时出错: " + e.getMessage());
+            LogUtil.error("log.error.note.loadFailed", e.getMessage());
             return ""; // 出错时返回空字符串
         }
     }
@@ -57,7 +59,7 @@ public class NoteManager {
         try (Writer writer = new OutputStreamWriter(new FileOutputStream(noteFile), StandardCharsets.UTF_8)) {
             writer.write(text);
         } catch (IOException e) {
-            System.err.println("[Ghost-Note] 保存笔记时出错: " + e.getMessage());
+            LogUtil.error("log.error.note.saveFailed", e.getMessage());
         }
     }
 }

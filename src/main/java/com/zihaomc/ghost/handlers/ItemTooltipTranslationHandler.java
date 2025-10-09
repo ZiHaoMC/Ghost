@@ -3,6 +3,7 @@ package com.zihaomc.ghost.handlers;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.TranslationCacheManager;
 import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.GuiOpenEvent;
@@ -40,13 +41,13 @@ public class ItemTooltipTranslationHandler {
     
     public static void loadCacheFromFile() {
         translationCache = TranslationCacheManager.loadCache();
-        System.out.println("[Ghost-Cache] 已加载 " + translationCache.size() + " 条翻译缓存。");
+        LogUtil.info("log.info.cache.loaded", translationCache.size());
     }
 
     public static void saveCacheToFile() {
-        System.out.println("[Ghost-Cache] 正在保存 " + translationCache.size() + " 条翻译缓存...");
+        LogUtil.info("log.info.cache.saving.count", translationCache.size());
         TranslationCacheManager.saveCache(translationCache);
-        System.out.println("[Ghost-Cache] 翻译缓存已保存。");
+        LogUtil.info("log.info.cache.saved");
     }
 
     @SubscribeEvent

@@ -3,6 +3,7 @@ package com.zihaomc.ghost.data;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
 
 import java.io.File;
 import java.io.FileReader;
@@ -45,7 +46,7 @@ public class TranslationCacheManager {
     public static Map<String, List<String>> loadCache() {
         File cacheFile = getCacheFile();
         if (!cacheFile.exists()) {
-            System.out.println("[Ghost-Cache] 翻译缓存文件不存在，将创建一个新的缓存。");
+            LogUtil.info("log.info.cache.file.notFound");
             return new ConcurrentHashMap<>();
         }
 
@@ -58,7 +59,7 @@ public class TranslationCacheManager {
                 return new ConcurrentHashMap<>(loadedMap);
             }
         } catch (IOException | com.google.gson.JsonSyntaxException e) {
-            System.err.println("[Ghost-Cache] 加载翻译缓存时出错: " + e.getMessage());
+            LogUtil.error("log.error.cache.loadFailed", e.getMessage());
         }
         
         // 如果加载失败，返回一个空的 Map 以防止崩溃
@@ -71,7 +72,7 @@ public class TranslationCacheManager {
      */
     public static void saveCache(Map<String, List<String>> cache) {
         if (cache == null || cache.isEmpty()) {
-            System.out.println("[Ghost-Cache] 内存中无翻译缓存，无需保存。");
+            LogUtil.info("log.info.cache.save.skipped");
             return;
         }
 
@@ -79,7 +80,7 @@ public class TranslationCacheManager {
         try (Writer writer = new FileWriter(cacheFile)) {
             GSON.toJson(cache, writer);
         } catch (IOException e) {
-            System.err.println("[Ghost-Cache] 保存翻译缓存时出错: " + e.getMessage());
+            LogUtil.error("log.error.cache.saveFailed", e.getMessage());
         }
     }
 }

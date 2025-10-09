@@ -1,5 +1,6 @@
 package com.zihaomc.ghost.handlers;
 
+import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
@@ -17,7 +18,7 @@ public class CacheSavingHandler {
     public void onWorldUnload(WorldEvent.Unload event) {
         // 确保我们只在客户端世界卸载时执行操作
         if (event.world.isRemote) {
-            System.out.println("[Ghost-Cache] 世界卸载，触发翻译缓存保存...");
+            LogUtil.info("log.info.cache.saving");
             // 调用 ItemTooltipTranslationHandler 中的静态保存方法
             ItemTooltipTranslationHandler.saveCacheToFile();
         }

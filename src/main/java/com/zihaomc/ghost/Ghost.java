@@ -14,6 +14,7 @@ import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
 import com.zihaomc.ghost.features.gameplay.FastPistonBreakingHandler;
 import com.zihaomc.ghost.features.visual.PlayerArrowRendererHandler;
 import com.zihaomc.ghost.proxy.CommonProxy;
+import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
 import net.minecraft.init.Blocks;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
@@ -53,7 +54,7 @@ public class Ghost {
      */
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        System.out.println("[" + NAME + "] 预初始化阶段");
+        LogUtil.info("log.lifecycle.preinit", NAME);
         // 触发方块类的静态初始化 (有时需要)
         Blocks.fire.toString();
 
@@ -68,33 +69,33 @@ public class Ghost {
             
             ItemTooltipTranslationHandler.loadCacheFromFile();
             MinecraftForge.EVENT_BUS.register(new CacheSavingHandler());
-            System.out.println("[" + MODID + "-DEBUG] 翻译缓存已加载，并已注册保存事件处理器。");
+            LogUtil.debug("log.feature.cache.init");
             
             MinecraftForge.EVENT_BUS.register(new ChatSuggestEventHandler());
-            System.out.println("[" + MODID + "-DEBUG] 聊天建议事件处理器已在 PreInit 中注册。");
+            LogUtil.debug("log.handler.registered.chatSuggest");
 
             MinecraftForge.EVENT_BUS.register(new AutoSneakHandler());
-            System.out.println("[" + MODID + "-DEBUG] 自动蹲伏事件处理器 (AutoSneakHandler) 已在 PreInit 中注册。");
+            LogUtil.debug("log.handler.registered.autoSneak");
 
             MinecraftForge.EVENT_BUS.register(new PlayerESPHandler());
-            System.out.println("[" + MODID + "-DEBUG] 玩家ESP事件处理器 (PlayerESPHandler) 已在 PreInit 中注册。");
+            LogUtil.debug("log.handler.registered.playerEsp");
             
             MinecraftForge.EVENT_BUS.register(new FastPistonBreakingHandler());
-            System.out.println("[" + MODID + "-DEBUG] 快速破坏活塞事件处理器 (FastPistonBreakingHandler) 已在 PreInit 中注册。");
+            LogUtil.debug("log.handler.registered.fastPiston");
 
             // v-- 注册全新的、正确的箭矢隐藏处理器 --v
             MinecraftForge.EVENT_BUS.register(new PlayerArrowRendererHandler());
-            System.out.println("[" + MODID + "-DEBUG] 玩家箭矢渲染事件处理器 (PlayerArrowRendererHandler) 已在 PreInit 中注册。");
+            LogUtil.debug("log.handler.registered.playerArrow");
             // ^-- 注册结束 --^
 
             MinecraftForge.EVENT_BUS.register(new KeybindHandler());
-            System.out.println("[" + MODID + "-DEBUG] 按键绑定事件处理器 (KeybindHandler) 已在 PreInit 中注册。");
+            LogUtil.debug("log.handler.registered.keybind");
             
             MinecraftForge.EVENT_BUS.register(new SignTranslationHandler());
-            System.out.println("[" + MODID + "-DEBUG] 告示牌翻译事件处理器 (SignTranslationHandler) 已在 PreInit 中注册。");
+            LogUtil.debug("log.handler.registered.signTranslation");
 
             MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
-            System.out.println("[" + MODID + "-DEBUG] 物品提示框翻译事件处理器 (ItemTooltipTranslationHandler) 已在 PreInit 中注册。");
+            LogUtil.debug("log.handler.registered.itemTooltip");
         }
     }
 
@@ -105,22 +106,22 @@ public class Ghost {
      */
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
-        System.out.println("[" + NAME + "] 初始化阶段");
+        LogUtil.info("log.lifecycle.init", NAME);
 
         proxy.init(event);
 
         if (event.getSide() == Side.CLIENT) {
-            System.out.println("[" + MODID + "-DEBUG] 正在注册客户端命令...");
+            LogUtil.debug("log.command.registering.client");
             GhostBlockCommand.register();
-            System.out.println("[" + MODID + "-DEBUG] GhostBlockCommand 事件处理器已注册。");
+            LogUtil.debug("log.handler.registered.ghostBlockCommand");
             ClientCommandHandler.instance.registerCommand(new GhostConfigCommand());
-            System.out.println("[" + MODID + "-DEBUG] GhostConfigCommand (/gconfig) 已注册。");
+            LogUtil.debug("log.command.registered.ghostConfig");
             ClientCommandHandler.instance.registerCommand(new GhostBlockCommand());
-            System.out.println("[" + MODID + "-DEBUG] /cgb 命令实例已注册。");
+            LogUtil.debug("log.command.registered.cgb");
             ClientCommandHandler.instance.registerCommand(new TranslateCommand());
-            System.out.println("[" + MODID + "-DEBUG] TranslateCommand (/gtranslate) 已注册。");
+            LogUtil.debug("log.command.registered.gtranslate");
         } else {
-            System.out.println("[" + MODID + "-DEBUG] 在服务端跳过客户端命令注册。");
+            LogUtil.debug("log.command.skipping.server");
         }
     }
 
@@ -131,7 +132,7 @@ public class Ghost {
      */
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
-        System.out.println("[" + NAME + "] 后初始化阶段");
+        LogUtil.info("log.lifecycle.postinit", NAME);
         proxy.postInit(event);
     }
 }

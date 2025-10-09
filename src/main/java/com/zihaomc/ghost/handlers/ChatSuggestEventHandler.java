@@ -36,6 +36,7 @@ import org.lwjgl.input.Mouse;
 // ---- 本项目工具类导入 ----
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 
 /**
@@ -63,15 +64,15 @@ public class ChatSuggestEventHandler {
     // === 构造与初始化 ===
     // ==================
     public ChatSuggestEventHandler() {
-        System.out.println("[GhostBlock-Suggest DEBUG] ChatSuggestEventHandler 实例已创建。");
+        LogUtil.debug("log.debug.handler.chatSuggest.created");
         initializeReflectionFields();
     }
 
     private void initializeReflectionFields() {
-        if (drawnChatLinesField == null) { try { drawnChatLinesField = ReflectionHelper.findField(GuiNewChat.class, "field_146253_i", "drawnChatLines"); drawnChatLinesField.setAccessible(true); } catch (Exception e) { System.err.println("[Ghost-Suggest ERROR] 无法找到 drawnChatLines 字段！"); } }
-        if (chatComponentField == null) { try { chatComponentField = ReflectionHelper.findField(ChatLine.class, "field_74541_b", "chatComponent", "lineString"); chatComponentField.setAccessible(true); } catch (Exception e) { System.err.println("[Ghost-Suggest ERROR] 无法找到 chatComponent 字段！"); } }
-        if (updateCounterField == null) { try { updateCounterField = ReflectionHelper.findField(ChatLine.class, "field_74549_e", "updateCounter", "field_146250_d"); updateCounterField.setAccessible(true); } catch (Exception e) { System.err.println("[Ghost-Suggest WARN] 无法找到 updateCounter 字段，将使用Fallback逻辑。"); updateCounterField = null; } }
-        if (chatInputField == null) { try { chatInputField = ReflectionHelper.findField(GuiChat.class, "field_146415_a", "inputField"); chatInputField.setAccessible(true); } catch (Exception e) { System.err.println("[Ghost-Suggest ERROR] 无法找到 inputField 字段！"); } }
+        if (drawnChatLinesField == null) { try { drawnChatLinesField = ReflectionHelper.findField(GuiNewChat.class, "field_146253_i", "drawnChatLines"); drawnChatLinesField.setAccessible(true); } catch (Exception e) { LogUtil.error("log.error.reflection.drawnChatLines"); } }
+        if (chatComponentField == null) { try { chatComponentField = ReflectionHelper.findField(ChatLine.class, "field_74541_b", "chatComponent", "lineString"); chatComponentField.setAccessible(true); } catch (Exception e) { LogUtil.error("log.error.reflection.chatComponent"); } }
+        if (updateCounterField == null) { try { updateCounterField = ReflectionHelper.findField(ChatLine.class, "field_74549_e", "updateCounter", "field_146250_d"); updateCounterField.setAccessible(true); } catch (Exception e) { LogUtil.warn("log.warn.reflection.updateCounter"); updateCounterField = null; } }
+        if (chatInputField == null) { try { chatInputField = ReflectionHelper.findField(GuiChat.class, "field_146415_a", "inputField"); chatInputField.setAccessible(true); } catch (Exception e) { LogUtil.error("log.error.reflection.inputField"); } }
     }
 
     // ========================
@@ -207,7 +208,7 @@ public class ChatSuggestEventHandler {
             }
             if (commandProcessedThisTick) lastCommand = null;
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtil.printStackTrace("log.error.tick.fallback.failed", e);
             lastCommand = null;
         }
     }
@@ -243,7 +244,7 @@ public class ChatSuggestEventHandler {
                     updateChatHistory(delta, sentMessages, inputField);
                     
                     event.setCanceled(true);
-                } catch (Exception e) { e.printStackTrace(); }
+                } catch (Exception e) { LogUtil.printStackTrace("log.error.gui.keyboard.failed", e); }
             }
         }
     }
@@ -269,7 +270,7 @@ public class ChatSuggestEventHandler {
                 updateChatHistory(delta, sentMessages, inputField);
 
                 event.setCanceled(true);
-            } catch (Exception e) { e.printStackTrace(); }
+            } catch (Exception e) { LogUtil.printStackTrace("log.error.gui.mouse.failed", e); }
         }
     }
 
@@ -332,7 +333,7 @@ public class ChatSuggestEventHandler {
             buttonComponent.setChatStyle(buttonStyle);
             targetComponent.appendSibling(buttonComponent);
         } catch (Exception e) {
-            System.err.println("[Ghost-Chat] 附加翻译按钮时出错: " + e.getMessage());
+            LogUtil.error("log.error.chat.attachButton.failed", e.getMessage());
         }
     }
     
@@ -354,7 +355,7 @@ public class ChatSuggestEventHandler {
             targetComponent.appendSibling(suggestComponent);
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtil.printStackTrace("log.error.chat.attachSuggestButton.failed", e);
             return false;
         }
     }
