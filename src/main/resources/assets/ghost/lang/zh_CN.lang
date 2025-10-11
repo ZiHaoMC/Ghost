@@ -18,6 +18,7 @@ ghost.generic.disabled=禁用
 ghost.generic.toggle.feedback=%s 已 %s
 ghost.generic.prefix.default=[Ghost] 
 ghost.generic.prefix.translation=[翻译]
+commands.generic.player.unsupported=该命令只能由玩家执行。
 
 # ==================================
 # ===        翻译功能          ===
@@ -110,6 +111,7 @@ ghostblock.commands.load.batch_started=加载任务 #%1$d 已启动，总计 %2$
 ghostblock.commands.load.progress=加载进度: {0} {1}
 ghostblock.commands.load.finish=✔ 加载任务完成，尝试处理 %1$d 个条目。
 ghostblock.commands.load.implicit_batch_notice=检测到加载数据包含未加载区块的坐标，将自动切换到批处理模式。
+ghostblock.commands.task.sync_skipped=警告: 同步操作跳过了 %1$d 个位于未加载区块或处理失败的方块。
 
 # clear 命令
 ghostblock.commands.clear.usage=用法: /cgb clear <block|file> [参数...]
@@ -149,6 +151,7 @@ ghostblock.commands.resume.invalid_type=错误: 此类型的任务 (%1$s) 不支
 # undo 命令
 ghostblock.commands.undo.usage=用法: /cgb undo
 ghostblock.commands.undo.empty=错误: 没有可以撤销的操作。
+ghostblock.commands.undo.record_created_clear=已为文件删除操作创建撤销记录。
 ghostblock.commands.undo.restoring_user_files=正在恢复用户文件至先前状态...
 ghostblock.commands.undo.user_file_restored=已恢复用户文件 '%1$s'。
 ghostblock.commands.undo.error.data_file_empty=警告: 撤销数据文件为空或未找到，无法恢复方块。
@@ -163,7 +166,6 @@ ghostblock.commands.undo.restoring_ghost_blocks=正在恢复幽灵方块...
 ghostblock.commands.undo.error.restore_ghost_failed=错误: 恢复幽灵方块 (%1$d, %2$d, %3$d) 失败: %4$s
 ghostblock.commands.undo.auto_file_restored=已将 %1$d 个幽灵方块记录恢复到自动清除文件。
 ghostblock.commands.undo.success_clear=成功撤销清除操作，恢复了 %1$d 个幽灵方块。
-ghostblock.commands.undo.record_created_clear=已为文件删除操作创建撤销记录。
 
 # /cgb help
 ghostblock.commands.cghostblock.help.header=--- GhostBlock 命令帮助 (/cgb) ---
@@ -277,7 +279,7 @@ ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的�
 ghostblock.commands.gconfig.help.setting.translationTargetLang=设置翻译的目标语言。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
-ghostblock.commands.g-config.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
+ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
 ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true
 ghostblock.commands.gconfig.help.example.showTranslationOnly=/gconfig showTranslationOnly true
 ghostblock.commands.gconfig.help.example.hideTranslationKeybindTooltip=/gconfig hideTranslationKeybindTooltip true
@@ -299,7 +301,6 @@ ghostblock.commands.save.warn.no_data=警告: 没有可保存的数据到文件:
 ghostblock.commands.autoplace.platform_success=幽灵平台已在 (%1$d, %2$d, %3$d) 附近自动放置以接住您。
 ghostblock.commands.autosave.activated=提示: 自动保存已激活。
 ghostblock.commands.task.chunk_aware_notice=提示: 任务将在后台运行。位于未加载区块的方块将在您靠近时自动放置。
-ghostblock.commands.task.sync_skipped=警告: 同步操作跳过了 %1$d 个位于未加载区块或处理失败的方块。
 # 注意 下面这个回车键后面的两个空格是为了更好地让玩家按到按钮 不要删除！
 ghostblock.commands.suggest.text= ↩  
 ghostblock.commands.suggest.hovertext=点击重新输入: %s
@@ -308,19 +309,6 @@ ghostblock.commands.suggest.hovertext=点击重新输入: %s
 ghost.keybind.toggle.autosneak=自动边缘下蹲
 ghost.keybind.toggle.playeresp=玩家透视 (ESP)
 ghost.keybind.toggle.bedrockminer=破基岩模式
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # ==================================
 # ===          日志记录          ===
@@ -374,12 +362,12 @@ log.info.task.load.complete=加载任务 #%d 完成
 log.info.task.clear.complete=清除任务 #%d 完成
 log.info.task.fill.init=FillTask #%d 初始化 (带距离检查策略): total=%d, batch=%d
 log.error.task.fill.invalidBlock=FillTask #%d 错误：无效方块 ID %d 或尝试填充空气。任务取消。
+log.warn.task.fill.notClient=填充任务 #%d 警告: 尝试在非客户端世界执行任务！位置: %s
+log.warn.task.fill.placeError=填充任务 #%d 警告: 在位置就绪后设置方块时出错 %s: %s
 log.info.task.fill.playerInvalid=FillTask #%d: 命令发送者玩家已失效或不在当前世界，取消任务。
 log.info.task.fill.posReady=FillTask #%d: 位置现已就绪: %s. 尝试放置...
 log.info.task.fill.posWaiting=FillTask #%d: 等待放置: %s (原因: %s)
 log.info.task.fill.posInvalidY=FillTask #%d: 无效Y坐标 (%d)，从任务移除: %s
-log.warn.task.fill.notClient=FillTask #%d 警告: 尝试在非客户端世界执行任务！Pos: %s
-log.warn.task.fill.placeError=FillTask #%d 警告: 在位置就绪后设置方块时出错 %s: %s
 log.info.task.fill.complete.log=FillTask #%d 任务完成。成功放置: %d / 初始总数: %d
 log.info.task.fill.complete.waitingList=FillTask #%d 注意: 任务完成时仍有 %d 个方块在等待列表中。
 log.info.task.fill.playerLeft.progress=FillTask #%d: 玩家已离开或无效，停止发送进度消息，并取消任务。
@@ -392,10 +380,42 @@ log.info.task.fill.playerLeft.finish=FillTask #%d: 玩家已离开或无效，�
 log.error.task.fill.finish.sendFailed=FillTask #%d: 发送完成消息失败: %s
 log.info.task.fill.cancelled=FillTask #%d 任务已被取消，不发送完成或保存消息。
 log.info.task.fill.markedCancelled=FillTask #%d 标记为取消。
+log.info.task.load.init=LoadTask #%d 初始化: total=%d, batch=%d
+log.warn.task.load.notClient=加载任务 #%d 警告: 尝试在非客户端世界执行任务！位置: %s
+log.warn.task.load.placeError=加载任务 #%d 警告: 在位置就绪后设置方块时出错 %s (索引: %d): %s
+log.warn.task.load.invalidBlock=加载任务 #%d 警告: 无效方块ID '%s' 在 %s (索引: %d)
+log.info.task.load.playerInvalid=LoadTask #%d: 命令发送者玩家已失效或不在当前世界，取消任务。
+log.info.task.load.posReady=LoadTask #%d: 位置现已就绪: %s (索引: %d). 尝试加载...
+log.info.task.load.posWaiting=LoadTask #%d: 等待加载: %s (索引: %d, 原因: %s)
+log.info.task.load.posInvalidY=LoadTask #%d: 无效Y坐标 (%d)，跳过条目: %s (索引: %d)
+log.info.task.load.complete.log=LoadTask #%d 任务完成。
+log.info.task.load.complete.loopEnd=LoadTask #%d 循环结束，发送最终进度。
+log.info.task.load.complete.logFinished=LoadTask #%d 任务已完成且报告，日志记录。
+log.info.task.load.playerLeft.progress=LoadTask #%d: 玩家已离开或无效，停止发送进度消息，并取消任务。
+log.error.task.load.progress.sendFailed=LoadTask #%d: 发送进度消息失败: %s
+log.info.task.load.playerLeft.finish=LoadTask #%d: 玩家已离开或无效，跳过发送完成消息。
+log.error.task.load.finish.sendFailed=LoadTask #%d: 发送完成消息失败: %s
+log.info.task.load.complete.waitingList=LoadTask #%d 注意: 任务完成时仍有 %d 个条目在等待列表中。
+log.info.task.load.cancelled=LoadTask #%d 任务已被取消，不发送完成消息。
+log.info.task.load.markedCancelled=LoadTask #%d 标记为取消。
 log.info.task.cancel.fill=填充任务 #%d 已取消并暂停。
 log.info.task.cancel.load=加载任务 #%d 已取消并暂停。
 log.info.task.cancel.clear=清除任务 #%d 已取消。
 log.info.tasks.cancelled.count=取消了 %d 个活动/暂停任务。
+log.error.tick.fallback.failed=Tick Fallback 逻辑执行失败:
+log.fatal.fill.exec.sync.error=同步填充时发生严重错误！Pos: %s, 错误: %s
+log.error.set.loadedChunk.failed=在已加载区块中设置方块失败: %s
+log.error.undo.restore.set.failed=撤销时恢复方块 %s 失败: %s
+log.error.undo.restore.clear.failed=撤销清除操作时恢复幽灵方块 %s 失败: %s
+log.info.undo.created.clearBlock=已为 clear block 操作创建撤销记录: %s
+log.error.undo.deleteFile.failed=删除撤销文件失败: %s
+log.info.undo.deleteFile.success=成功删除撤销文件: %s
+log.info.undo.deleteFile.notFound=未找到撤销文件 %s 进行删除 (可能已处理)。
+log.error.clear.task.restore.failed=清除任务中恢复方块失败 %s: %s
+log.error.clear.task.originalBlock.notFound=清除任务错误：找不到原始方块ID '%s' 用于恢复位置 %s
+log.info.clear.task.file.deleted=清除任务完成，删除自动文件 %s 结果: %b
+log.info.clear.task.file.notFound=清除任务完成，未找到自动文件 %s
+log.info.clear.file.alreadyDeleted=尝试清除的文件 %s 已被删除。
 
 # --- 自动放置 ---
 log.debug.autoplace.tick.dataMissing=AutoPlaceTick Tick %d: 玩家/世界/目标数据不完整，取消。
@@ -418,6 +438,64 @@ log.debug.autoplace.cleanup.handlingFirstJoin=自动放置处理结束，且仍�
 log.debug.autoplace.cleanup.dimensionChanged=自动放置处理结束，但玩家维度已改变，不执行 isFirstJoin 的 cleanupAndRestoreOnLoad。
 log.debug.autoplace.cleanup.dimCheck.fallback=用于维度检查的文件名未知，将使用当前玩家维度。
 log.debug.autoplace.cleanup.dimCheck.mismatch=自动放置处理结束，但玩家维度 (%d) 与文件先前维度 (%d) 不符，不执行 isFirstJoin 的 cleanupAndRestoreOnLoad。
+log.debug.set.autosave.defaultFile=默认文件
+log.debug.set.autosave.activated=自动保存已激活，使用文件名: %s
+log.debug.set.checking.coords=检查坐标 %s, Section是否就绪: %b
+log.debug.set.directSet=区块已加载，直接设置方块。
+log.debug.set.saving.userFile=正在保存到用户文件: %s
+log.debug.set.creating.task=区块未加载，创建延迟设置任务。
+log.debug.set.task.entryCreated=为延迟任务创建了用户保存条目。
+log.debug.set.task.added=延迟设置任务 #%d 已添加。
+log.debug.set.autosaved.count=自动保存了 %d 个原始方块信息。
+log.debug.set.autosave.skipped=没有新的原始方块需要自动保存。
+log.debug.set.undo.created=为 set 操作创建了撤销文件: %s
+log.debug.set.backup.created=为 set 操作备份了用户文件: %s
+log.debug.set.undo.pushed=set 操作的撤销记录已推入堆栈。
+log.debug.fill.batch.config=批处理模式: 使用配置强制大小 %d
+log.debug.fill.batch.default=批处理模式: 使用默认大小 %d
+log.debug.fill.batch.user=批处理模式: 使用用户指定大小 %d
+log.debug.fill.autosave.activated=Fill: 自动保存已激活，使用文件名: %s
+log.debug.fill.config.info=Fill: 配置 - forceBatch=%b, forcedSize=%d
+log.debug.fill.params.info=Fill: 用户参数 - providedBatchFlag=%b, providedBatchSize=%b
+log.debug.fill.decision.info=Fill: 决策 - useBatch=%b, batchSize=%s
+log.debug.fill.volume.calculated=计算出的填充体积: %d
+log.warn.fill.largeSync=警告: 尝试同步填充一个大区域 (超过 %d 个方块)。
+log.debug.fill.totalBlocks=总共 %d 个方块将被填充。
+log.debug.fill.autosave.collected=收集了 %d 个原始方块信息用于自动保存。
+log.debug.fill.autosave.skipped=Fill: 没有新的原始方块需要自动保存。
+log.debug.fill.undo.saved=为 fill 操作创建了撤销文件: %s
+log.debug.fill.backup.created=为 fill 操作备份了用户文件: %s
+log.debug.fill.undo.pushed=fill 操作的撤销记录已推入堆栈。
+log.debug.fill.check.ebs.start=检查 ExtendedBlockStorage (同步模式: %b)
+log.debug.fill.check.ebs.limitReached=EBS 检查达到上限 %d，将强制批处理。
+log.debug.fill.check.ebs.progress=EBS 检查: %s, Section就绪: %b
+log.debug.fill.check.ebs.foundNotReady=在第 %d 次检查时发现未就绪的 Section: %s
+log.debug.fill.check.ebs.complete=EBS 检查完成 (检查了 %d 个)，发现未就绪: %b
+log.debug.fill.check.ebs.implicitRequired=检测到未加载区块，需要隐式批处理。
+log.debug.fill.check.ebs.allReady=所有检查的区块 Section 均已就绪。
+log.debug.fill.check.ebs.skipped=跳过 EBS 检查 (批处理模式: %b)。
+log.debug.fill.decision.final=最终决策: useBatch=%b, implicitBatchRequired=%b
+log.debug.fill.exec.batch=执行批处理填充。
+log.debug.fill.exec.batch.implicit.configSize=隐式批处理触发，使用配置的强制大小: %d
+log.debug.fill.exec.batch.implicit.defaultSize=隐式批处理触发，使用默认大小 100。
+log.debug.fill.exec.batch.task.started=启动填充任务 #%d，批次大小: %d
+log.debug.fill.exec.sync=执行同步填充。
+log.debug.fill.exec.sync.complete=同步填充耗时 %d ms，处理了 %d 个方块。
+log.debug.fill.exec.sync.saving=同步填充完成，保存到用户文件: %s
+log.warn.fill.exec.sync.saveFailed=同步填充后保存用户文件失败，因为没有收集到原始方块信息。
+log.debug.load.autosave.newEntries=加载操作：为 %d 个新位置自动保存了原始方块信息。
+log.debug.load.undo.created=为 load 操作创建了撤销记录: %s
+log.debug.load.check.implicit.start=Load: 检查是否需要隐式批处理...
+log.debug.load.check.implicit.limitReached=Load: 隐式检查达到上限 %d。
+log.debug.load.check.implicit.foundNotReady=Load: 在第 %d 次检查时发现未就绪的 Section: %s
+log.debug.load.check.implicit.complete=Load: 隐式检查完成 (检查了 %d 个)，发现未就绪: %b
+log.debug.load.exec.batch=Load: 执行批处理加载。
+log.debug.load.exec.sync=Load: 执行同步加载。
+log.debug.load.exec.sync.complete=同步加载耗时 %d ms。
+log.warn.load.exec.sync.failedSet=同步加载失败: %s - %s
+log.fatal.load.exec.sync.error=同步加载时发生严重错误！EntryPos: %s, 错误: %s
+log.warn.load.exec.sync.invalidBlock=同步加载时发现无效方块ID '%s' 在 %s，已跳过。
+log.warn.load.exec.sync.notLoaded=同步加载时发现区块未加载 %s (理论上不应发生)，已跳过。
 
 # --- 加入/离开世界 ---
 log.debug.joinWorld.worldNull=onEntityJoinWorld: 世界为 null，无法继续。
@@ -437,6 +515,16 @@ log.debug.joinWorld.standardFlow.dimensionChange=(标准流程) 检测到维度�
 log.debug.joinWorld.standardFlow.executingCleanupDimChange=(标准流程) 执行 cleanupAndRestoreOnLoad (维度切换)。
 log.debug.joinWorld.standardFlow.rejoinSameDim=(标准流程) 重新加入相同维度 (%d)。
 log.debug.joinWorld.standardFlow.executingCleanupRejoin=(标准流程) 执行 cleanupAndRestoreOnLoad (同维度重进)。
+log.info.worldLoad.skipCleanup=自动放置功能已启用，跳过 onWorldLoad 中的清理与恢复逻辑。
+log.worldLoad.checking=世界加载事件：检查维度 %d 的自动清除文件...
+log.worldLoad.foundClearFile=找到自动清除文件 %s，正在恢复...
+log.error.worldLoad.restoreFailed=世界加载时恢复方块 %s 失败: %s
+log.warn.worldLoad.originalBlock.notFound=世界加载时找不到原始方块ID '%s' 用于恢复 %s
+log.worldLoad.restoreComplete=恢复完成，成功 %d 个，失败 %d 个。
+log.worldLoad.clearFile.empty=自动清除文件为空。
+log.error.worldLoad.clearFile.deleteFailed=删除自动清除文件失败: %s
+log.info.worldLoad.clearFile.deleted=已删除自动清除文件: %s
+log.info.worldLoad.clearFile.notFound=未找到自动清除文件 %s。
 log.info.worldUnload.entry=世界卸载事件触发。当前 autoPlaceInProgress: %b
 log.info.worldUnload.pendingAutoplace=检测到有待处理的自动放置任务，世界正在卸载，将进行清理。
 log.info.worldUnload.autoplaceCleanupCalled=已调用静态方法清理待处理的自动放置。
@@ -450,10 +538,10 @@ log.info.worldUnload.autoplace.deleteSuccess=成功删除旧的自动放置文�
 log.info.worldUnload.autoplace.playerNull=玩家为空或不在卸载的世界中。尝试清理可能存在的自动放置文件。
 log.info.worldUnload.autoplace.residualDeleted=删除了可能残留的自动放置文件: %s
 log.error.worldUnload.autoplace.residualDeleteFailed=未能删除残留的自动放置文件: %s
-log.info.worldUnload.standardCleanup.entry=正在卸载世界: %s Dim: %d
-log.info.worldUnload.standardCleanup.clearFileDeleted=删除 clear 文件 (%s) 结果: %b
+log.debug.worldUnload.standardCleanup.entry=正在卸载世界: %s Dim: %d
+log.debug.worldUnload.standardCleanup.clearFileDeleted=删除 clear 文件 (%s) 结果: %b
 log.error.worldUnload.standardCleanup.clearFileFailed=删除 clear 文件 (%s) 失败!
-log.info.worldUnload.standardCleanup.undoFileDeleted=尝试删除 undo 文件: %s 结果: %b
+log.debug.worldUnload.standardCleanup.undoFileDeleted=尝试删除 undo 文件: %s 结果: %b
 log.info.worldUnload.standardCleanup.cancellingTasks=世界卸载，取消所有活动任务...
 log.info.worldUnload.standardCleanup.resettingState=重置 isFirstJoin 和 autoPlaceInProgress。
 
@@ -463,12 +551,17 @@ log.debug.fastpiston.originalSpeed=Original event speed (newSpeed from game): %f
 log.debug.fastpiston.calculatedSM=Calculated sm (speed * multiplier) = %f
 log.debug.fastpiston.correctionFactor=Correction Factor (incorrect_h / correct_h) = %f
 log.debug.fastpiston.finalSpeed=Final Corrected Speed to set = %f
+log.debug.autosneak.press=AutoSneak: Mod pressed sneak key.
+log.debug.autosneak.release=AutoSneak: Mod released sneak key.
 log.debug.handler.chatSuggest.created=ChatSuggestEventHandler 实例已创建。
 log.error.reflection.drawnChatLines=无法找到 drawnChatLines 字段！
 log.error.reflection.chatComponent=无法找到 chatComponent 字段！
 log.warn.reflection.updateCounter=无法找到 updateCounter 字段，将使用Fallback逻辑。
 log.error.reflection.inputField=无法找到 inputField 字段！
 log.error.chat.attachButton.failed=附加翻译按钮时出错: %s
+log.error.chat.attachSuggestButton.failed=附加建议按钮时发生异常:
+log.error.gui.keyboard.failed=处理GUI键盘输入时出错:
+log.error.gui.mouse.failed=处理GUI鼠标输入时出错:
 log.error.note.loadFailed=加载笔记时出错: %s
 log.error.note.saveFailed=保存笔记时出错: %s
 log.error.translation.exception=翻译时发生异常: %s
@@ -481,3 +574,6 @@ log.error.data.load.failed=加载文件失败: %s
 log.error.data.getDim.nullFilename=getDimensionFromFileName: 文件名为空！
 log.error.data.getDim.parseFailed=解析文件名中的维度时出错: '%s' -> 解析出的维度字符串: '%s'
 log.warn.data.getDim.notFound=无法从文件名中找到或解析维度标记 '_dim_': %s
+log.info.undo.autoClearFile.updated=已从自动清除文件 '%s' 中更新/移除了 %d 个条目。
+log.error.restoreBlocks.failed=恢复方块 %s 失败: %s
+log.info.tasks.cancelled.count=取消了 %d 个活动/暂停任务。

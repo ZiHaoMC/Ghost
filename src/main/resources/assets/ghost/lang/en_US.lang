@@ -18,6 +18,7 @@ ghost.generic.disabled=Disabled
 ghost.generic.toggle.feedback=%s is now %s
 ghost.generic.prefix.default=[Ghost]
 ghost.generic.prefix.translation=[Translate]
+commands.generic.player.unsupported=This command can only be executed by a player.
 
 # ==================================
 # ===        Translation Feature ===
@@ -110,13 +111,14 @@ ghostblock.commands.load.batch_started=Load task #%1$d started, total %2$d entri
 ghostblock.commands.load.progress=Load progress: {0} {1}
 ghostblock.commands.load.finish=✔ Load task complete, attempted to process %1$d entries.
 ghostblock.commands.load.implicit_batch_notice=Detected that the load data contains coordinates in unloaded chunks, automatically switching to batch mode.
+ghostblock.commands.task.sync_skipped=Warning: The sync operation skipped %1$d blocks that were in unloaded chunks or failed to process.
 
 # clear command
 ghostblock.commands.clear.usage=Usage: /cgb clear <block|file> [args...]
 ghostblock.commands.clear.usage.file_missing_args=Usage: /cgb clear file <filename...>. Please provide at least one filename.
 ghostblock.commands.clear.usage.block=Usage: /cgb clear block [-b [size]] [confirm]
 ghostblock.commands.clear.confirm.question=Warning: Are you sure you want to permanently delete the following files? This action can be undone with /cgb undo!
-ghostblock.commands.clear.confirm.button=Confirm Deletion
+ghostblock.commands.clear.confirm.button=[Confirm Deletion]
 ghostblock.commands.clear.success=Successfully deleted file: %1$s
 ghostblock.commands.clear.failed=Failed to delete file: %1$s
 ghostblock.commands.clear.missing_files=Warning: The following files do not exist or were ignored: %1$s
@@ -127,7 +129,7 @@ ghostblock.commands.clear.finish=✔ Clear task complete, processed %1$d blocks 
 # clear block subcommand
 ghostblock.commands.clear.block.no_blocks=Info: No ghost blocks are recorded in the current world/dimension to clear.
 ghostblock.commands.clear.block.confirm.question=Warning: Are you sure you want to clear all ghost blocks in the current world/dimension and restore them to their original state? This action can be undone with /cgb undo.
-ghostblock.commands.clear.block.confirm.button=Confirm Clear All
+ghostblock.commands.clear.block.confirm.button=[Confirm Clear All]
 ghostblock.commands.clear.block.success=Successfully cleared %1$d ghost blocks and restored their original state.
 ghostblock.commands.clear.block.partial_fail=Cleared %1$d ghost blocks, but %2$d failed to restore.
 ghostblock.commands.clear.block.delete_failed=Error: Failed to delete the auto-record file after clearing ghost blocks: %1$s
@@ -149,6 +151,7 @@ ghostblock.commands.resume.invalid_type=Error: This type of task (%1$s) does not
 # undo command
 ghostblock.commands.undo.usage=Usage: /cgb undo
 ghostblock.commands.undo.empty=Error: There are no operations to undo.
+ghostblock.commands.undo.record_created_clear=Undo record created for the file deletion operation.
 ghostblock.commands.undo.restoring_user_files=Restoring user files to their previous state...
 ghostblock.commands.undo.user_file_restored=Restored user file '%1$s'.
 ghostblock.commands.undo.error.data_file_empty=Warning: Undo data file is empty or not found, cannot restore blocks.
@@ -163,9 +166,9 @@ ghostblock.commands.undo.restoring_ghost_blocks=Restoring ghost blocks...
 ghostblock.commands.undo.error.restore_ghost_failed=Error: Failed to restore ghost block at (%1$d, %2$d, %3$d): %4$s
 ghostblock.commands.undo.auto_file_restored=Restored %1$d ghost block records to the auto-clear file.
 ghostblock.commands.undo.success_clear=Successfully undid the clear operation, restoring %1$d ghost blocks.
-ghostblock.commands.undo.record_created_clear=Undo record created for the file deletion operation.
 
 # /cgb help
+ghostblock.commands.cghostblock.help.header=--- GhostBlock Command Help (/cgb) ---
 ghostblock.commands.cghostblock.help.description=Manage client-side ghost blocks.
 ghostblock.commands.cghostblock.help.usage.main=Main Usage
 ghostblock.commands.cghostblock.help.subcommands.header=Available subcommands:
@@ -276,7 +279,7 @@ ghostblock.commands.gconfig.help.setting.translationSourceLang=Set the source la
 ghostblock.commands.gconfig.help.setting.translationTargetLang=Set the target language for translation.
 ghostblock.commands.gconfig.help.examples.header=Examples:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
-ghostblock.commands.g-config.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
+ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
 ghostblock.commands.gconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true
 ghostblock.commands.gconfig.help.example.showTranslationOnly=/gconfig showTranslationOnly true
 ghostblock.commands.gconfig.help.example.hideTranslationKeybindTooltip=/gconfig hideTranslationKeybindTooltip true
@@ -298,7 +301,6 @@ ghostblock.commands.save.warn.no_data=Warning: No data to save to file: %1$s
 ghostblock.commands.autoplace.platform_success=A ghost platform has been automatically placed near (%1$d, %2$d, %3$d) to catch you.
 ghostblock.commands.autosave.activated=Hint: Auto-save activated.
 ghostblock.commands.task.chunk_aware_notice=Hint: The task will run in the background. Blocks in unloaded chunks will be placed automatically as you get near.
-ghostblock.commands.task.sync_skipped=Warning: The sync operation skipped %1$d blocks that were in unloaded chunks or failed to process.
 # Note: The two spaces after the enter key symbol below are for better button clicking, do not remove!
 ghostblock.commands.suggest.text= ↩  
 ghostblock.commands.suggest.hovertext=Click to re-enter: %s
@@ -307,3 +309,271 @@ ghostblock.commands.suggest.hovertext=Click to re-enter: %s
 ghost.keybind.toggle.autosneak=Auto Edge Sneak
 ghost.keybind.toggle.playeresp=Player ESP
 ghost.keybind.toggle.bedrockminer=Bedrock Miner
+
+# ==================================
+# ===          Logging           ===
+# ==================================
+# --- Lifecycle ---
+log.lifecycle.preinit=[%s] Pre-initialization phase
+log.lifecycle.init=[%s] Initialization phase
+log.lifecycle.postinit=[%s] Post-initialization phase
+
+# --- Handler Registration ---
+log.handler.registered.chatSuggest=Chat Suggest Event Handler registered in PreInit.
+log.handler.registered.autoSneak=Auto Sneak Event Handler (AutoSneakHandler) registered in PreInit.
+log.handler.registered.playerEsp=Player ESP Event Handler (PlayerESPHandler) registered in PreInit.
+log.handler.registered.fastPiston=Fast Piston Breaking Event Handler (FastPistonBreakingHandler) registered in PreInit.
+log.handler.registered.playerArrow=Player Arrow Renderer Event Handler (PlayerArrowRendererHandler) registered in PreInit.
+log.handler.registered.keybind=Keybind Event Handler (KeybindHandler) registered in PreInit.
+log.handler.registered.signTranslation=Sign Translation Event Handler (SignTranslationHandler) registered in PreInit.
+log.handler.registered.itemTooltip=Item Tooltip Translation Event Handler (ItemTooltipTranslationHandler) registered in PreInit.
+log.handler.registered.ghostBlockCommand=GhostBlockCommand Event Handler registered.
+
+# --- Command Registration ---
+log.command.registering.eventListener=Registering GhostBlockCommand event listener...
+log.command.registering.client=Registering client commands...
+log.command.registered.ghostConfig=GhostConfigCommand (/gconfig) registered.
+log.command.registered.cgb=/cgb command instance registered.
+log.command.registered.gtranslate=TranslateCommand (/gtranslate) registered.
+log.command.skipping.server=Skipping client command registration on server side.
+log.command.handler.initialized=CommandEventHandler initialized (handling Tick events).
+log.info.command.parse.success=Block parsed successfully: %s (ID=%d), meta=%d
+log.warn.command.set.meta.invalid=Invalid metadata '%s' for block '%s', using 0.
+log.error.command.parse.failed=Unexpected error while parsing block state: %s
+
+# --- Config ---
+log.config.notInitialized=Configuration has not been initialized!
+log.config.loaded=Configuration loaded or created and changes saved.
+
+# --- Cache ---
+log.feature.cache.init=Translation cache loaded, and save event handler registered.
+log.info.cache.loaded=Loaded %d translation cache entries.
+log.info.cache.saving=World unload, triggering translation cache save...
+log.info.cache.saving.count=Saving %d translation cache entries...
+log.info.cache.saved=Translation cache saved.
+log.info.cache.file.notFound=Translation cache file not found, a new one will be created.
+log.error.cache.loadFailed=Error loading translation cache: %s
+log.info.cache.save.skipped=No translation cache in memory, skipping save.
+log.error.cache.saveFailed=Error saving translation cache: %s
+
+# --- Tasks ---
+log.info.task.fill.complete=Fill task #%d complete
+log.info.task.load.complete=Load task #%d complete
+log.info.task.clear.complete=Clear task #%d complete
+log.info.task.fill.init=FillTask #%d initialized (with distance check strategy): total=%d, batch=%d
+log.error.task.fill.invalidBlock=FillTask #%d Error: Invalid block ID %d or attempt to fill with air. Task cancelled.
+log.warn.task.fill.notClient=FillTask #%d Warning: Attempting to execute task in a non-client world! Position: %s
+log.warn.task.fill.placeError=FillTask #%d Warning: Error setting block after position was ready %s: %s
+log.info.task.fill.playerInvalid=FillTask #%d: Command sender player is invalid or not in the current world, cancelling task.
+log.info.task.fill.posReady=FillTask #%d: Position is now ready: %s. Attempting to place...
+log.info.task.fill.posWaiting=FillTask #%d: Waiting to place: %s (Reason: %s)
+log.info.task.fill.posInvalidY=FillTask #%d: Invalid Y coordinate (%d), removing from task: %s
+log.info.task.fill.complete.log=FillTask #%d task complete. Successfully placed: %d / Initial total: %d
+log.info.task.fill.complete.waitingList=FillTask #%d Note: %d blocks were still in the waiting list upon task completion.
+log.info.task.fill.playerLeft.progress=FillTask #%d: Player has left or is invalid, stopping progress messages and cancelling task.
+log.error.task.fill.progress.sendFailed=FillTask #%d: Failed to send progress message: %s
+log.info.task.fill.save.userFile=FillTask #%d task complete, attempting to save %d entries to user file: %s
+log.info.task.fill.playerLeft.save=FillTask #%d: Player has left or is invalid, skipping save success message.
+log.error.task.fill.save.sendFailed=FillTask #%d: Failed to send save success message: %s
+log.warn.task.fill.save.noEntries=FillTask #%d Warning: Task was marked for save, but no user file entries were provided or generated.
+log.info.task.fill.playerLeft.finish=FillTask #%d: Player has left or is invalid, skipping completion message.
+log.error.task.fill.finish.sendFailed=FillTask #%d: Failed to send completion message: %s
+log.info.task.fill.cancelled=FillTask #%d task has been cancelled, not sending completion or save messages.
+log.info.task.fill.markedCancelled=FillTask #%d marked as cancelled.
+log.info.task.load.init=LoadTask #%d initialized: total=%d, batch=%d
+log.warn.task.load.notClient=LoadTask #%d Warning: Attempting to execute task in a non-client world! Position: %s
+log.warn.task.load.placeError=LoadTask #%d Warning: Error setting block after position was ready %s (index: %d): %s
+log.warn.task.load.invalidBlock=LoadTask #%d Warning: Invalid block ID '%s' at %s (index: %d)
+log.info.task.load.playerInvalid=LoadTask #%d: Command sender player is invalid or not in the current world, cancelling task.
+log.info.task.load.posReady=LoadTask #%d: Position is now ready: %s (index: %d). Attempting to load...
+log.info.task.load.posWaiting=LoadTask #%d: Waiting to load: %s (index: %d, Reason: %s)
+log.info.task.load.posInvalidY=LoadTask #%d: Invalid Y coordinate (%d), skipping entry: %s (index: %d)
+log.info.task.load.complete.log=LoadTask #%d task complete.
+log.info.task.load.complete.loopEnd=LoadTask #%d loop ended, sending final progress.
+log.info.task.load.complete.logFinished=LoadTask #%d task is complete and reported, logging.
+log.info.task.load.playerLeft.progress=LoadTask #%d: Player has left or is invalid, stopping progress messages and cancelling task.
+log.error.task.load.progress.sendFailed=LoadTask #%d: Failed to send progress message: %s
+log.info.task.load.playerLeft.finish=LoadTask #%d: Player has left or is invalid, skipping completion message.
+log.error.task.load.finish.sendFailed=LoadTask #%d: Failed to send completion message: %s
+log.info.task.load.complete.waitingList=LoadTask #%d Note: %d entries were still in the waiting list upon task completion.
+log.info.task.load.cancelled=LoadTask #%d task has been cancelled, not sending completion message.
+log.info.task.load.markedCancelled=LoadTask #%d marked as cancelled.
+log.info.task.cancel.fill=Fill task #%d cancelled and paused.
+log.info.task.cancel.load=Load task #%d cancelled and paused.
+log.info.task.cancel.clear=Clear task #%d cancelled.
+log.info.tasks.cancelled.count=Cancelled %d active/paused tasks.
+log.error.tick.fallback.failed=Tick Fallback logic execution failed:
+log.fatal.fill.exec.sync.error=Fatal error during synchronous fill! Pos: %s, Error: %s
+log.error.set.loadedChunk.failed=Failed to set block in a loaded chunk: %s
+log.error.undo.restore.set.failed=Failed to restore block %s during undo: %s
+log.error.undo.restore.clear.failed=Failed to restore ghost block %s during clear undo: %s
+log.info.undo.created.clearBlock=Created undo record for clear block operation: %s
+log.error.undo.deleteFile.failed=Failed to delete undo file: %s
+log.info.undo.deleteFile.success=Successfully deleted undo file: %s
+log.info.undo.deleteFile.notFound=Undo file %s not found for deletion (possibly already processed).
+log.error.clear.task.restore.failed=Failed to restore block %s during clear task: %s
+log.error.clear.task.originalBlock.notFound=Clear task error: Could not find original block ID '%s' to restore at position %s
+log.info.clear.task.file.deleted=Clear task complete, deleting auto file %s result: %b
+log.info.clear.task.file.notFound=Clear task complete, auto file %s not found.
+log.info.clear.file.alreadyDeleted=File %s attempted to clear was already deleted.
+
+# --- Auto Place ---
+log.debug.autoplace.tick.dataMissing=AutoPlaceTick Tick %d: Player/World/Target data is incomplete, cancelling.
+log.debug.autoplace.tick.dimensionMismatch=AutoPlaceTick Tick %d: Dimension check failed or mismatch (player:%d, file:%d), cancelling.
+log.debug.autoplace.tick.attempt=AutoPlaceTick Tick %d/%d: Attempting to place ghost blocks on a 3x3 platform centered at %s (original record center: %s).
+log.debug.autoplace.tick.playerInRangeCheck=Player current entity block: %s, Expected standing block (center): %s, Is in horizontal range: %b, Is in vertical reasonable range: %b
+log.debug.autoplace.tick.inRangePlacing=Player is in the expected range. Starting to attempt placing 3x3 platform...
+log.debug.autoplace.tick.invalidBlock=The ghost block type recorded in the file is invalid or air. Cannot form a platform.
+log.debug.autoplace.tick.firstSuccess=Platform part at %s succeeded on the first try.
+log.debug.autoplace.tick.notAir=Platform part %s is not air (%s), skipping.
+log.debug.autoplace.tick.platformPlaced=3x3 ghost platform partially or fully placed (tick: %d)
+log.error.autoplace.tick.exception=AutoPlaceTick Tick %d: Exception occurred during continuous 3x3 platform placement:
+log.debug.autoplace.tick.playerOutOfRange=AutoPlaceTick Tick %d: Player is not in the expected recovery range.
+log.debug.autoplace.tick.outOfRangeTimeout=Player is consistently out of range and has timed out, giving up and cleaning up.
+log.debug.autoplace.tick.timeout=AutoPlaceTick Tick %d: Exceeded max attempt ticks (%d), forcing termination.
+log.debug.autoplace.cleanup.file.deleted=Successfully deleted auto-place file: %s
+log.error.autoplace.cleanup.file.deleteFailed=Failed to delete auto-place file: %s
+log.debug.autoplace.cleanup.cleaned=Cleaned up pending auto-place state. autoPlaceInProgress set to false.
+log.debug.autoplace.cleanup.handlingFirstJoin=Auto-place handling finished and is still isFirstJoin. Handling first join logic...
+log.debug.autoplace.cleanup.dimensionChanged=Auto-place handling finished, but player dimension has changed, not executing cleanupAndRestoreOnLoad for isFirstJoin.
+log.debug.autoplace.cleanup.dimCheck.fallback=Filename for dimension check is unknown, will use current player dimension.
+log.debug.autoplace.cleanup.dimCheck.mismatch=Auto-place handling finished, but player dimension (%d) does not match file's previous dimension (%d), not executing cleanupAndRestoreOnLoad for isFirstJoin.
+log.debug.set.autosave.defaultFile=Default File
+log.debug.set.autosave.activated=Auto-save activated, using filename: %s
+log.debug.set.checking.coords=Checking coordinates %s, Section ready: %b
+log.debug.set.directSet=Chunk is loaded, setting block directly.
+log.debug.set.saving.userFile=Saving to user file: %s
+log.debug.set.creating.task=Chunk not loaded, creating deferred set task.
+log.debug.set.task.entryCreated=Created user save entry for deferred task.
+log.debug.set.task.added=Deferred set task #%d added.
+log.debug.set.autosaved.count=Auto-saved %d original block info entries.
+log.debug.set.autosave.skipped=No new original blocks to auto-save.
+log.debug.set.undo.created=Created undo file for set operation: %s
+log.debug.set.backup.created=Backed up user file for set operation: %s
+log.debug.set.undo.pushed=Undo record for set operation pushed to stack.
+log.debug.fill.batch.config=Batch mode: Using config-forced size %d
+log.debug.fill.batch.default=Batch mode: Using default size %d
+log.debug.fill.batch.user=Batch mode: Using user-specified size %d
+log.debug.fill.autosave.activated=Fill: Auto-save activated, using filename: %s
+log.debug.fill.config.info=Fill: Config - forceBatch=%b, forcedSize=%d
+log.debug.fill.params.info=Fill: User params - providedBatchFlag=%b, providedBatchSize=%b
+log.debug.fill.decision.info=Fill: Decision - useBatch=%b, batchSize=%s
+log.debug.fill.volume.calculated=Calculated fill volume: %d
+log.warn.fill.largeSync=Warning: Attempting to synchronously fill a large area (over %d blocks).
+log.debug.fill.totalBlocks=A total of %d blocks will be filled.
+log.debug.fill.autosave.collected=Collected %d original block info entries for auto-save.
+log.debug.fill.autosave.skipped=Fill: No new original blocks to auto-save.
+log.debug.fill.undo.saved=Created undo file for fill operation: %s
+log.debug.fill.backup.created=Backed up user file for fill operation: %s
+log.debug.fill.undo.pushed=Undo record for fill operation pushed to stack.
+log.debug.fill.check.ebs.start=Checking ExtendedBlockStorage (sync mode: %b)
+log.debug.fill.check.ebs.limitReached=EBS check reached limit of %d, will force batch processing.
+log.debug.fill.check.ebs.progress=EBS Check: %s, Section ready: %b
+log.debug.fill.check.ebs.foundNotReady=Found a non-ready Section at check #%d: %s
+log.debug.fill.check.ebs.complete=EBS check complete (checked %d), found not ready: %b
+log.debug.fill.check.ebs.implicitRequired=Detected unloaded chunks, implicit batch processing required.
+log.debug.fill.check.ebs.allReady=All checked chunk sections are ready.
+log.debug.fill.check.ebs.skipped=Skipping EBS check (batch mode: %b).
+log.debug.fill.decision.final=Final decision: useBatch=%b, implicitBatchRequired=%b
+log.debug.fill.exec.batch=Executing batch fill.
+log.debug.fill.exec.batch.implicit.configSize=Implicit batch triggered, using config forced size: %d
+log.debug.fill.exec.batch.implicit.defaultSize=Implicit batch triggered, using default size 100.
+log.debug.fill.exec.batch.task.started=Started fill task #%d, batch size: %d
+log.debug.fill.exec.sync=Executing synchronous fill.
+log.debug.fill.exec.sync.complete=Synchronous fill took %d ms, processed %d blocks.
+log.debug.fill.exec.sync.saving=Synchronous fill complete, saving to user file: %s
+log.warn.fill.exec.sync.saveFailed=Failed to save user file after sync fill because no original block info was collected.
+log.debug.load.autosave.newEntries=Load operation: Auto-saved original block info for %d new positions.
+log.debug.load.undo.created=Created undo record for load operation: %s
+log.debug.load.check.implicit.start=Load: Checking if implicit batch is needed...
+log.debug.load.check.implicit.limitReached=Load: Implicit check reached limit of %d.
+log.debug.load.check.implicit.foundNotReady=Load: Found a non-ready Section at check #%d: %s
+log.debug.load.check.implicit.complete=Load: Implicit check complete (checked %d), found not ready: %b
+log.debug.load.exec.batch=Load: Executing batch load.
+log.debug.load.exec.sync=Load: Executing synchronous load.
+log.debug.load.exec.sync.complete=Synchronous load took %d ms.
+log.warn.load.exec.sync.failedSet=Sync load failed: %s - %s
+log.fatal.load.exec.sync.error=Fatal error during synchronous load! EntryPos: %s, Error: %s
+log.warn.load.exec.sync.invalidBlock=Found invalid block ID '%s' at %s during sync load, skipped.
+log.warn.load.exec.sync.notLoaded=Found unloaded chunk at %s during sync load (should not happen in theory), skipped.
+
+# --- Join/Leave World ---
+log.debug.joinWorld.worldNull=onEntityJoinWorld: World is null, cannot proceed.
+log.debug.joinWorld.entry=Player joined world/switched dimension - Current dim: %d, Last tracked dim: %d
+log.debug.joinWorld.autoplaceInProgress=Detected autoPlaceInProgress as true, waiting for Tick handling to complete.
+log.warn.joinWorld.pendingEntry=Found a lingering pendingAutoPlaceEntry on entry, forcing cleanup.
+log.debug.joinWorld.autoplaceEnabled=Auto-place feature is enabled.
+log.debug.joinWorld.loadingFile=Attempting to load auto-place file: %s.json
+log.debug.joinWorld.loadedEntries=Loaded %d entries from auto-place file.
+log.debug.joinWorld.pendingSet=Pending auto-place entry has been set at %s. Will be handled by Tick event. onEntityJoinWorld returning.
+log.debug.joinWorld.noFile=Auto-place file not found or is empty. Will not start delayed/continuous placement.
+log.debug.joinWorld.autoplaceDisabled=Auto-place feature is disabled.
+log.debug.joinWorld.standardFlow.start=Auto-place flow not started (autoPlaceInProgress=%b). Continuing with standard world join logic...
+log.debug.joinWorld.standardFlow.firstJoin=(Standard Flow) First time entering a world. Initializing dimension to %d
+log.debug.joinWorld.standardFlow.executingCleanupFirstJoin=(Standard Flow) Executing cleanupAndRestoreOnLoad (first join).
+log.debug.joinWorld.standardFlow.dimensionChange=(Standard Flow) Dimension change detected: %d → %d
+log.debug.joinWorld.standardFlow.executingCleanupDimChange=(Standard Flow) Executing cleanupAndRestoreOnLoad (dimension switch).
+log.debug.joinWorld.standardFlow.rejoinSameDim=(Standard Flow) Re-joining the same dimension (%d).
+log.debug.joinWorld.standardFlow.executingCleanupRejoin=(Standard Flow) Executing cleanupAndRestoreOnLoad (same dim re-join).
+log.info.worldLoad.skipCleanup=Auto-place feature is enabled, skipping cleanup and restore logic in onWorldLoad.
+log.worldLoad.checking=World load event: Checking for auto-clear file for dimension %d...
+log.worldLoad.foundClearFile=Found auto-clear file %s, restoring...
+log.error.worldLoad.restoreFailed=Failed to restore block %s on world load: %s
+log.warn.worldLoad.originalBlock.notFound=Could not find original block ID '%s' for restoration at %s on world load
+log.worldLoad.restoreComplete=Restore complete, %d successful, %d failed.
+log.worldLoad.clearFile.empty=Auto-clear file is empty.
+log.error.worldLoad.clearFile.deleteFailed=Failed to delete auto-clear file: %s
+log.info.worldLoad.clearFile.deleted=Deleted auto-clear file: %s
+log.info.worldLoad.clearFile.notFound=Auto-clear file %s not found.
+log.info.worldUnload.entry=World unload event triggered. Current autoPlaceInProgress: %b
+log.info.worldUnload.pendingAutoplace=Detected a pending auto-place task while world is unloading, will clean up.
+log.info.worldUnload.autoplaceCleanupCalled=Static method to clean up pending auto-place has been called.
+log.info.worldUnload.autoplace.playerCoords=Player exact coordinates: (%f, %f, %f)
+log.info.worldUnload.autoplace.logicalFeetPos=Calculated 'logical feet' position for lookup: %s
+log.info.worldUnload.autoplace.loadingClearFile=Loaded %d entries from %s.json.
+log.info.worldUnload.autoplace.saved=Player's logical feet position (%s) is a recorded ghost block (block: %s). Info saved to %s.json.
+log.info.worldUnload.autoplace.notGhostBlock=Player's logical feet position (%s) is not a recorded ghost block (or no record in clear file). Deleting old %s.json (if it exists).
+log.error.worldUnload.autoplace.deleteFailed=Failed to delete old auto-place file: %s
+log.info.worldUnload.autoplace.deleteSuccess=Successfully deleted old auto-place file: %s
+log.info.worldUnload.autoplace.playerNull=Player is null or not in the unloading world. Attempting to clean up possible auto-place file.
+log.info.worldUnload.autoplace.residualDeleted=Deleted a possibly residual auto-place file: %s
+log.error.worldUnload.autoplace.residualDeleteFailed=Failed to delete residual auto-place file: %s
+log.debug.worldUnload.standardCleanup.entry=Unloading world: %s Dim: %d
+log.debug.worldUnload.standardCleanup.clearFileDeleted=Delete clear file (%s) result: %b
+log.error.worldUnload.standardCleanup.clearFileFailed=Failed to delete clear file (%s)!
+log.debug.worldUnload.standardCleanup.undoFileDeleted=Attempting to delete undo file: %s result: %b
+log.info.worldUnload.standardCleanup.cancellingTasks=World unloading, cancelling all active tasks...
+log.info.worldUnload.standardCleanup.resettingState=Resetting isFirstJoin and autoPlaceInProgress.
+
+# --- Other ---
+log.debug.fastpiston.recalculating=--- FastPistonBreakingHandler: Recalculating speed ---
+log.debug.fastpiston.originalSpeed=Original event speed (newSpeed from game): %f
+log.debug.fastpiston.calculatedSM=Calculated sm (speed * multiplier) = %f
+log.debug.fastpiston.correctionFactor=Correction Factor (incorrect_h / correct_h) = %f
+log.debug.fastpiston.finalSpeed=Final Corrected Speed to set = %f
+log.debug.autosneak.press=AutoSneak: Mod pressed sneak key.
+log.debug.autosneak.release=AutoSneak: Mod released sneak key.
+log.debug.handler.chatSuggest.created=ChatSuggestEventHandler instance created.
+log.error.reflection.drawnChatLines=Could not find drawnChatLines field!
+log.error.reflection.chatComponent=Could not find chatComponent field!
+log.warn.reflection.updateCounter=Could not find updateCounter field, will use Fallback logic.
+log.error.reflection.inputField=Could not find inputField field!
+log.error.chat.attachButton.failed=Error attaching translation button: %s
+log.error.chat.attachSuggestButton.failed=Exception occurred while attaching suggestion button:
+log.error.gui.keyboard.failed=Error handling GUI keyboard input:
+log.error.gui.mouse.failed=Error handling GUI mouse input:
+log.error.note.loadFailed=Error loading note: %s
+log.error.note.saveFailed=Error saving note: %s
+log.error.translation.exception=Exception occurred during translation: %s
+log.error.data.deleteEmpty.failed=Failed to delete empty data file: %s
+log.info.data.deleteEmpty.success=Deleted empty data file: %s
+log.error.data.save.failed=Error saving data to file: %s
+log.error.data.load.internal.failed=Internal load failed: %s
+log.info.data.load.notFound=File does not exist: %s
+log.error.data.load.failed=Failed to load file: %s
+log.error.data.getDim.nullFilename=getDimensionFromFileName: filename is null!
+log.error.data.getDim.parseFailed=Error parsing dimension from filename: '%s' -> parsed dim string: '%s'
+log.warn.data.getDim.notFound=Could not find or parse dimension marker '_dim_' from filename: %s
+log.info.undo.autoClearFile.updated=Updated/removed %d entries from auto-clear file '%s'.
+log.error.restoreBlocks.failed=Failed to restore block %s: %s
+log.info.tasks.cancelled.count=Cancelled %d active/paused tasks.
