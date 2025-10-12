@@ -218,6 +218,7 @@ ghost.config.comment.dependWhitelist=可以作为支撑/依赖的方块列表 (�
 ghost.config.comment.hideArrowsOnPlayers=启用后，将隐藏射在其他玩家身上的箭，但保留自己身上的。
 ghost.config.comment.enableNoteFeature=启用游戏内笔记功能。启用后，可通过指定按键打开一个可以随时记录文本的界面。
 ghost.config.comment.enableAdvancedEditing=启用笔记界面的高级编辑功能(如鼠标选择、Ctrl+A/C/X)。
+ghost.config.comment.enableMarkdownRendering=启用笔记界面的Markdown格式渲染 (例如 **粗体**, *斜体* 和 ~~删除线~~)。
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -274,6 +275,7 @@ ghostblock.commands.gconfig.help.setting.fastPistonBreaking=启用镐可快速�
 ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers=隐藏射在其他玩家身上的箭。
 ghost.commands.gconfig.help.setting.enableNoteFeature=启用游戏内笔记功能。
 ghost.commands.gconfig.help.setting.enableAdvancedEditing=启用笔记界面的高级编辑功能。
+ghost.commands.gconfig.help.setting.enableMarkdownRendering=启用笔记界面的Markdown格式渲染。
 ghostblock.commands.gconfig.help.setting.niuTransApiKey=设置小牛翻译的API Key。
 ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的源语言。
 ghostblock.commands.gconfig.help.setting.translationTargetLang=设置翻译的目标语言。

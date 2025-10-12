@@ -1,6 +1,6 @@
 package com.zihaomc.ghost.features.notes;
 
-import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+import com.zihaomc.ghost.utils.LogUtil;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

@@ -1,6 +1,6 @@
 package com.zihaomc.ghost.handlers;
 
-import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 

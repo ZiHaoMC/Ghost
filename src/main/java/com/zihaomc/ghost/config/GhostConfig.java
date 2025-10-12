@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.config;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.config.Configuration;
@@ -47,6 +47,7 @@ public class GhostConfig {
     public static boolean hideArrowsOnPlayers = false;
     public static boolean enableNoteFeature = true;
     public static boolean enableAdvancedEditing = true; // 高级编辑开关
+    public static boolean enableMarkdownRendering = true; // <--- 新增：Markdown渲染开关
 
     // --- 功能数值 ---
     public static int forcedBatchSize = 100;
@@ -133,6 +134,9 @@ public class GhostConfig {
         
         String enableAdvancedEditingComment = LangUtil.translate("ghost.config.comment.enableAdvancedEditing");
         enableAdvancedEditing = config.getBoolean("enableAdvancedEditing", CATEGORY_NOTE, true, enableAdvancedEditingComment);
+        
+        String enableMarkdownRenderingComment = LangUtil.translate("ghost.config.comment.enableMarkdownRendering");
+        enableMarkdownRendering = config.getBoolean("enableMarkdownRendering", CATEGORY_NOTE, true, enableMarkdownRenderingComment);
 
         // --- 破基岩 ---
         String enableBedrockMinerComment = LangUtil.translate("ghostblock.config.enableBedrockMiner.tooltip");
@@ -226,6 +230,7 @@ public class GhostConfig {
     public static void setTranslationSourceLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationSourceLang", "auto"); prop.set(value); translationSourceLang = value; config.save(); }
     public static void setTranslationTargetLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationTargetLang", "zh"); prop.set(value); translationTargetLang = value; config.save(); }
     public static void setEnableAdvancedEditing(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableAdvancedEditing", true); prop.set(value); enableAdvancedEditing = value; config.save(); }
+    public static void setEnableMarkdownRendering(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableMarkdownRendering", true); prop.set(value); enableMarkdownRendering = value; config.save(); }
 
     public static Configuration getConfig() {
         return config;

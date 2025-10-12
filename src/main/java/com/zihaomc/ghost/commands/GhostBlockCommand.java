@@ -4,7 +4,7 @@ import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+import com.zihaomc.ghost.utils.LogUtil;
 
 import java.io.Writer;
 import java.io.FileWriter;

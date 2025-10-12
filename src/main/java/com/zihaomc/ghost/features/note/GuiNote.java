@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.WorldRenderer;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.util.ChatAllowedCharacters;
+import net.minecraft.util.EnumChatFormatting;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
@@ -22,7 +23,7 @@ import java.util.ArrayList;
  * 游戏内笔记的GUI界面。
  * Final Version (V7) - Unified Renderer for Visual Consistency with Optifine
  * 最终版本 (V7) - 使用统一渲染器以确保在Optifine环境下的视觉一致性
- * @version V7
+ * @version V8 - Added Markdown Support
  */
 public class GuiNote extends GuiScreen {
 
@@ -187,24 +188,79 @@ public class GuiNote extends GuiScreen {
     /**
      * V7核心方法：通过逐个字符绘制来获取每个字符的精确屏幕X坐标，并将它们缓存起来。
      * 此方法现在是所有行文本的唯一渲染器，以保证视觉一致性。
+     * V8更新：添加了对Markdown格式的支持，同时保持了精确的光标位置计算。
      */
     private void drawStringAndCachePositions(String text, int x, int y, int color) {
+        // 如果禁用了Markdown渲染，则使用原始的、高性能的逐字渲染逻辑。
+        if (!GhostConfig.enableMarkdownRendering) {
+            this.charXPositions.clear();
+            float currentX = (float) x;
+            this.charXPositions.add(x); // 缓存字符串开始的位置（即第0个字符的起始位置）
+
+            for (int i = 0; i < text.length(); ++i) {
+                char character = text.charAt(i);
+                String s = String.valueOf(character);
+                
+                this.fontRendererObj.drawStringWithShadow(s, currentX, (float)y, color);
+                
+                currentX += this.fontRendererObj.getStringWidth(s);
+                this.charXPositions.add((int)Math.round(currentX)); // 四舍五入以提高精度
+            }
+            return;
+        }
+
+        // --- NEW MARKDOWN-AWARE RENDERER ---
+        // 如果启用了Markdown渲染，则使用能够处理格式的新逻辑。
         this.charXPositions.clear();
-        
         float currentX = (float) x;
-        this.charXPositions.add(x); // 缓存字符串开始的位置（即第0个字符的起始位置）
+        
+        // 一个简单的状态机来解析Markdown。
+        // 注意：这个解析器很简单，不支持复杂的嵌套或转义，但能很好地处理常见情况。
+        boolean isBold = false;
+        boolean isItalic = false;
+        boolean isStrikethrough = false;
 
         for (int i = 0; i < text.length(); ++i) {
-            char character = text.charAt(i);
-            String s = String.valueOf(character);
+            // 关键：在处理字符之前，为其在原始字符串中的索引`i`缓存起始X坐标。
+            this.charXPositions.add((int)Math.round(currentX));
             
-            // 逐字符绘制，这是获取真实渲染位置的唯一可靠方法
-            this.fontRendererObj.drawStringWithShadow(s, currentX, (float)y, color);
+            char currentChar = text.charAt(i);
+            char nextChar = (i + 1 < text.length()) ? text.charAt(i + 1) : '\0';
+
+            // 检查Markdown控制符，并优先匹配更长的符号（如 "**" 优先于 "*"）
+            if (currentChar == '*' && nextChar == '*') {
+                isBold = !isBold;
+                i++; // 跳过第二个 '*'
+                // 为被跳过的字符也添加一个位置缓存，保持索引同步。它的宽度为0。
+                this.charXPositions.add((int)Math.round(currentX));
+                continue; // 不渲染控制符
+            } else if (currentChar == '~' && nextChar == '~') {
+                isStrikethrough = !isStrikethrough;
+                i++; // 跳过第二个 '~'
+                this.charXPositions.add((int)Math.round(currentX));
+                continue;
+            } else if (currentChar == '*') {
+                isItalic = !isItalic;
+                continue;
+            }
+
+            // 根据当前状态构建格式化字符串
+            StringBuilder format = new StringBuilder();
+            if (isItalic) format.append(EnumChatFormatting.ITALIC);
+            if (isBold) format.append(EnumChatFormatting.BOLD);
+            if (isStrikethrough) format.append(EnumChatFormatting.STRIKETHROUGH);
             
-            // 累加每个字符的宽度来确定下一个字符的位置
-            currentX += this.fontRendererObj.getStringWidth(s);
-            this.charXPositions.add((int)Math.round(currentX)); // 四舍五入以提高精度
+            String charToRender = format.toString() + currentChar;
+
+            // 渲染这个带格式的单个字符
+            this.fontRendererObj.drawStringWithShadow(charToRender, currentX, (float)y, color);
+            
+            // 使用带格式的字符来计算其渲染宽度，并更新下一个字符的起始X坐标
+            currentX += this.fontRendererObj.getStringWidth(charToRender);
         }
+        
+        // 为字符串末尾的光标位置添加最后的坐标
+        this.charXPositions.add((int)Math.round(currentX));
     }
 
     /**

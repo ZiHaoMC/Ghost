@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.features.gameplay;
 
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;

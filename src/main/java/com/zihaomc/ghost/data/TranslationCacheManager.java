@@ -3,7 +3,7 @@ package com.zihaomc.ghost.data;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+import com.zihaomc.ghost.utils.LogUtil;
 
 import java.io.File;
 import java.io.FileReader;

@@ -14,7 +14,7 @@ import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
 import com.zihaomc.ghost.features.gameplay.FastPistonBreakingHandler;
 import com.zihaomc.ghost.features.visual.PlayerArrowRendererHandler;
 import com.zihaomc.ghost.proxy.CommonProxy;
-import com.zihaomc.ghost.utils.LogUtil; // <--- 导入
+import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.init.Blocks;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
