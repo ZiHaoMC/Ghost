@@ -64,6 +64,7 @@ ghost.cache.cleared_all=[Ghost] 已清除所有物品的翻译缓存。
 ghost.gui.note.title=游戏内笔记
 ghost.gui.note.save_and_close=保存并关闭
 ghost.gui.note.scroll_hint=(使用鼠标滚轮滚动)
+ghost.gui.note.markdown.prefix=Markdown 渲染: 
 
 # ==================================
 # ===      通用命令和错误      ===

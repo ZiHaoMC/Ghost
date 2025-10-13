@@ -23,7 +23,7 @@ import java.util.ArrayList;
  * 游戏内笔记的GUI界面。
  * Final Version (V7) - Unified Renderer for Visual Consistency with Optifine
  * 最终版本 (V7) - 使用统一渲染器以确保在Optifine环境下的视觉一致性
- * @version V8 - Added Markdown Support
+ * @version V8.1 - Added Markdown Toggle Button
  */
 public class GuiNote extends GuiScreen {
 
@@ -61,6 +61,11 @@ public class GuiNote extends GuiScreen {
      * 这是对抗Optifine渲染不一致性的关键。
      */
     private final List<Integer> charXPositions = new ArrayList<>();
+    
+    // vvv --- 新增 --- vvv
+    /** Markdown 渲染功能的开关按钮 */
+    private GuiButton markdownToggleButton;
+    // ^^^ --- 新增 --- ^^^
 
     // MARK: - GUI生命周期方法
 
@@ -84,6 +89,14 @@ public class GuiNote extends GuiScreen {
         
         this.buttonList.clear();
         this.buttonList.add(new GuiButton(0, this.width / 2 - 100, this.height - 25, LangUtil.translate("ghost.gui.note.save_and_close")));
+
+        // vvv --- 新增 --- vvv
+        // 创建 Markdown 开关按钮
+        // ID: 1, X: 文本区域左侧, Y: 文本区域上方, 宽度: 120, 高度: 20
+        this.markdownToggleButton = new GuiButton(1, this.textAreaX, this.textAreaY - 22, 120, 20, "");
+        updateMarkdownButtonText(); // 根据当前配置设置按钮文本
+        this.buttonList.add(this.markdownToggleButton);
+        // ^^^ --- 新增 --- ^^^
     }
 
     /**
@@ -364,9 +377,36 @@ public class GuiNote extends GuiScreen {
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
         // 处理按钮点击事件
-        if(button.enabled && button.id == 0) this.mc.displayGuiScreen(null);
+        if(button.enabled) {
+            if (button.id == 0) {
+                this.mc.displayGuiScreen(null);
+            }
+            // vvv --- 新增 --- vvv
+            else if (button.id == 1) {
+                // 切换 Markdown 配置
+                GhostConfig.setEnableMarkdownRendering(!GhostConfig.enableMarkdownRendering);
+                // 更新按钮文本以反映新状态
+                updateMarkdownButtonText();
+            }
+            // ^^^ --- 新增 --- ^^^
+        }
         super.actionPerformed(button);
     }
+    
+    // vvv --- 新增 --- vvv
+    /**
+     * 更新 Markdown 开关按钮的显示文本，以反映当前的配置状态。
+     */
+    private void updateMarkdownButtonText() {
+        if (this.markdownToggleButton != null) {
+            String prefix = LangUtil.translate("ghost.gui.note.markdown.prefix");
+            String status = GhostConfig.enableMarkdownRendering ?
+                    LangUtil.translate("ghost.generic.enabled") :
+                    LangUtil.translate("ghost.generic.disabled");
+            this.markdownToggleButton.displayString = prefix + status;
+        }
+    }
+    // ^^^ --- 新增 --- ^^^
     
     // MARK: - 文本/光标/换行核心逻辑
 
