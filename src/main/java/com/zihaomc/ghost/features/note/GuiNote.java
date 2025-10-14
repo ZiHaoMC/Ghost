@@ -23,7 +23,7 @@ import java.util.ArrayList;
  * 游戏内笔记的GUI界面。
  * Final Version (V7) - Unified Renderer for Visual Consistency with Optifine
  * 最终版本 (V7) - 使用统一渲染器以确保在Optifine环境下的视觉一致性
- * @version V8.1 - Added Markdown Toggle Button
+ * @version V8.3 - Final Button Position Adjustment
  */
 public class GuiNote extends GuiScreen {
 
@@ -62,10 +62,8 @@ public class GuiNote extends GuiScreen {
      */
     private final List<Integer> charXPositions = new ArrayList<>();
     
-    // vvv --- 新增 --- vvv
     /** Markdown 渲染功能的开关按钮 */
     private GuiButton markdownToggleButton;
-    // ^^^ --- 新增 --- ^^^
 
     // MARK: - GUI生命周期方法
 
@@ -90,13 +88,16 @@ public class GuiNote extends GuiScreen {
         this.buttonList.clear();
         this.buttonList.add(new GuiButton(0, this.width / 2 - 100, this.height - 25, LangUtil.translate("ghost.gui.note.save_and_close")));
 
-        // vvv --- 新增 --- vvv
+        // vvv --- 修改 --- vvv
         // 创建 Markdown 开关按钮
-        // ID: 1, X: 文本区域左侧, Y: 文本区域上方, 宽度: 120, 高度: 20
-        this.markdownToggleButton = new GuiButton(1, this.textAreaX, this.textAreaY - 22, 120, 20, "");
+        int buttonWidth = 120;
+        int buttonHeight = 20;
+        // X 坐标：文本框左侧 - 按钮宽度 - 5像素间距
+        // Y 坐标：与文本框的 Y 坐标 (textAreaY) 对齐
+        this.markdownToggleButton = new GuiButton(1, this.textAreaX - buttonWidth - 5, this.textAreaY, buttonWidth, buttonHeight, "");
         updateMarkdownButtonText(); // 根据当前配置设置按钮文本
         this.buttonList.add(this.markdownToggleButton);
-        // ^^^ --- 新增 --- ^^^
+        // ^^^ --- 修改 --- ^^^
     }
 
     /**
@@ -129,6 +130,7 @@ public class GuiNote extends GuiScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         // 绘制背景和UI框架
         this.drawDefaultBackground();
+        // 确保标题始终在屏幕宽度的一半位置，实现真正的居中
         drawCenteredString(this.fontRendererObj, LangUtil.translate("ghost.gui.note.title"), this.width / 2, 20, 0xFFFFFF);
         drawRect(textAreaX - 1, textAreaY - 1, textAreaX + textAreaWidth + 1, textAreaY + textAreaHeight + 1, 0xFFC0C0C0);
         drawRect(textAreaX, textAreaY, textAreaX + textAreaWidth, textAreaY + textAreaHeight, 0xFF000000);
@@ -381,19 +383,16 @@ public class GuiNote extends GuiScreen {
             if (button.id == 0) {
                 this.mc.displayGuiScreen(null);
             }
-            // vvv --- 新增 --- vvv
             else if (button.id == 1) {
                 // 切换 Markdown 配置
                 GhostConfig.setEnableMarkdownRendering(!GhostConfig.enableMarkdownRendering);
                 // 更新按钮文本以反映新状态
                 updateMarkdownButtonText();
             }
-            // ^^^ --- 新增 --- ^^^
         }
         super.actionPerformed(button);
     }
     
-    // vvv --- 新增 --- vvv
     /**
      * 更新 Markdown 开关按钮的显示文本，以反映当前的配置状态。
      */
@@ -406,7 +405,6 @@ public class GuiNote extends GuiScreen {
             this.markdownToggleButton.displayString = prefix + status;
         }
     }
-    // ^^^ --- 新增 --- ^^^
     
     // MARK: - 文本/光标/换行核心逻辑
 
