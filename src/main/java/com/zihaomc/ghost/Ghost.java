@@ -6,6 +6,7 @@ import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.handlers.CacheSavingHandler; 
 import com.zihaomc.ghost.handlers.ChatSuggestEventHandler;
+import com.zihaomc.ghost.handlers.GuiStateSaveHandler;
 import com.zihaomc.ghost.handlers.ItemTooltipTranslationHandler;
 import com.zihaomc.ghost.handlers.SignTranslationHandler;
 import com.zihaomc.ghost.handlers.KeybindHandler;
@@ -93,6 +94,11 @@ public class Ghost {
             
             MinecraftForge.EVENT_BUS.register(new SignTranslationHandler());
             LogUtil.debug("log.handler.registered.signTranslation");
+
+            // v-- 注册GUI状态丢失修复处理器 --v
+            MinecraftForge.EVENT_BUS.register(new GuiStateSaveHandler());
+            LogUtil.debug("log.handler.registered.guiStateSave");
+            // ^-- 注册结束 --^
 
             MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
             LogUtil.debug("log.handler.registered.itemTooltip");

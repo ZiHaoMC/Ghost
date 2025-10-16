@@ -81,7 +81,10 @@ public class GuiNote extends GuiScreen {
         this.textAreaHeight = this.height - 90;
         this.wrappingWidth = this.textAreaWidth - PADDING * 2; 
         
-        this.textContent = NoteManager.loadNote();
+        // 注意：这里的加载逻辑保持不变，因为我们的修复程序会在initGui之后再恢复文本
+        if (this.textContent.isEmpty()) { // 仅在文本为空时（例如首次打开）加载
+            this.textContent = NoteManager.loadNote();
+        }
         updateLinesAndIndices(); // 根据加载的文本内容计算换行
         setCursorPosition(this.textContent.length()); // 将光标置于末尾
         
@@ -615,5 +618,27 @@ public class GuiNote extends GuiScreen {
         tessellator.draw();
         GlStateManager.disableColorLogic();
         GlStateManager.enableTexture2D();
+    }
+
+    /**
+     * [新增] 获取当前笔记的完整文本内容。
+     * @return 笔记的字符串内容。
+     */
+    public String getTextContent() {
+        return this.textContent;
+    }
+
+    /**
+     * [新增] 设置笔记的文本内容并刷新GUI状态。
+     * 用于在GUI重建后恢复文本。
+     * @param newText 要设置的新文本。
+     */
+    public void setTextContentAndInitialize(String newText) {
+        if (newText != null) {
+            this.textContent = newText;
+            // 这两个调用对于在设置文本后正确更新视图和光标至关重要
+            updateLinesAndIndices();
+            setCursorPosition(this.textContent.length());
+        }
     }
 }

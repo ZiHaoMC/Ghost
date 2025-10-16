@@ -162,11 +162,11 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
             
-            case "enableautomatictranslation": // <--- 已修正
+            case "enableautomatictranslation":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
                     GhostConfig.setEnableAutomaticTranslation(value);
-                    sendSuccessMessage(sender, "enableAutomaticTranslation", value); // <--- 已修正
+                    sendSuccessMessage(sender, "enableAutomaticTranslation", value);
                 } catch (CommandException e) {
                     sendBooleanError(sender, valueStr);
                 }
@@ -222,21 +222,21 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
             
-            case "enablenotefeature": // <--- 已修正
+            case "enablenotefeature":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
                     GhostConfig.setEnableNoteFeature(value);
-                    sendSuccessMessage(sender, "enableNoteFeature", value); // <--- 已修正
+                    sendSuccessMessage(sender, "enableNoteFeature", value);
                 } catch (CommandException e) {
                     sendBooleanError(sender, valueStr);
                 }
                 break;
 
-            case "enableadvancedediting": // <--- 已修正
+            case "enableadvancedediting":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
                     GhostConfig.setEnableAdvancedEditing(value);
-                    sendSuccessMessage(sender, "enableAdvancedEditing", value); // <--- 已修正
+                    sendSuccessMessage(sender, "enableAdvancedEditing", value);
                 } catch (CommandException e) {
                     sendBooleanError(sender, valueStr);
                 }
@@ -319,6 +319,16 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
 
+            case "fixguistatelossonresize":
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setFixGuiStateLossOnResize(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
+
             case "niutransapikey":
                 String keyToSet = (args.length > 1) ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "";
                 GhostConfig.setNiuTransApiKey(keyToSet);
@@ -394,6 +404,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("enableNoteFeature", GhostConfig.enableNoteFeature));
         sender.addChatMessage(formatSettingLine("enableAdvancedEditing", GhostConfig.enableAdvancedEditing));
         sender.addChatMessage(formatSettingLine("enableMarkdownRendering", GhostConfig.enableMarkdownRendering));
+        sender.addChatMessage(formatSettingLine("fixGuiStateLossOnResize", GhostConfig.fixGuiStateLossOnResize));
 
         String apiKeyDisplay = (GhostConfig.niuTransApiKey != null && !GhostConfig.niuTransApiKey.isEmpty()) ?
                 "******" + GhostConfig.niuTransApiKey.substring(Math.max(0, GhostConfig.niuTransApiKey.length() - 4)) :
@@ -462,6 +473,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  enableNoteFeature " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableNoteFeature")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAdvancedEditing " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableAdvancedEditing")));
         sender.addChatMessage(new ChatComponentText(op + "  enableMarkdownRendering " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableMarkdownRendering")));
+        sender.addChatMessage(new ChatComponentText(op + "  fixGuiStateLossOnResize " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.fixGuiStateLossOnResize")));
         sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
         sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
         sender.addChatMessage(new ChatComponentText(op + "  translationTargetLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationTargetLang")));
@@ -487,6 +499,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.enableBedrockMiner")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.fastPistonBreaking")));
         sender.addChatMessage(new ChatComponentText(us + "  " + LangUtil.translate("ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers")));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig fixGuiStateLossOnResize false"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig niuTransApiKey your_api_key_here"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig translationTargetLang en"));
 
@@ -524,10 +537,10 @@ public class GhostConfigCommand extends CommandBase {
             return CommandBase.getListOfStringsMatchingLastWord(args,
                     "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
                     "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", 
-                    "enableAutomaticTranslation", "autoShowCachedTranslation", "showTranslationOnly", "hideTranslationKeybindTooltip", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge", // <--- 已修正
+                    "enableAutomaticTranslation", "autoShowCachedTranslation", "showTranslationOnly", "hideTranslationKeybindTooltip", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
-                    "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers", "enableNoteFeature", // <--- 已修正
-                    "enableAdvancedEditing", "enableMarkdownRendering", // <--- 已修正并新增
+                    "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers", "enableNoteFeature",
+                    "enableAdvancedEditing", "enableMarkdownRendering", "fixGuiStateLossOnResize", // <--- 修改
                     "niuTransApiKey", "translationSourceLang", "translationTargetLang",
                     "toggleSuggest");
         } else if (args.length == 2) {
@@ -543,7 +556,7 @@ public class GhostConfigCommand extends CommandBase {
                 case "enablechattranslation":
                 case "enablesigntranslation":
                 case "enableitemtranslation":
-                case "enableautomatictranslation": // <--- 已修正
+                case "enableautomatictranslation":
                 case "autoshowcachedtranslation":
                 case "showtranslationonly":
                 case "hidetranslationkeybindtooltip":
@@ -553,9 +566,10 @@ public class GhostConfigCommand extends CommandBase {
                 case "enablebedrockminer":
                 case "fastpistonbreaking":
                 case "hidearrowsonplayers":
-                case "enablenotefeature": // <--- 已修正
-                case "enableadvancedediting": // <--- 已修正
-                case "enablemarkdownrendering": // <--- 新增
+                case "enablenotefeature":
+                case "enableadvancedediting":
+                case "enablemarkdownrendering":
+                case "fixguistatelossonresize":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
 
                 case "translationsourcelang":

@@ -25,7 +25,8 @@ public class GhostConfig {
     public static final String CATEGORY_BEDROCK_MINER = "bedrock_miner_feature";
     public static final String CATEGORY_GAMEPLAY_TWEAKS = "gameplay_tweaks";
     public static final String CATEGORY_TRANSLATION = "translation_api";
-    public static final String CATEGORY_NOTE = "note_taking"; // <--- 新增
+    public static final String CATEGORY_NOTE = "note_taking";
+    public static final String CATEGORY_GUI_TWEAKS = "gui_tweaks";
 
     // --- 功能开关 ---
     public static boolean alwaysBatchFill = false;
@@ -35,7 +36,7 @@ public class GhostConfig {
     public static boolean enableChatTranslation = false;
     public static boolean enableSignTranslation = false;
     public static boolean enableItemTranslation = false;
-    public static boolean enableAutomaticTranslation = false; // 新增：全局自动翻译开关
+    public static boolean enableAutomaticTranslation = false;
     public static boolean autoShowCachedTranslation = true;
     public static boolean showTranslationOnly = false;
     public static boolean hideTranslationKeybindTooltip = false; 
@@ -46,8 +47,9 @@ public class GhostConfig {
     public static boolean fastPistonBreaking = false;
     public static boolean hideArrowsOnPlayers = false;
     public static boolean enableNoteFeature = true;
-    public static boolean enableAdvancedEditing = true; // 高级编辑开关
-    public static boolean enableMarkdownRendering = true; // <--- 新增：Markdown渲染开关
+    public static boolean enableAdvancedEditing = true;
+    public static boolean enableMarkdownRendering = true;
+    public static boolean fixGuiStateLossOnResize = true;
 
     // --- 功能数值 ---
     public static int forcedBatchSize = 100;
@@ -137,6 +139,10 @@ public class GhostConfig {
         
         String enableMarkdownRenderingComment = LangUtil.translate("ghost.config.comment.enableMarkdownRendering");
         enableMarkdownRendering = config.getBoolean("enableMarkdownRendering", CATEGORY_NOTE, true, enableMarkdownRenderingComment);
+
+        // --- GUI 调整 ---
+        String fixGuiStateLossComment = LangUtil.translate("ghost.config.comment.fixGuiStateLossOnResize");
+        fixGuiStateLossOnResize = config.getBoolean("fixGuiStateLossOnResize", CATEGORY_GUI_TWEAKS, true, fixGuiStateLossComment);
 
         // --- 破基岩 ---
         String enableBedrockMinerComment = LangUtil.translate("ghostblock.config.enableBedrockMiner.tooltip");
@@ -231,6 +237,7 @@ public class GhostConfig {
     public static void setTranslationTargetLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationTargetLang", "zh"); prop.set(value); translationTargetLang = value; config.save(); }
     public static void setEnableAdvancedEditing(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableAdvancedEditing", true); prop.set(value); enableAdvancedEditing = value; config.save(); }
     public static void setEnableMarkdownRendering(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableMarkdownRendering", true); prop.set(value); enableMarkdownRendering = value; config.save(); }
+    public static void setFixGuiStateLossOnResize(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_GUI_TWEAKS, "fixGuiStateLossOnResize", true); prop.set(value); fixGuiStateLossOnResize = value; config.save(); }
 
     public static Configuration getConfig() {
         return config;

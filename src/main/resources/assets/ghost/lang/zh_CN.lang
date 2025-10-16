@@ -220,6 +220,7 @@ ghost.config.comment.hideArrowsOnPlayers=启用后，将隐藏射在其他玩家
 ghost.config.comment.enableNoteFeature=启用游戏内笔记功能。启用后，可通过指定按键打开一个可以随时记录文本的界面。
 ghost.config.comment.enableAdvancedEditing=启用笔记界面的高级编辑功能(如鼠标选择、Ctrl+A/C/X)。
 ghost.config.comment.enableMarkdownRendering=启用笔记界面的Markdown格式渲染 (例如 **粗体**, *斜体* 和 ~~删除线~~)。
+ghost.config.comment.fixGuiStateLossOnResize=修复因全屏切换或窗口大小调整导致的输入框文本丢失问题。[默认: true]
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -277,6 +278,7 @@ ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers=隐藏射在其他�
 ghost.commands.gconfig.help.setting.enableNoteFeature=启用游戏内笔记功能。
 ghost.commands.gconfig.help.setting.enableAdvancedEditing=启用笔记界面的高级编辑功能。
 ghost.commands.gconfig.help.setting.enableMarkdownRendering=启用笔记界面的Markdown格式渲染。
+ghost.commands.gconfig.help.setting.fixGuiStateLossOnResize=修复GUI因窗口大小调整导致的状态丢失问题。
 ghostblock.commands.gconfig.help.setting.niuTransApiKey=设置小牛翻译的API Key。
 ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的源语言。
 ghostblock.commands.gconfig.help.setting.translationTargetLang=设置翻译的目标语言。
@@ -293,6 +295,9 @@ ghostblock.commands.gconfig.help.example.enablePlayerESP=/gconfig enablePlayerES
 ghostblock.commands.gconfig.help.example.enableBedrockMiner=/gconfig enableBedrockMiner true
 ghostblock.commands.gconfig.help.example.fastPistonBreaking=/gconfig fastPistonBreaking true
 ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers=/gconfig hideArrowsOnPlayers true
+/gconfig fixGuiStateLossOnResize false
+ghostblock.commands.gconfig.help.example.niuTransApiKey=/gconfig niuTransApiKey your_api_key_here
+ghostblock.commands.gconfig.help.example.translationTargetLang=/gconfig translationTargetLang en
 ghostblock.commands.gconfig.help.aliases=别名
 
 # ==================================
@@ -329,6 +334,7 @@ log.handler.registered.fastPiston=快速破坏活塞事件处理器 (FastPistonB
 log.handler.registered.playerArrow=玩家箭矢渲染事件处理器 (PlayerArrowRendererHandler) 已在 PreInit 中注册。
 log.handler.registered.keybind=按键绑定事件处理器 (KeybindHandler) 已在 PreInit 中注册。
 log.handler.registered.signTranslation=告示牌翻译事件处理器 (SignTranslationHandler) 已在 PreInit 中注册。
+log.handler.registered.guiStateSave=GUI状态保存事件处理器 (GuiStateSaveHandler) 已在 PreInit 中注册。
 log.handler.registered.itemTooltip=物品提示框翻译事件处理器 (ItemTooltipTranslationHandler) 已在 PreInit 中注册。
 log.handler.registered.ghostBlockCommand=GhostBlockCommand 事件处理器已注册。
 
