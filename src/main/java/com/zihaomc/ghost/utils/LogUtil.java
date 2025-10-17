@@ -17,8 +17,8 @@ public class LogUtil {
         // 检查当前是否在客户端，以便安全地使用 LangUtil
         if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
             try {
-                // 在客户端，格式化翻译后的字符串
-                message = String.format(LangUtil.translate(key), args);
+                // 移除了外层的 String.format，因为 LangUtil.translate 已经处理了格式化
+                message = LangUtil.translate(key, args);
             } catch (Exception e) {
                 // 如果 LangUtil 失败，则回退到打印键名
                 message = key + " (Translation failed: " + e.getMessage() + ")";
