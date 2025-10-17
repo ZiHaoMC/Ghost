@@ -322,9 +322,9 @@ ghost.keybind.toggle.bedrockminer=破基岩模式
 # ===          日志记录          ===
 # ==================================
 # --- 生命周期 ---
-log.lifecycle.preinit=[%s] 预初始化阶段
-log.lifecycle.init=[%s] 初始化阶段
-log.lifecycle.postinit=[%s] 后初始化阶段
+log.lifecycle.preinit=%s 预初始化阶段
+log.lifecycle.init=%s 初始化阶段
+log.lifecycle.postinit=%s 后初始化阶段
 
 # --- 处理器注册 ---
 log.handler.registered.chatSuggest=聊天建议事件处理器已在 PreInit 中注册。

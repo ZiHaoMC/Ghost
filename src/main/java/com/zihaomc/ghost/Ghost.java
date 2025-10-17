@@ -25,6 +25,8 @@ import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 
@@ -39,6 +41,7 @@ public class Ghost {
     public static final String MODID = "ghost";
     public static final String VERSION = "0.1.1";
     public static final String NAME = "Ghost";
+    public static final Logger logger = LogManager.getLogger(MODID);
 
     /** Mod 的实例 */
     @Mod.Instance(MODID)

@@ -1,5 +1,6 @@
 package com.zihaomc.ghost.utils;
 
+import com.zihaomc.ghost.Ghost;
 import com.zihaomc.ghost.LangUtil;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.relauncher.Side;
@@ -17,7 +18,7 @@ public class LogUtil {
         // 检查当前是否在客户端，以便安全地使用 LangUtil
         if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
             try {
-                // 移除了外层的 String.format，因为 LangUtil.translate 已经处理了格式化
+                // 在客户端，格式化翻译后的字符串
                 message = LangUtil.translate(key, args);
             } catch (Exception e) {
                 // 如果 LangUtil 失败，则回退到打印键名
@@ -39,11 +40,23 @@ public class LogUtil {
             message = serverMessage.toString();
         }
 
-        // 为 ERROR 和 WARN 级别使用 System.err
-        if ("ERROR".equals(level) || "WARN".equals(level)) {
-            System.err.println("[" + level + "] " + message);
-        } else {
-            System.out.println("[" + level + "] " + message);
+        // 统一为最终要输出的消息添加 [Ghost] 前缀
+        String finalMessage = "[Ghost] " + message;
+
+        switch (level.toUpperCase()) {
+            case "DEBUG":
+                Ghost.logger.debug(finalMessage);
+                break;
+            case "WARN":
+                Ghost.logger.warn(finalMessage);
+                break;
+            case "ERROR":
+                Ghost.logger.error(finalMessage);
+                break;
+            case "INFO":
+            default:
+                Ghost.logger.info(finalMessage);
+                break;
         }
     }
 
@@ -71,7 +84,15 @@ public class LogUtil {
      * @param args 格式化参数
      */
     public static void printStackTrace(String key, Throwable throwable, Object... args) {
-        error(key, args);
-        throwable.printStackTrace();
+        String message;
+        if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
+            message = LangUtil.translate(key, args);
+        } else {
+            message = key;
+        }
+        
+        // 同样为异常信息添加前缀
+        String finalMessage = "[Ghost] " + message;
+        Ghost.logger.error(finalMessage, throwable);
     }
 }
