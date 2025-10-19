@@ -39,7 +39,7 @@ public class GhostConfig {
     public static boolean enableAutomaticTranslation = false;
     public static boolean autoShowCachedTranslation = true;
     public static boolean showTranslationOnly = false;
-    public static boolean hideTranslationKeybindTooltip = false; 
+    public static boolean hideTranslationKeybindTooltip = false;
     public static boolean enableAutoPlaceOnJoin = false;
     public static boolean enableAutoSneakAtEdge = false;
     public static boolean enablePlayerESP = false;
@@ -63,7 +63,7 @@ public class GhostConfig {
     public static boolean blinkDuringTasksTick = true;
     private static Set<Block> blockWhitelist = new HashSet<>();
     private static Set<Block> dependBlockWhitelist = new HashSet<>();
-    
+
     // --- 在线翻译配置 ---
     public static String niuTransApiKey = "";
     public static String translationSourceLang = "auto";
@@ -104,11 +104,11 @@ public class GhostConfig {
 
         String enableCmdHistoryScrollComment = LangUtil.translate("ghostblock.config.enableCommandHistoryScroll.tooltip");
         enableCommandHistoryScroll = config.getBoolean("enableCommandHistoryScroll", CATEGORY_CHAT, true, enableCmdHistoryScrollComment);
-        
+
         // --- 自动放置 ---
         String enableAutoPlaceComment = LangUtil.translate("ghostblock.config.enableAutoPlaceOnJoin.tooltip");
         enableAutoPlaceOnJoin = config.getBoolean("enableAutoPlaceOnJoin", CATEGORY_AUTO_PLACE, false, enableAutoPlaceComment);
-        
+
         // --- 自动蹲伏 ---
         String enableAutoSneakComment = LangUtil.translate("ghostblock.config.enableAutoSneakAtEdge.tooltip");
         enableAutoSneakAtEdge = config.getBoolean("enableAutoSneakAtEdge", CATEGORY_AUTO_SNEAK, false, enableAutoSneakComment);
@@ -133,10 +133,10 @@ public class GhostConfig {
         // --- 笔记功能 ---
         String enableNoteComment = LangUtil.translate("ghost.config.comment.enableNoteFeature");
         enableNoteFeature = config.getBoolean("enableNoteFeature", CATEGORY_NOTE, true, enableNoteComment);
-        
+
         String enableAdvancedEditingComment = LangUtil.translate("ghost.config.comment.enableAdvancedEditing");
         enableAdvancedEditing = config.getBoolean("enableAdvancedEditing", CATEGORY_NOTE, true, enableAdvancedEditingComment);
-        
+
         String enableMarkdownRenderingComment = LangUtil.translate("ghost.config.comment.enableMarkdownRendering");
         enableMarkdownRendering = config.getBoolean("enableMarkdownRendering", CATEGORY_NOTE, true, enableMarkdownRenderingComment);
 
@@ -147,7 +147,7 @@ public class GhostConfig {
         // --- 破基岩 ---
         String enableBedrockMinerComment = LangUtil.translate("ghostblock.config.enableBedrockMiner.tooltip");
         enableBedrockMiner = config.getBoolean("enableBedrockMiner", CATEGORY_BEDROCK_MINER, false, enableBedrockMinerComment);
-        
+
         String pingSpikeComment = LangUtil.translate("ghost.config.comment.pingSpike");
         pingSpikeThreshold = config.getInt("pingSpikeThreshold", CATEGORY_BEDROCK_MINER, 2, 0, 100, pingSpikeComment);
 
@@ -174,7 +174,7 @@ public class GhostConfig {
 
         String enableItemTransComment = LangUtil.translate("ghost.config.comment.enableItemTranslation");
         enableItemTranslation = config.getBoolean("enableItemTranslation", CATEGORY_TRANSLATION, false, enableItemTransComment);
-        
+
         String enableAutoTransComment = LangUtil.translate("ghost.config.comment.enableAutomaticTranslation");
         enableAutomaticTranslation = config.getBoolean("enableAutomaticTranslation", CATEGORY_TRANSLATION, false, enableAutoTransComment);
 
@@ -192,7 +192,7 @@ public class GhostConfig {
 
         String sourceLangComment = LangUtil.translate("ghostblock.config.translationSourceLang.tooltip");
         translationSourceLang = config.getString("translationSourceLang", CATEGORY_TRANSLATION, "auto", sourceLangComment);
-        
+
         String targetLangComment = LangUtil.translate("ghostblock.config.translationTargetLang.tooltip");
         translationTargetLang = config.getString("translationTargetLang", CATEGORY_TRANSLATION, "zh", targetLangComment);
 
@@ -203,41 +203,258 @@ public class GhostConfig {
     }
 
     // --- Getter 方法 ---
-    public static int getPingSpikeThreshold() { return pingSpikeThreshold; }
-    public static boolean isHeadlessPistonMode() { return headlessPistonMode; }
-    public static Set<Block> getDependBlockWhitelist() { return dependBlockWhitelist; }
-    public static boolean isBlinkDuringTasksTick() { return blinkDuringTasksTick; }
-    public static Set<Block> getBlockWhitelist() { return blockWhitelist; }
-    
+    public static int getPingSpikeThreshold() {
+        return pingSpikeThreshold;
+    }
+
+    public static boolean isHeadlessPistonMode() {
+        return headlessPistonMode;
+    }
+
+    public static Set<Block> getDependBlockWhitelist() {
+        return dependBlockWhitelist;
+    }
+
+    public static boolean isBlinkDuringTasksTick() {
+        return blinkDuringTasksTick;
+    }
+
+    public static Set<Block> getBlockWhitelist() {
+        return blockWhitelist;
+    }
+
     // --- Setter 方法 ---
-    public static void setAlwaysBatchFill(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_FILL, "alwaysBatchFill", false); prop.set(value); alwaysBatchFill = value; config.save(); }
-    public static boolean setForcedBatchSize(int value) { if (config == null || value <= 0) return false; Property prop = config.get(CATEGORY_FILL, "forcedBatchSize", 100); prop.set(value); forcedBatchSize = value; config.save(); return true; }
-    public static void setEnableAutoSave(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_SAVE, "enableAutoSave", false); prop.set(value); enableAutoSave = value; config.save(); }
-    public static boolean setDefaultSaveFileName(String value) { if (config == null) return false; String processedValue = (value != null) ? value.trim() : ""; Property prop = config.get(CATEGORY_SAVE, "defaultSaveFileName", ""); prop.set(processedValue); defaultSaveFileName = processedValue; config.save(); return true; }
-    public static void setEnableChatSuggestions(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_CHAT, "enableChatSuggestions", true); prop.set(value); enableChatSuggestions = value; config.save(); }
-    public static void setEnableCommandHistoryScroll(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_CHAT, "enableCommandHistoryScroll", true); prop.set(value); enableCommandHistoryScroll = value; config.save(); }
-    public static void setEnableChatTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableChatTranslation", false); prop.set(value); enableChatTranslation = value; config.save(); }
-    public static void setEnableSignTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableSignTranslation", false); prop.set(value); enableSignTranslation = value; config.save(); }
-    public static void setEnableItemTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableItemTranslation", false); prop.set(value); enableItemTranslation = value; config.save(); }
-    public static void setEnableAutomaticTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "enableAutomaticTranslation", false); prop.set(value); enableAutomaticTranslation = value; config.save(); }
-    public static void setAutoShowCachedTranslation(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true); prop.set(value); autoShowCachedTranslation = value; config.save(); }
-    public static void setShowTranslationOnly(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "showTranslationOnly", false); prop.set(value); showTranslationOnly = value; config.save(); }
-    public static void setHideTranslationKeybindTooltip(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false); prop.set(value); hideTranslationKeybindTooltip = value; config.save(); }
-    public static void setEnableAutoPlaceOnJoin(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false); prop.set(value); enableAutoPlaceOnJoin = value; config.save(); }
-    public static void setEnableAutoSneakAtEdge(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false); prop.set(value); enableAutoSneakAtEdge = value; config.save(); }
-    public static void setAutoSneakForwardOffset(double value) { if (config == null || value < 0.05 || value > 1.0) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.35); prop.set(value); autoSneakForwardOffset = value; config.save(); }
-    public static void setAutoSneakVerticalCheckDepth(double value) { if (config == null || value < 0.1 || value > 3.0) return; Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakVerticalCheckDepth", 1.0); prop.set(value); autoSneakVerticalCheckDepth = value; config.save(); }
-    public static void setEnablePlayerESP(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_PLAYER_ESP, "enablePlayerESP", false); prop.set(value); enablePlayerESP = value; config.save(); }
-    public static void setEnableBedrockMiner(boolean value) { if (config == null) return; if (value) { setFastPistonBreaking(true, false); } Property prop = config.get(CATEGORY_BEDROCK_MINER, "enableBedrockMiner", false); prop.set(value); enableBedrockMiner = value; config.save(); }
-    public static void setFastPistonBreaking(boolean value, boolean saveImmediately) { if (config == null) return; Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "fastPistonBreaking", false); prop.set(value); fastPistonBreaking = value; if (saveImmediately) config.save(); }
-    public static void setHideArrowsOnPlayers(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "hideArrowsOnPlayers", false); prop.set(value); hideArrowsOnPlayers = value; config.save(); }
-    public static void setEnableNoteFeature(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableNoteFeature", true); prop.set(value); enableNoteFeature = value; config.save(); }
-    public static void setNiuTransApiKey(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "niuTransApiKey", ""); prop.set(value); niuTransApiKey = value; config.save(); }
-    public static void setTranslationSourceLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationSourceLang", "auto"); prop.set(value); translationSourceLang = value; config.save(); }
-    public static void setTranslationTargetLang(String value) { if (config == null) return; Property prop = config.get(CATEGORY_TRANSLATION, "translationTargetLang", "zh"); prop.set(value); translationTargetLang = value; config.save(); }
-    public static void setEnableAdvancedEditing(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableAdvancedEditing", true); prop.set(value); enableAdvancedEditing = value; config.save(); }
-    public static void setEnableMarkdownRendering(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_NOTE, "enableMarkdownRendering", true); prop.set(value); enableMarkdownRendering = value; config.save(); }
-    public static void setFixGuiStateLossOnResize(boolean value) { if (config == null) return; Property prop = config.get(CATEGORY_GUI_TWEAKS, "fixGuiStateLossOnResize", true); prop.set(value); fixGuiStateLossOnResize = value; config.save(); }
+    public static void setAlwaysBatchFill(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_FILL, "alwaysBatchFill", false);
+        prop.set(value);
+        alwaysBatchFill = value;
+        config.save();
+    }
+
+    public static boolean setForcedBatchSize(int value) {
+        if (config == null || value <= 0) return false;
+        Property prop = config.get(CATEGORY_FILL, "forcedBatchSize", 100);
+        prop.set(value);
+        forcedBatchSize = value;
+        config.save();
+        return true;
+    }
+
+    public static void setEnableAutoSave(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_SAVE, "enableAutoSave", false);
+        prop.set(value);
+        enableAutoSave = value;
+        config.save();
+    }
+
+    public static boolean setDefaultSaveFileName(String value) {
+        if (config == null) return false;
+        String processedValue = (value != null) ? value.trim() : "";
+        Property prop = config.get(CATEGORY_SAVE, "defaultSaveFileName", "");
+        prop.set(processedValue);
+        defaultSaveFileName = processedValue;
+        config.save();
+        return true;
+    }
+
+    public static void setEnableChatSuggestions(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_CHAT, "enableChatSuggestions", true);
+        prop.set(value);
+        enableChatSuggestions = value;
+        config.save();
+    }
+
+    public static void setEnableCommandHistoryScroll(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_CHAT, "enableCommandHistoryScroll", true);
+        prop.set(value);
+        enableCommandHistoryScroll = value;
+        config.save();
+    }
+
+    public static void setEnableChatTranslation(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "enableChatTranslation", false);
+        prop.set(value);
+        enableChatTranslation = value;
+        config.save();
+    }
+
+    public static void setEnableSignTranslation(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "enableSignTranslation", false);
+        prop.set(value);
+        enableSignTranslation = value;
+        config.save();
+    }
+
+    public static void setEnableItemTranslation(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "enableItemTranslation", false);
+        prop.set(value);
+        enableItemTranslation = value;
+        config.save();
+    }
+
+    public static void setEnableAutomaticTranslation(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "enableAutomaticTranslation", false);
+        prop.set(value);
+        enableAutomaticTranslation = value;
+        config.save();
+    }
+
+    public static void setAutoShowCachedTranslation(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true);
+        prop.set(value);
+        autoShowCachedTranslation = value;
+        config.save();
+    }
+
+    public static void setShowTranslationOnly(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "showTranslationOnly", false);
+        prop.set(value);
+        showTranslationOnly = value;
+        config.save();
+    }
+
+    public static void setHideTranslationKeybindTooltip(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false);
+        prop.set(value);
+        hideTranslationKeybindTooltip = value;
+        config.save();
+    }
+
+    public static void setEnableAutoPlaceOnJoin(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false);
+        prop.set(value);
+        enableAutoPlaceOnJoin = value;
+        config.save();
+    }
+
+    public static void setEnableAutoSneakAtEdge(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false);
+        prop.set(value);
+        enableAutoSneakAtEdge = value;
+        config.save();
+    }
+
+    public static void setAutoSneakForwardOffset(double value) {
+        if (config == null || value < 0.05 || value > 1.0) return;
+        Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.35);
+        prop.set(value);
+        autoSneakForwardOffset = value;
+        config.save();
+    }
+
+    public static void setAutoSneakVerticalCheckDepth(double value) {
+        if (config == null || value < 0.1 || value > 3.0) return;
+        Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakVerticalCheckDepth", 1.0);
+        prop.set(value);
+        autoSneakVerticalCheckDepth = value;
+        config.save();
+    }
+
+    public static void setEnablePlayerESP(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_PLAYER_ESP, "enablePlayerESP", false);
+        prop.set(value);
+        enablePlayerESP = value;
+        config.save();
+    }
+
+    public static void setEnableBedrockMiner(boolean value) {
+        if (config == null) return;
+        if (value) {
+            setFastPistonBreaking(true, false);
+        }
+        Property prop = config.get(CATEGORY_BEDROCK_MINER, "enableBedrockMiner", false);
+        prop.set(value);
+        enableBedrockMiner = value;
+        config.save();
+    }
+
+    public static void setFastPistonBreaking(boolean value, boolean saveImmediately) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "fastPistonBreaking", false);
+        prop.set(value);
+        fastPistonBreaking = value;
+        if (saveImmediately) {
+            config.save();
+        }
+    }
+
+    public static void setHideArrowsOnPlayers(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "hideArrowsOnPlayers", false);
+        prop.set(value);
+        hideArrowsOnPlayers = value;
+        config.save();
+    }
+
+    public static void setEnableNoteFeature(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_NOTE, "enableNoteFeature", true);
+        prop.set(value);
+        enableNoteFeature = value;
+        config.save();
+    }
+
+    public static void setNiuTransApiKey(String value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "niuTransApiKey", "");
+        prop.set(value);
+        niuTransApiKey = value;
+        config.save();
+    }
+
+    public static void setTranslationSourceLang(String value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "translationSourceLang", "auto");
+        prop.set(value);
+        translationSourceLang = value;
+        config.save();
+    }
+
+    public static void setTranslationTargetLang(String value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_TRANSLATION, "translationTargetLang", "zh");
+        prop.set(value);
+        translationTargetLang = value;
+        config.save();
+    }
+
+    public static void setEnableAdvancedEditing(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_NOTE, "enableAdvancedEditing", true);
+        prop.set(value);
+        enableAdvancedEditing = value;
+        config.save();
+    }
+
+    public static void setEnableMarkdownRendering(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_NOTE, "enableMarkdownRendering", true);
+        prop.set(value);
+        enableMarkdownRendering = value;
+        config.save();
+    }
+
+    public static void setFixGuiStateLossOnResize(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_GUI_TWEAKS, "fixGuiStateLossOnResize", true);
+        prop.set(value);
+        fixGuiStateLossOnResize = value;
+        config.save();
+    }
 
     public static Configuration getConfig() {
         return config;
