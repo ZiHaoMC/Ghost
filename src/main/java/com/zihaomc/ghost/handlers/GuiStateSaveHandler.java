@@ -7,31 +7,32 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
-import net.minecraftforge.client.event.GuiOpenEvent;
-import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 import java.lang.reflect.Field;
 
 /**
+ * [最终修复版]
  * 处理因窗口大小调整或全屏切换导致的GUI状态（如输入框文本）丢失问题。
- * 通过在GUI重建前后保存和恢复状态来修复此BUG。
+ * 通过在每个Tick中监控GUI内部组件（如GuiTextField）实例的变化，实现最可靠的状态保存与恢复。
  */
 public class GuiStateSaveHandler {
 
-    private static String savedChatText = null;
-    private static String savedNoteText = null;
+    // --- 状态保存变量 ---
+    private static String savedChatText = ""; // 初始化为空字符串以避免null检查
+    private static String savedNoteText = "";
+
+    // --- [核心改动] 跟踪GUI内部组件的实例 ---
+    private static GuiTextField lastChatFieldInstance = null;
+    private static GuiNote lastNoteInstance = null;
     
-    // 一个简单的标志，表示我们已保存状态，因为一个相同类型的GUI即将被打开（很可能是重建）。
-    private static boolean statePotentiallySavedForRebuild = false;
-    
+    // 用于通过反射访问聊天输入框的字段
     private static Field chatInputField = null;
     
-    // 静态初始化块，用于安全地获取一次反射字段
     static {
         try {
-            // 从 ChatSuggestEventHandler 借鉴的反射字段获取方法
             chatInputField = ReflectionHelper.findField(GuiChat.class, "field_146415_a", "inputField");
             chatInputField.setAccessible(true);
         } catch (Exception e) {
@@ -39,79 +40,70 @@ public class GuiStateSaveHandler {
         }
     }
 
-    /**
-     * 在一个新的GUI屏幕即将被打开时触发。
-     * 这是我们“抢救”旧GUI状态的最后机会。
-     */
     @SubscribeEvent
-    public void onGuiOpen(GuiOpenEvent event) {
-        if (!GhostConfig.fixGuiStateLossOnResize) {
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || !GhostConfig.fixGuiStateLossOnResize) {
             return;
         }
 
-        GuiScreen oldScreen = Minecraft.getMinecraft().currentScreen;
-        GuiScreen newScreen = event.gui;
+        GuiScreen currentScreen = Minecraft.getMinecraft().currentScreen;
 
-        // 如果我们正在关闭GUI（新GUI为null）或打开一个完全不同的GUI，则重置所有已保存的状态。
-        if (oldScreen == null || newScreen == null || oldScreen.getClass() != newScreen.getClass()) {
-            savedChatText = null;
-            savedNoteText = null;
-            statePotentiallySavedForRebuild = false;
-            return;
-        }
-
-        // 如果新旧GUI是同一个类的实例，我们有理由相信这是一次重建（例如全屏切换）。
-        // 于是我们保存它的状态。
-        statePotentiallySavedForRebuild = true;
-        
-        if (oldScreen instanceof GuiChat) {
-            try {
-                if (chatInputField != null) {
-                    GuiTextField inputField = (GuiTextField) chatInputField.get(oldScreen);
-                    savedChatText = inputField.getText();
-                }
-            } catch (Exception e) {
-                savedChatText = null; // 安全起见
-            }
-        } else if (oldScreen instanceof GuiNote) {
-            // 使用我们为 GuiNote 添加的公共方法
-            savedNoteText = ((GuiNote) oldScreen).getTextContent();
+        // --- GuiChat 状态处理 ---
+        if (currentScreen instanceof GuiChat) {
+            handleChatState((GuiChat) currentScreen);
         } else {
-            // 这不是我们追踪的GUI类型，所以实际上没有状态被保存。
-            statePotentiallySavedForRebuild = false;
+            // 如果当前屏幕不是GuiChat，重置跟踪器
+            lastChatFieldInstance = null; 
+        }
+
+        // --- GuiNote 状态处理 ---
+        if (currentScreen instanceof GuiNote) {
+            handleNoteState((GuiNote) currentScreen);
+        } else {
+            // 如果当前屏幕不是GuiNote，重置跟踪器
+            lastNoteInstance = null;
         }
     }
 
-    /**
-     * 在GUI的 `initGui` 方法执行完毕后触发。
-     * 这是恢复我们之前保存的状态到新GUI实例的最佳时机。
-     */
-    @SubscribeEvent
-    public void onGuiInitPost(GuiScreenEvent.InitGuiEvent.Post event) {
-        if (!GhostConfig.fixGuiStateLossOnResize || !statePotentiallySavedForRebuild) {
-            return;
-        }
-        
-        GuiScreen newScreen = event.gui;
+    private void handleChatState(GuiChat currentChatGui) {
+        if (chatInputField == null) return; // 反射失败则不执行
 
-        if (newScreen instanceof GuiChat && savedChatText != null) {
-            try {
-                if (chatInputField != null) {
-                    GuiTextField inputField = (GuiTextField) chatInputField.get(newScreen);
-                    inputField.setText(savedChatText);
-                    inputField.setCursorPositionEnd(); // 将光标移到末尾
+        try {
+            GuiTextField currentChatField = (GuiTextField) chatInputField.get(currentChatGui);
+            if (currentChatField == null) return;
+
+            // [核心逻辑] 检测输入框实例是否被替换
+            if (currentChatField != lastChatFieldInstance) {
+            LogUtil.debug("log.debug.gui.restoring", savedChatText);
+                // 实例不同，说明GUI被重建 (initGui被调用)
+                // 此时，用我们保存的文本恢复这个 *新* 的输入框
+                if (lastChatFieldInstance != null) { // 避免首次打开时恢复
+                    currentChatField.setText(savedChatText);
+                    currentChatField.setCursorPositionEnd();
                 }
-            } catch (Exception e) {
-                // 如果出错，记录日志（可选）
+                // 更新跟踪器为当前的新实例
+                lastChatFieldInstance = currentChatField;
             }
-        } else if (newScreen instanceof GuiNote && savedNoteText != null) {
-            // 使用我们为 GuiNote 添加的公共方法
-            ((GuiNote) newScreen).setTextContentAndInitialize(savedNoteText);
-        }
 
-        // 无论恢复成功与否，都重置状态，防止它们被错误地用于其他GUI。
-        savedChatText = null;
-        savedNoteText = null;
-        statePotentiallySavedForRebuild = false;
+            // 无论如何，每一帧都保存当前输入框的文本
+            savedChatText = currentChatField.getText();
+
+        } catch (Exception e) {
+            // 发生异常时重置，避免错误状态
+            lastChatFieldInstance = null;
+        }
+    }
+
+    private void handleNoteState(GuiNote currentNoteGui) {
+        // 对于我们自己的GUI，逻辑可以简化，因为我们可以直接控制它
+        // 但为了统一和稳健，同样采用实例比较法
+        if (currentNoteGui != lastNoteInstance) {
+            if (lastNoteInstance != null) { // 避免首次打开
+                currentNoteGui.setTextContentAndInitialize(savedNoteText);
+            }
+            lastNoteInstance = currentNoteGui;
+        }
+        // 持续保存
+        savedNoteText = currentNoteGui.getTextContent();
     }
 }
