@@ -18,6 +18,7 @@ import net.minecraftforge.event.CommandEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
+import net.minecraftforge.client.event.GuiOpenEvent; // <-- [重要] 确保导入
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent.MouseInputEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
@@ -36,6 +37,7 @@ import org.lwjgl.input.Mouse;
 // ---- 本项目工具类导入 ----
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.features.chat.GuiChatWrapper; // <-- [重要] 导入我们新建的类
 import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 
@@ -44,6 +46,7 @@ import com.zihaomc.ghost.utils.NiuTransUtil;
  * 1. 在聊天消息（尤其是错误消息和成功命令反馈）后添加 "建议命令" 按钮。
  * 2. 实现 Shift + 箭头/滚轮 在聊天输入框中滚动发送历史。
  * 3. 在其他玩家的聊天消息后添加 "翻译" 按钮。
+ * 4. [新增] 拦截并替换原生的GuiChat，以从根本上修复窗口调整bug。
  */
 public class ChatSuggestEventHandler {
 
@@ -78,6 +81,37 @@ public class ChatSuggestEventHandler {
     // ========================
     // === 事件处理方法 ===
     // ========================
+    
+    /**
+     * [新增] 监听GUI打开事件，用于将原生的GuiChat替换为我们自己的包装类。
+     * 这是实现功能注入的关键。
+     */
+    @SubscribeEvent
+    public void onGuiOpen(GuiOpenEvent event) {
+        // 检查游戏将要打开的GUI是否是GuiChat，并且不是我们自己的子类
+        if (event.gui != null && event.gui.getClass() == GuiChat.class) {
+            
+            // 尝试获取旧GUI（如果存在）的文本，以实现无缝切换
+            String startingText = "";
+            try {
+                // 我们需要通过反射来安全地获取原版 GuiChat 的 inputField
+                if (chatInputField != null) {
+                    GuiTextField textField = (GuiTextField) chatInputField.get(event.gui);
+                    if (textField != null) {
+                        startingText = textField.getText();
+                    }
+                }
+            } catch (Exception e) {
+                // 反射失败或字段为空，忽略
+            }
+
+            // 创建我们自己的包装类实例，并传入初始文本
+            GuiChatWrapper newGui = new GuiChatWrapper(startingText);
+            
+            // 将事件中的GUI替换为我们的实例
+            event.gui = newGui;
+        }
+    }
 
     @SubscribeEvent
     public void onCommand(CommandEvent event) {
@@ -216,6 +250,7 @@ public class ChatSuggestEventHandler {
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
         if (!GhostConfig.enableCommandHistoryScroll || chatInputField == null) return;
+        // 注意：因为我们替换了GuiChat，所以要检查我们的包装类或其父类
         if (!(event.gui instanceof GuiChat)) {
             if (activeGuiChatInstance != null) {
                 activeGuiChatInstance = null;
