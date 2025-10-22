@@ -1,3 +1,5 @@
+// handlers/ChatSuggestEventHandler.java
+
 package com.zihaomc.ghost.handlers;
 
 // ---- Minecraft Client 相关导入 ----
@@ -18,7 +20,7 @@ import net.minecraftforge.event.CommandEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.client.event.ClientChatReceivedEvent;
-import net.minecraftforge.client.event.GuiOpenEvent; // <-- [重要] 确保导入
+import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.GuiScreenEvent.MouseInputEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
@@ -37,22 +39,19 @@ import org.lwjgl.input.Mouse;
 // ---- 本项目工具类导入 ----
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.features.chat.GuiChatWrapper; // <-- [重要] 导入我们新建的类
+import com.zihaomc.ghost.features.chat.GuiChatWrapper;
 import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 
 /**
- * 处理与聊天建议相关的事件，包括：
- * 1. 在聊天消息（尤其是错误消息和成功命令反馈）后添加 "建议命令" 按钮。
- * 2. 实现 Shift + 箭头/滚轮 在聊天输入框中滚动发送历史。
- * 3. 在其他玩家的聊天消息后添加 "翻译" 按钮。
- * 4. [新增] 拦截并替换原生的GuiChat，以从根本上修复窗口调整bug。
+ * ... (原有注释)
  */
 public class ChatSuggestEventHandler {
 
     // ==================
     // === 成员变量 ===
     // ==================
+    // vvv --- 修复开始：恢复被删除的成员变量 --- vvv
     private static String lastCommand = null;
     private static final Set<Integer> processedMessageHashes = new HashSet<>();
     private static Field drawnChatLinesField = null;
@@ -62,7 +61,11 @@ public class ChatSuggestEventHandler {
     private static int chatHistoryIndex = -1;
     private static String originalChatText = null;
     private static GuiChat activeGuiChatInstance = null;
-
+    
+    // 新增一个 Field 变量来存储对 GuiChat.defaultInputFieldText 字段的引用
+    private static Field defaultInputFieldTextField = null;
+    // ^^^ --- 修复结束 --- ^^^
+    
     // ==================
     // === 构造与初始化 ===
     // ==================
@@ -75,6 +78,11 @@ public class ChatSuggestEventHandler {
         if (drawnChatLinesField == null) { try { drawnChatLinesField = ReflectionHelper.findField(GuiNewChat.class, "field_146253_i", "drawnChatLines"); drawnChatLinesField.setAccessible(true); } catch (Exception e) { LogUtil.error("log.error.reflection.drawnChatLines"); } }
         if (chatComponentField == null) { try { chatComponentField = ReflectionHelper.findField(ChatLine.class, "field_74541_b", "chatComponent", "lineString"); chatComponentField.setAccessible(true); } catch (Exception e) { LogUtil.error("log.error.reflection.chatComponent"); } }
         if (updateCounterField == null) { try { updateCounterField = ReflectionHelper.findField(ChatLine.class, "field_74549_e", "updateCounter", "field_146250_d"); updateCounterField.setAccessible(true); } catch (Exception e) { LogUtil.warn("log.warn.reflection.updateCounter"); updateCounterField = null; } }
+        
+        // 初始化我们新增的字段引用
+        // Forge 1.8.9 中 GuiChat.defaultInputFieldText 的 SRG 名称是 field_146409_v
+        if (defaultInputFieldTextField == null) { try { defaultInputFieldTextField = ReflectionHelper.findField(GuiChat.class, "field_146409_v", "defaultInputFieldText"); defaultInputFieldTextField.setAccessible(true); } catch (Exception e) { LogUtil.error("log.error.reflection.defaultInputFieldText"); } }
+        
         if (chatInputField == null) { try { chatInputField = ReflectionHelper.findField(GuiChat.class, "field_146415_a", "inputField"); chatInputField.setAccessible(true); } catch (Exception e) { LogUtil.error("log.error.reflection.inputField"); } }
     }
 
@@ -83,7 +91,8 @@ public class ChatSuggestEventHandler {
     // ========================
     
     /**
-     * [新增] 监听GUI打开事件，用于将原生的GuiChat替换为我们自己的包装类。
+     * [修改后的核心逻辑]
+     * 监听GUI打开事件，用于将原生的GuiChat替换为我们自己的包装类。
      * 这是实现功能注入的关键。
      */
     @SubscribeEvent
@@ -91,21 +100,32 @@ public class ChatSuggestEventHandler {
         // 检查游戏将要打开的GUI是否是GuiChat，并且不是我们自己的子类
         if (event.gui != null && event.gui.getClass() == GuiChat.class) {
             
-            // 尝试获取旧GUI（如果存在）的文本，以实现无缝切换
             String startingText = "";
             try {
-                // 我们需要通过反射来安全地获取原版 GuiChat 的 inputField
-                if (chatInputField != null) {
+                // 优先尝试从 defaultInputFieldText 字段获取初始文本。
+                // 这是 Minecraft 在打开聊天框时预设文本（如'/'）的方式。
+                if (defaultInputFieldTextField != null) {
+                    startingText = (String) defaultInputFieldTextField.get(event.gui);
+                }
+                
+                // 如果上面的方法失败或返回空，再尝试从已存在的输入框获取，作为备用方案（例如窗口大小调整时）。
+                if ((startingText == null || startingText.isEmpty()) && chatInputField != null) {
                     GuiTextField textField = (GuiTextField) chatInputField.get(event.gui);
                     if (textField != null) {
                         startingText = textField.getText();
                     }
                 }
+
             } catch (Exception e) {
                 // 反射失败或字段为空，忽略
             }
 
-            // 创建我们自己的包装类实例，并传入初始文本
+            // 如果最终还是 null，确保它是空字符串，防止崩溃
+            if (startingText == null) {
+                startingText = "";
+            }
+
+            // 创建我们自己的包装类实例，并传入获取到的初始文本
             GuiChatWrapper newGui = new GuiChatWrapper(startingText);
             
             // 将事件中的GUI替换为我们的实例
