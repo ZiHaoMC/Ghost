@@ -96,6 +96,11 @@ public class ChatSuggestEventHandler {
      */
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent event) {
+        
+        if (!GhostConfig.fixGuiStateLossOnResize) {
+            return; // 如果功能是关闭的，直接返回，不执行任何替换逻辑
+        }
+        
         // 检查游戏将要打开的GUI是否是GuiChat，并且不是我们自己的子类
         if (event.gui != null && event.gui.getClass() == GuiChat.class) {
             
