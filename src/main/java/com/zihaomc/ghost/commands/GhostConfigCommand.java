@@ -359,10 +359,7 @@ public class GhostConfigCommand extends CommandBase {
         boolean newState = !currentState;
         GhostConfig.setEnableChatSuggestions(newState);
 
-        // vvv --- 修改开始 --- vvv
-        // 修正了语言文件键的路径，添加了 "gconfig." 前缀
         String feedbackKey = newState ? "ghostblock.commands.gconfig.togglesuggest.enabled" : "ghostblock.commands.gconfig.togglesuggest.disabled";
-        // ^^^ --- 修改结束 --- ^^^
         ChatComponentTranslation feedback = new ChatComponentTranslation(feedbackKey);
         feedback.getChatStyle().setColor(newState ? EnumChatFormatting.GREEN : EnumChatFormatting.RED);
         sender.addChatMessage(feedback);
@@ -540,7 +537,7 @@ public class GhostConfigCommand extends CommandBase {
                     "enableAutomaticTranslation", "autoShowCachedTranslation", "showTranslationOnly", "hideTranslationKeybindTooltip", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
                     "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers", "enableNoteFeature",
-                    "enableAdvancedEditing", "enableMarkdownRendering", "fixGuiStateLossOnResize", // <--- 修改
+                    "enableAdvancedEditing", "enableMarkdownRendering", "fixGuiStateLossOnResize",
                     "niuTransApiKey", "translationSourceLang", "translationTargetLang",
                     "toggleSuggest");
         } else if (args.length == 2) {

@@ -1,5 +1,3 @@
-// handlers/ChatSuggestEventHandler.java
-
 package com.zihaomc.ghost.handlers;
 
 // ---- Minecraft Client 相关导入 ----
@@ -44,14 +42,16 @@ import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 
 /**
- * ... (原有注释)
+ * 1.在聊天消息（尤其是错误消息和成功命令反馈）后添加 “建议命令” 按钮。
+ * 2.实现 Shift + 箭头/滚轮 在聊天输入框中滚动发送历史。
+ * 3.在其他玩家的聊天消息后添加 “翻译” 按钮。
+ * 4.拦截并替换原生的GuiChat, 以从根本上修复窗口调整bug。
  */
 public class ChatSuggestEventHandler {
 
     // ==================
     // === 成员变量 ===
     // ==================
-    // vvv --- 修复开始：恢复被删除的成员变量 --- vvv
     private static String lastCommand = null;
     private static final Set<Integer> processedMessageHashes = new HashSet<>();
     private static Field drawnChatLinesField = null;
@@ -64,7 +64,6 @@ public class ChatSuggestEventHandler {
     
     // 新增一个 Field 变量来存储对 GuiChat.defaultInputFieldText 字段的引用
     private static Field defaultInputFieldTextField = null;
-    // ^^^ --- 修复结束 --- ^^^
     
     // ==================
     // === 构造与初始化 ===

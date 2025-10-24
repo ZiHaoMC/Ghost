@@ -4,7 +4,7 @@ import com.zihaomc.ghost.commands.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.handlers.CacheSavingHandler; 
+import com.zihaomc.ghost.handlers.CacheSavingHandler;
 import com.zihaomc.ghost.handlers.ChatSuggestEventHandler;
 import com.zihaomc.ghost.handlers.ItemTooltipTranslationHandler;
 import com.zihaomc.ghost.handlers.SignTranslationHandler;
