@@ -132,6 +132,16 @@ public class GhostConfigCommand extends CommandBase {
                 }
                 break;
             
+            case "disabletwitchatkey":
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setDisableTwitchAtKey(value);
+                    sendSuccessMessage(sender, settingName, value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
+            
             case "enablechattranslation":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
@@ -251,8 +261,7 @@ public class GhostConfigCommand extends CommandBase {
                     sendBooleanError(sender, valueStr);
                 }
                 break;
-            
-            // 为新增的配置项添加指令处理
+
             case "enablecolorrendering":
                 try {
                     boolean value = CommandBase.parseBoolean(valueStr);
@@ -394,6 +403,7 @@ public class GhostConfigCommand extends CommandBase {
 
         sender.addChatMessage(formatSettingLine("enableChatSuggestions", GhostConfig.enableChatSuggestions));
         sender.addChatMessage(formatSettingLine("enableCommandHistoryScroll", GhostConfig.enableCommandHistoryScroll));
+        sender.addChatMessage(formatSettingLine("disableTwitchAtKey", GhostConfig.disableTwitchAtKey));
         sender.addChatMessage(formatSettingLine("enableChatTranslation", GhostConfig.enableChatTranslation));
         sender.addChatMessage(formatSettingLine("enableSignTranslation", GhostConfig.enableSignTranslation));
         sender.addChatMessage(formatSettingLine("enableItemTranslation", GhostConfig.enableItemTranslation));
@@ -412,7 +422,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("enableNoteFeature", GhostConfig.enableNoteFeature));
         sender.addChatMessage(formatSettingLine("enableAdvancedEditing", GhostConfig.enableAdvancedEditing));
         sender.addChatMessage(formatSettingLine("enableMarkdownRendering", GhostConfig.enableMarkdownRendering));
-        sender.addChatMessage(formatSettingLine("enableColorRendering", GhostConfig.enableColorRendering)); // 显示新增配置项的状态
+        sender.addChatMessage(formatSettingLine("enableColorRendering", GhostConfig.enableColorRendering));
         sender.addChatMessage(formatSettingLine("fixGuiStateLossOnResize", GhostConfig.fixGuiStateLossOnResize));
 
         String apiKeyDisplay = (GhostConfig.niuTransApiKey != null && !GhostConfig.niuTransApiKey.isEmpty()) ?
@@ -464,6 +474,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  defaultSaveName " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text")));
         sender.addChatMessage(new ChatComponentText(op + "  enableChatSuggestions " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableChatSuggestions")));
         sender.addChatMessage(new ChatComponentText(op + "  enableCommandHistoryScroll " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll")));
+        sender.addChatMessage(new ChatComponentText(op + "  disableTwitchAtKey " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.disableTwitchAtKey")));
         sender.addChatMessage(new ChatComponentText(op + "  enableChatTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableChatTranslation")));
         sender.addChatMessage(new ChatComponentText(op + "  enableSignTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableSignTranslation")));
         sender.addChatMessage(new ChatComponentText(op + "  enableItemTranslation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableItemTranslation")));
@@ -482,7 +493,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  enableNoteFeature " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableNoteFeature")));
         sender.addChatMessage(new ChatComponentText(op + "  enableAdvancedEditing " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableAdvancedEditing")));
         sender.addChatMessage(new ChatComponentText(op + "  enableMarkdownRendering " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableMarkdownRendering")));
-        sender.addChatMessage(new ChatComponentText(op + "  enableColorRendering " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableColorRendering"))); // 新增帮助条目
+        sender.addChatMessage(new ChatComponentText(op + "  enableColorRendering " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableColorRendering")));
         sender.addChatMessage(new ChatComponentText(op + "  fixGuiStateLossOnResize " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.fixGuiStateLossOnResize")));
         sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
         sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
@@ -546,11 +557,11 @@ public class GhostConfigCommand extends CommandBase {
         if (args.length == 1) {
             return CommandBase.getListOfStringsMatchingLastWord(args,
                     "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
-                    "enableChatSuggestions", "enableCommandHistoryScroll", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", 
+                    "enableChatSuggestions", "enableCommandHistoryScroll", "disableTwitchAtKey", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", 
                     "enableAutomaticTranslation", "autoShowCachedTranslation", "showTranslationOnly", "hideTranslationKeybindTooltip", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
                     "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers", "enableNoteFeature",
-                    "enableAdvancedEditing", "enableMarkdownRendering", "enableColorRendering", "fixGuiStateLossOnResize", // 新增 Tab 补全
+                    "enableAdvancedEditing", "enableMarkdownRendering", "enableColorRendering", "fixGuiStateLossOnResize",
                     "niuTransApiKey", "translationSourceLang", "translationTargetLang",
                     "toggleSuggest");
         } else if (args.length == 2) {
@@ -563,6 +574,7 @@ public class GhostConfigCommand extends CommandBase {
                 case "enableautosave":
                 case "enablechatsuggestions":
                 case "enablecommandhistoryscroll":
+                case "disabletwitchatkey":
                 case "enablechattranslation":
                 case "enablesigntranslation":
                 case "enableitemtranslation":
@@ -579,7 +591,7 @@ public class GhostConfigCommand extends CommandBase {
                 case "enablenotefeature":
                 case "enableadvancedediting":
                 case "enablemarkdownrendering":
-                case "enablecolorrendering": // 新增 Tab 补全
+                case "enablecolorrendering":
                 case "fixguistatelossonresize":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
 

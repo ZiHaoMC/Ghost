@@ -33,6 +33,7 @@ public class GhostConfig {
     public static boolean enableAutoSave = false;
     public static boolean enableChatSuggestions = true;
     public static boolean enableCommandHistoryScroll = true;
+    public static boolean disableTwitchAtKey = true; // 新增配置项，用于禁用@键功能
     public static boolean enableChatTranslation = false;
     public static boolean enableSignTranslation = false;
     public static boolean enableItemTranslation = false;
@@ -49,7 +50,7 @@ public class GhostConfig {
     public static boolean enableNoteFeature = true;
     public static boolean enableAdvancedEditing = true;
     public static boolean enableMarkdownRendering = true;
-    public static boolean enableColorRendering = true; // 新增配置项，用于控制颜色代码渲染
+    public static boolean enableColorRendering = true;
     public static boolean fixGuiStateLossOnResize = true;
 
     // --- 功能数值 ---
@@ -105,6 +106,9 @@ public class GhostConfig {
 
         String enableCmdHistoryScrollComment = LangUtil.translate("ghostblock.config.enableCommandHistoryScroll.tooltip");
         enableCommandHistoryScroll = config.getBoolean("enableCommandHistoryScroll", CATEGORY_CHAT, true, enableCmdHistoryScrollComment);
+        
+        String disableTwitchComment = LangUtil.translate("ghost.config.comment.disableTwitchAtKey");
+        disableTwitchAtKey = config.getBoolean("disableTwitchAtKey", CATEGORY_CHAT, true, disableTwitchComment);
 
         // --- 自动放置 ---
         String enableAutoPlaceComment = LangUtil.translate("ghostblock.config.enableAutoPlaceOnJoin.tooltip");
@@ -141,7 +145,6 @@ public class GhostConfig {
         String enableMarkdownRenderingComment = LangUtil.translate("ghost.config.comment.enableMarkdownRendering");
         enableMarkdownRendering = config.getBoolean("enableMarkdownRendering", CATEGORY_NOTE, true, enableMarkdownRenderingComment);
 
-        // 读取新增的颜色渲染配置项
         String enableColorRenderingComment = LangUtil.translate("ghost.config.comment.enableColorRendering");
         enableColorRendering = config.getBoolean("enableColorRendering", CATEGORY_NOTE, true, enableColorRenderingComment);
 
@@ -277,6 +280,14 @@ public class GhostConfig {
         Property prop = config.get(CATEGORY_CHAT, "enableCommandHistoryScroll", true);
         prop.set(value);
         enableCommandHistoryScroll = value;
+        config.save();
+    }
+    
+    public static void setDisableTwitchAtKey(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_CHAT, "disableTwitchAtKey", true);
+        prop.set(value);
+        disableTwitchAtKey = value;
         config.save();
     }
 
@@ -453,7 +464,6 @@ public class GhostConfig {
         config.save();
     }
 
-    // 新增 Setter 方法，用于从外部修改颜色渲染配置
     public static void setEnableColorRendering(boolean value) {
         if (config == null) return;
         Property prop = config.get(CATEGORY_NOTE, "enableColorRendering", true);

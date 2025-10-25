@@ -274,8 +274,26 @@ public class ChatSuggestEventHandler {
 
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
+        // 拦截并禁用聊天框中@键打开Twitch的功能
+        if (GhostConfig.disableTwitchAtKey && event.gui instanceof GuiChat) {
+            if (Keyboard.getEventCharacter() == '@') {
+                event.setCanceled(true); // 阻止原生的 @ 键逻辑执行
+                try {
+                    // 手动将 @ 字符写入输入框
+                    GuiTextField inputField = (GuiTextField) chatInputField.get(event.gui);
+                    if (inputField != null) {
+                        inputField.writeText("@");
+                    }
+                } catch (Exception e) {
+                    LogUtil.printStackTrace("log.error.gui.twitchkey.failed", e);
+                }
+                return; // 已经处理完毕，直接返回
+            }
+        }
+
+        // --- 以下是原有的命令历史滚动逻辑 ---
         if (!GhostConfig.enableCommandHistoryScroll || chatInputField == null) return;
-        // 注意：因为我们替换了GuiChat，所以要检查我们的包装类或其父类
+        
         if (!(event.gui instanceof GuiChat)) {
             if (activeGuiChatInstance != null) {
                 activeGuiChatInstance = null;
