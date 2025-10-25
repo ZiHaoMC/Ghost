@@ -218,27 +218,72 @@ public class GuiNote extends GuiScreen {
     }
     
     /**
-     * 修正后的核心渲染方法。
-     * 它正确地区分了格式指令（零宽度）和可见字符（有宽度），从而解决了光标定位问题。
+     * 重构后的核心渲染方法，现已支持标题和列表。
      */
     private void drawStringAndCachePositions(String text, int x, int y, int color) {
         this.charXPositions.clear();
         float currentX = (float) x;
+        
+        String lineToRender = text;
+        float scale = 1.0f;
+        boolean isBoldTitle = false;
+
+        // 仅在 Markdown 开启时处理标题和列表
+        if (GhostConfig.enableMarkdownRendering) {
+            // 检查标题语法
+            if (lineToRender.startsWith("# ")) {
+                scale = 1.5f;
+                isBoldTitle = true;
+                lineToRender = lineToRender.substring(2);
+                // 为被移除的 "# " 符号填充占位坐标
+                this.charXPositions.add((int)currentX);
+                this.charXPositions.add((int)currentX);
+            } else if (lineToRender.startsWith("## ")) {
+                scale = 1.2f;
+                isBoldTitle = true;
+                lineToRender = lineToRender.substring(3);
+                this.charXPositions.add((int)currentX);
+                this.charXPositions.add((int)currentX);
+                this.charXPositions.add((int)currentX);
+            } else if (lineToRender.startsWith("### ")) {
+                scale = 1.0f; // 三级标题不放大，但加粗
+                isBoldTitle = true;
+                lineToRender = lineToRender.substring(4);
+                this.charXPositions.add((int)currentX);
+                this.charXPositions.add((int)currentX);
+                this.charXPositions.add((int)currentX);
+                this.charXPositions.add((int)currentX);
+            }
+            // 检查列表语法
+            else if (lineToRender.startsWith("- ") || lineToRender.startsWith("* ")) {
+                String bullet = "• ";
+                this.fontRendererObj.drawStringWithShadow(bullet, currentX, (float)y, color);
+                currentX += this.fontRendererObj.getStringWidth(bullet);
+                lineToRender = lineToRender.substring(2);
+                this.charXPositions.add((int)x); // 用起始位置填充
+                this.charXPositions.add((int)x);
+            }
+        }
+
+        // 应用缩放变换
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(currentX, y, 0);
+        GlStateManager.scale(scale, scale, 1);
+        GlStateManager.translate(-currentX, -y, 0);
 
         String activeMinecraftFormat = "";
         boolean isBold = false;
         boolean isItalic = false;
         boolean isStrikethrough = false;
         
-        for (int i = 0; i < text.length(); ++i) {
-            this.charXPositions.add((int)Math.round(currentX)); // 始终为当前索引的字符缓存起始位置
+        for (int i = 0; i < lineToRender.length(); ++i) {
+            this.charXPositions.add((int)Math.round(currentX));
             
-            char currentChar = text.charAt(i);
+            char currentChar = lineToRender.charAt(i);
             boolean isFormatter = false;
 
-            // 尝试将当前字符及其后续作为格式指令来解析
-            if (GhostConfig.enableColorRendering && (currentChar == '§' || currentChar == '&') && i + 1 < text.length()) {
-                char formatChar = text.toLowerCase().charAt(i + 1);
+            if (GhostConfig.enableColorRendering && (currentChar == '§' || currentChar == '&') && i + 1 < lineToRender.length()) {
+                char formatChar = lineToRender.toLowerCase().charAt(i + 1);
                 if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
                     if (formatChar == 'r') {
                         activeMinecraftFormat = "";
@@ -246,12 +291,12 @@ public class GuiNote extends GuiScreen {
                     } else {
                         activeMinecraftFormat += "§" + formatChar;
                     }
-                    i++; // 跳过已经处理的格式字符
-                    this.charXPositions.add((int)Math.round(currentX)); // 为被跳过的格式字符也缓存一个零宽度的位置
+                    i++;
+                    this.charXPositions.add((int)Math.round(currentX));
                     isFormatter = true;
                 }
             } else if (GhostConfig.enableMarkdownRendering) {
-                char nextChar = (i + 1 < text.length()) ? text.charAt(i + 1) : '\0';
+                char nextChar = (i + 1 < lineToRender.length()) ? lineToRender.charAt(i + 1) : '\0';
                 if (currentChar == '*' && nextChar == '*') {
                     isBold = !isBold;
                     i++;
@@ -268,25 +313,24 @@ public class GuiNote extends GuiScreen {
                 }
             }
 
-            // 如果当前字符不是任何格式指令的一部分，那么它就是一个需要被绘制的可见字符
             if (!isFormatter) {
                 StringBuilder finalFormat = new StringBuilder(activeMinecraftFormat);
                 if (isItalic) finalFormat.append(EnumChatFormatting.ITALIC);
-                if (isBold) finalFormat.append(EnumChatFormatting.BOLD);
+                if (isBold || isBoldTitle) finalFormat.append(EnumChatFormatting.BOLD); // 标题也应用粗体
                 if (isStrikethrough) finalFormat.append(EnumChatFormatting.STRIKETHROUGH);
                 
                 String charToRenderWithFormat = finalFormat.toString() + currentChar;
 
                 this.fontRendererObj.drawStringWithShadow(charToRenderWithFormat, currentX, (float)y, color);
                 
-                // 只为可见字符增加渲染位置的偏移量
                 int charWidth = this.fontRendererObj.getStringWidth(charToRenderWithFormat) - this.fontRendererObj.getStringWidth(finalFormat.toString());
                 currentX += charWidth;
             }
-            // 如果是格式指令，currentX 保持不变，实现了零宽度的效果
         }
         
-        this.charXPositions.add((int)Math.round(currentX)); // 为字符串末尾的光标添加最终位置
+        this.charXPositions.add((int)Math.round(currentX));
+        
+        GlStateManager.popMatrix(); // 恢复缩放
     }
 
     /**
@@ -302,7 +346,17 @@ public class GuiNote extends GuiScreen {
         // 从缓存中获取精确的X坐标
         if (posInLine < this.charXPositions.size()) {
             int cursorX = this.charXPositions.get(posInLine);
-            drawRect(cursorX, cursorY - 1, cursorX + 1, cursorY + this.fontRendererObj.FONT_HEIGHT, 0xFFFFFFFF);
+            
+            // 修正光标的Y坐标以适应缩放
+            String line = this.renderedLines.get(lineIndex);
+            float scale = 1.0f;
+            if (GhostConfig.enableMarkdownRendering) {
+                if (line.startsWith("# ")) scale = 1.5f;
+                else if (line.startsWith("## ")) scale = 1.2f;
+            }
+            float scaledFontHeight = this.fontRendererObj.FONT_HEIGHT * scale;
+
+            drawRect(cursorX, cursorY - 1, cursorX + 1, (int)(cursorY -1 + scaledFontHeight), 0xFFFFFFFF);
         }
     }
 
