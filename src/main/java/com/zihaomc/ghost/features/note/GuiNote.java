@@ -61,6 +61,8 @@ public class GuiNote extends GuiScreen {
     
     /** Markdown 渲染功能的开关按钮 */
     private GuiButton markdownToggleButton;
+    /** 新增的颜色渲染功能开关按钮 */
+    private GuiButton colorToggleButton;
 
     // MARK: - GUI生命周期方法
 
@@ -96,14 +98,20 @@ public class GuiNote extends GuiScreen {
         this.buttonList.clear();
         this.buttonList.add(new GuiButton(0, this.width / 2 - 100, this.height - 25, LangUtil.translate("ghost.gui.note.save_and_close")));
 
-        // 创建 Markdown 开关按钮
+        // 创建功能开关按钮
         int buttonWidth = 120;
         int buttonHeight = 20;
-        // X 坐标：文本框左侧 - 按钮宽度 - 5像素间距
-        // Y 坐标：与文本框的 Y 坐标 (textAreaY) 对齐
-        this.markdownToggleButton = new GuiButton(1, this.textAreaX - buttonWidth - 5, this.textAreaY, buttonWidth, buttonHeight, "");
-        updateMarkdownButtonText(); // 根据当前配置设置按钮文本
+        int buttonX = this.textAreaX - buttonWidth - 5;
+        
+        // Markdown 开关按钮
+        this.markdownToggleButton = new GuiButton(1, buttonX, this.textAreaY, buttonWidth, buttonHeight, "");
+        updateMarkdownButtonText();
         this.buttonList.add(this.markdownToggleButton);
+        
+        // 颜色代码开关按钮，位于 Markdown 按钮下方
+        this.colorToggleButton = new GuiButton(2, buttonX, this.textAreaY + buttonHeight + 5, buttonWidth, buttonHeight, "");
+        updateColorButtonText();
+        this.buttonList.add(this.colorToggleButton);
     }
 
     /**
@@ -212,11 +220,10 @@ public class GuiNote extends GuiScreen {
      * V8更新：添加了对Markdown格式的支持，同时保持了精确的光标位置计算。
      */
     private void drawStringAndCachePositions(String text, int x, int y, int color) {
-        // 渲染逻辑重构，以同时支持 Minecraft 颜色代码 (§) 和 Markdown
         this.charXPositions.clear();
         float currentX = (float) x;
 
-        String activeMinecraftFormat = ""; // 用于追踪 § 颜色/格式代码
+        String activeMinecraftFormat = ""; // 用于追踪 § 或 & 引入的格式代码
         boolean isBold = false;
         boolean isItalic = false;
         boolean isStrikethrough = false;
@@ -227,14 +234,15 @@ public class GuiNote extends GuiScreen {
             
             char currentChar = text.charAt(i);
             
-            // 优先处理 Minecraft 颜色代码
-            if (currentChar == '§' && i + 1 < text.length()) {
+            // 根据配置决定是否处理颜色代码
+            if (GhostConfig.enableColorRendering && (currentChar == '§' || currentChar == '&') && i + 1 < text.length()) {
                 char formatChar = text.toLowerCase().charAt(i + 1);
                 if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
                     if (formatChar == 'r') { // 重置代码
                         activeMinecraftFormat = "";
                         isBold = isItalic = isStrikethrough = false;
                     } else {
+                        // 统一使用 § 作为内部格式化前缀
                         activeMinecraftFormat += "§" + formatChar;
                     }
                     i++; // 跳过格式字符
@@ -341,8 +349,8 @@ public class GuiNote extends GuiScreen {
             case Keyboard.KEY_END: setCursorPosition(this.textContent.length(), GuiScreen.isShiftKeyDown()); return;
             case Keyboard.KEY_RETURN: insertText("\n"); return;
         }
-        // 处理可打印字符，并允许输入 § 符号
-        if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§') {
+        // 处理可打印字符，并允许输入 § 和 & 符号
+        if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§' || typedChar == '&') {
             insertText(Character.toString(typedChar));
         }
     }
@@ -391,8 +399,12 @@ public class GuiNote extends GuiScreen {
             else if (button.id == 1) {
                 // 切换 Markdown 配置
                 GhostConfig.setEnableMarkdownRendering(!GhostConfig.enableMarkdownRendering);
-                // 更新按钮文本以反映新状态
                 updateMarkdownButtonText();
+            }
+            else if (button.id == 2) {
+                // 切换颜色代码配置
+                GhostConfig.setEnableColorRendering(!GhostConfig.enableColorRendering);
+                updateColorButtonText();
             }
         }
         super.actionPerformed(button);
@@ -408,6 +420,19 @@ public class GuiNote extends GuiScreen {
                     LangUtil.translate("ghost.generic.enabled") :
                     LangUtil.translate("ghost.generic.disabled");
             this.markdownToggleButton.displayString = prefix + status;
+        }
+    }
+
+    /**
+     * 更新颜色代码开关按钮的显示文本。
+     */
+    private void updateColorButtonText() {
+        if (this.colorToggleButton != null) {
+            String prefix = LangUtil.translate("ghost.gui.note.color.prefix");
+            String status = GhostConfig.enableColorRendering ?
+                    LangUtil.translate("ghost.generic.enabled") :
+                    LangUtil.translate("ghost.generic.disabled");
+            this.colorToggleButton.displayString = prefix + status;
         }
     }
     
@@ -462,11 +487,10 @@ public class GuiNote extends GuiScreen {
         int manualNewlinePos = text.indexOf('\n');
         for (int chars = 1; chars <= text.length(); ++chars) {
             if (manualNewlinePos != -1 && chars > manualNewlinePos) return manualNewlinePos;
-            // 计算宽度时，需要考虑 § 颜色代码，它们不计入宽度
             String sub = text.substring(0, chars);
             if (this.fontRendererObj.getStringWidth(sub) > width) {
-                // 如果超宽了，需要确保我们没有在 § 符号和它的代码之间断开
-                if (chars > 1 && text.charAt(chars - 2) == '§') {
+                // 如果超宽了，需要确保我们没有在颜色代码（§ 或 &）和它的代码之间断开
+                if (chars > 1 && (text.charAt(chars - 2) == '§' || text.charAt(chars - 2) == '&')) {
                     return chars - 2;
                 }
                 return chars - 1;
@@ -524,7 +548,8 @@ public class GuiNote extends GuiScreen {
 
     private void insertText(String text) {
         if (hasSelection()) deleteSelection();
-        // 修改过滤器，以允许 § 符号及其后的格式代码
+        
+        // 自定义过滤器，以允许 § 和 & 及其后的格式代码
         String textToInsert;
         if (text.equals("\n")) {
             textToInsert = "\n";
@@ -532,11 +557,13 @@ public class GuiNote extends GuiScreen {
             StringBuilder filtered = new StringBuilder();
             for (int i = 0; i < text.length(); i++) {
                 char c = text.charAt(i);
-                if (c == '§' && i + 1 < text.length()) {
+                // 检查是否是颜色代码前缀
+                if ((c == '§' || c == '&') && i + 1 < text.length()) {
                     char formatChar = text.toLowerCase().charAt(i + 1);
+                    // 检查后续字符是否是有效的格式代码
                     if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
-                        filtered.append('§').append(text.charAt(i + 1));
-                        i++;
+                        filtered.append(c).append(text.charAt(i + 1));
+                        i++; // 跳过已经处理的格式字符
                     }
                 } else if (ChatAllowedCharacters.isAllowedCharacter(c)) {
                     filtered.append(c);
@@ -558,11 +585,15 @@ public class GuiNote extends GuiScreen {
     private void deleteCharBackwards() {
         if (hasSelection()) deleteSelection();
         else if (this.cursorPosition > 0) {
-            // 如果光标前是颜色代码，则一次性删除两个字符 (§ 和代码)
+            // 如果光标前是颜色代码（§c 或 &c），则一次性删除两个字符
             int numToDelete = 1;
-            if (this.cursorPosition > 1 && this.textContent.charAt(this.cursorPosition - 2) == '§') {
-                numToDelete = 2;
+            if (this.cursorPosition > 1) {
+                char precedingChar = this.textContent.charAt(this.cursorPosition - 2);
+                if (precedingChar == '§' || precedingChar == '&') {
+                    numToDelete = 2;
+                }
             }
+            
             StringBuilder sb = new StringBuilder(this.textContent);
             sb.delete(this.cursorPosition - numToDelete, this.cursorPosition);
             this.textContent = sb.toString();
@@ -591,13 +622,21 @@ public class GuiNote extends GuiScreen {
         int newPos = this.cursorPosition;
         if (amount < 0) { // 向左移动
             newPos = Math.max(0, this.cursorPosition + amount);
-            if (newPos > 0 && this.textContent.charAt(newPos - 1) == '§') {
-                newPos--;
+            // 如果目标位置的前一个字符是颜色前缀，则再向左移动一格
+            if (newPos > 0) {
+                 char precedingChar = this.textContent.charAt(newPos - 1);
+                 if(precedingChar == '§' || precedingChar == '&') {
+                    newPos--;
+                 }
             }
         } else { // 向右移动
             newPos = Math.min(this.textContent.length(), this.cursorPosition + amount);
-            if (newPos < this.textContent.length() - 1 && this.textContent.charAt(newPos) == '§') {
-                newPos++;
+            // 如果目标位置是颜色前缀，则再向右移动一格
+            if (newPos < this.textContent.length() - 1) {
+                char currentChar = this.textContent.charAt(newPos);
+                if(currentChar == '§' || currentChar == '&') {
+                    newPos++;
+                }
             }
         }
         setCursorPosition(newPos, extendSelection);
