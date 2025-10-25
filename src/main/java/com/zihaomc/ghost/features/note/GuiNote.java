@@ -21,6 +21,9 @@ import java.util.ArrayList;
 
 /**
  * 游戏内笔记的GUI界面。
+ * Final Version (V7) - Unified Renderer for Visual Consistency with Optifine
+ * 最终版本 (V7) - 使用统一渲染器以确保在Optifine环境下的视觉一致性
+ * @version V8.3 - Final Button Position Adjustment
  */
 public class GuiNote extends GuiScreen {
 
@@ -215,80 +218,75 @@ public class GuiNote extends GuiScreen {
     }
     
     /**
-     * V7核心方法：通过逐个字符绘制来获取每个字符的精确屏幕X坐标，并将它们缓存起来。
-     * 此方法现在是所有行文本的唯一渲染器，以保证视觉一致性。
-     * V8更新：添加了对Markdown格式的支持，同时保持了精确的光标位置计算。
+     * 修正后的核心渲染方法。
+     * 它正确地区分了格式指令（零宽度）和可见字符（有宽度），从而解决了光标定位问题。
      */
     private void drawStringAndCachePositions(String text, int x, int y, int color) {
         this.charXPositions.clear();
         float currentX = (float) x;
 
-        String activeMinecraftFormat = ""; // 用于追踪 § 或 & 引入的格式代码
+        String activeMinecraftFormat = "";
         boolean isBold = false;
         boolean isItalic = false;
         boolean isStrikethrough = false;
         
         for (int i = 0; i < text.length(); ++i) {
-            // 缓存每个字符（包括格式符）的起始X坐标
-            this.charXPositions.add((int)Math.round(currentX));
+            this.charXPositions.add((int)Math.round(currentX)); // 始终为当前索引的字符缓存起始位置
             
             char currentChar = text.charAt(i);
-            
-            // 根据配置决定是否处理颜色代码
+            boolean isFormatter = false;
+
+            // 尝试将当前字符及其后续作为格式指令来解析
             if (GhostConfig.enableColorRendering && (currentChar == '§' || currentChar == '&') && i + 1 < text.length()) {
                 char formatChar = text.toLowerCase().charAt(i + 1);
                 if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
-                    if (formatChar == 'r') { // 重置代码
+                    if (formatChar == 'r') {
                         activeMinecraftFormat = "";
                         isBold = isItalic = isStrikethrough = false;
                     } else {
-                        // 统一使用 § 作为内部格式化前缀
                         activeMinecraftFormat += "§" + formatChar;
                     }
-                    i++; // 跳过格式字符
-                    this.charXPositions.add((int)Math.round(currentX)); // 格式符本身是零宽度的
-                    continue;
+                    i++; // 跳过已经处理的格式字符
+                    this.charXPositions.add((int)Math.round(currentX)); // 为被跳过的格式字符也缓存一个零宽度的位置
+                    isFormatter = true;
                 }
-            }
-            
-            // 如果禁用了 Markdown，则跳过 Markdown 解析
-            if (GhostConfig.enableMarkdownRendering) {
+            } else if (GhostConfig.enableMarkdownRendering) {
                 char nextChar = (i + 1 < text.length()) ? text.charAt(i + 1) : '\0';
                 if (currentChar == '*' && nextChar == '*') {
                     isBold = !isBold;
-                    i++; 
+                    i++;
                     this.charXPositions.add((int)Math.round(currentX));
-                    continue;
+                    isFormatter = true;
                 } else if (currentChar == '~' && nextChar == '~') {
                     isStrikethrough = !isStrikethrough;
                     i++;
                     this.charXPositions.add((int)Math.round(currentX));
-                    continue;
+                    isFormatter = true;
                 } else if (currentChar == '*') {
                     isItalic = !isItalic;
-                    continue;
+                    isFormatter = true;
                 }
             }
 
-            // 构建最终的格式化字符串
-            StringBuilder finalFormat = new StringBuilder(activeMinecraftFormat);
-            if (isItalic) finalFormat.append(EnumChatFormatting.ITALIC);
-            if (isBold) finalFormat.append(EnumChatFormatting.BOLD);
-            if (isStrikethrough) finalFormat.append(EnumChatFormatting.STRIKETHROUGH);
-            
-            String charToRender = finalFormat.toString() + currentChar;
+            // 如果当前字符不是任何格式指令的一部分，那么它就是一个需要被绘制的可见字符
+            if (!isFormatter) {
+                StringBuilder finalFormat = new StringBuilder(activeMinecraftFormat);
+                if (isItalic) finalFormat.append(EnumChatFormatting.ITALIC);
+                if (isBold) finalFormat.append(EnumChatFormatting.BOLD);
+                if (isStrikethrough) finalFormat.append(EnumChatFormatting.STRIKETHROUGH);
+                
+                String charToRenderWithFormat = finalFormat.toString() + currentChar;
 
-            // 绘制带格式的单个字符
-            this.fontRendererObj.drawStringWithShadow(charToRender, currentX, (float)y, color);
-            
-            // 关键：计算字符宽度时要排除格式化代码本身的影响，以保证定位准确
-            int fullWidth = this.fontRendererObj.getStringWidth(charToRender);
-            int formatWidth = this.fontRendererObj.getStringWidth(finalFormat.toString());
-            currentX += (fullWidth - formatWidth);
+                this.fontRendererObj.drawStringWithShadow(charToRenderWithFormat, currentX, (float)y, color);
+                
+                // 只为可见字符增加渲染位置的偏移量
+                int charWidth = this.fontRendererObj.getStringWidth(charToRenderWithFormat) - this.fontRendererObj.getStringWidth(finalFormat.toString());
+                currentX += charWidth;
+            }
+            // 如果是格式指令，currentX 保持不变，实现了零宽度的效果
         }
         
-        // 为字符串末尾的光标位置添加最后的坐标
-        this.charXPositions.add((int)Math.round(currentX));
+        this.charXPositions.add((int)Math.round(currentX)); // 为字符串末尾的光标添加最终位置
     }
 
     /**
@@ -549,28 +547,21 @@ public class GuiNote extends GuiScreen {
     private void insertText(String text) {
         if (hasSelection()) deleteSelection();
         
-        // 自定义过滤器，以允许 § 和 & 及其后的格式代码
         String textToInsert;
         if (text.equals("\n")) {
             textToInsert = "\n";
         } else {
+            // 修正了过滤器，以正确允许单个 § 和 & 字符的输入，同时过滤掉其他非法字符。
+            // 这个过滤器在处理粘贴的文本时尤其重要。
             StringBuilder filtered = new StringBuilder();
-            for (int i = 0; i < text.length(); i++) {
-                char c = text.charAt(i);
-                // 检查是否是颜色代码前缀
-                if ((c == '§' || c == '&') && i + 1 < text.length()) {
-                    char formatChar = text.toLowerCase().charAt(i + 1);
-                    // 检查后续字符是否是有效的格式代码
-                    if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
-                        filtered.append(c).append(text.charAt(i + 1));
-                        i++; // 跳过已经处理的格式字符
-                    }
-                } else if (ChatAllowedCharacters.isAllowedCharacter(c)) {
+            for (char c : text.toCharArray()) {
+                if (c == '§' || c == '&' || ChatAllowedCharacters.isAllowedCharacter(c)) {
                     filtered.append(c);
                 }
             }
             textToInsert = filtered.toString();
         }
+        
         if (textToInsert.isEmpty()) return;
         
         StringBuilder sb = new StringBuilder(this.textContent);
@@ -589,7 +580,8 @@ public class GuiNote extends GuiScreen {
             int numToDelete = 1;
             if (this.cursorPosition > 1) {
                 char precedingChar = this.textContent.charAt(this.cursorPosition - 2);
-                if (precedingChar == '§' || precedingChar == '&') {
+                char lastChar = this.textContent.charAt(this.cursorPosition - 1);
+                if ((precedingChar == '§' || precedingChar == '&') && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(lastChar)) != -1) {
                     numToDelete = 2;
                 }
             }
