@@ -21,9 +21,6 @@ import java.util.ArrayList;
 
 /**
  * 游戏内笔记的GUI界面。
- * Final Version (V7) - Unified Renderer for Visual Consistency with Optifine
- * 最终版本 (V7) - 使用统一渲染器以确保在Optifine环境下的视觉一致性
- * @version V8.3 - Final Button Position Adjustment
  */
 public class GuiNote extends GuiScreen {
 
@@ -81,17 +78,24 @@ public class GuiNote extends GuiScreen {
         this.textAreaHeight = this.height - 90;
         this.wrappingWidth = this.textAreaWidth - PADDING * 2; 
         
-        // 注意：这里的加载逻辑保持不变，因为我们的修复程序会在initGui之后再恢复文本
-        if (this.textContent.isEmpty()) { // 仅在文本为空时（例如首次打开）加载
+        // 根据配置项决定加载逻辑
+        if (!GhostConfig.fixGuiStateLossOnResize) {
+            // 配置关闭时：强制从文件重新加载，这会覆盖掉任何未保存的修改，从而“实现”了状态丢失。
             this.textContent = NoteManager.loadNote();
+        } else {
+            // 配置开启时：只有在文本内容确实为空（例如首次打开）时才加载。
+            // 状态的恢复将由外部的事件处理器来完成。
+            if (this.textContent.isEmpty()) {
+                this.textContent = NoteManager.loadNote();
+            }
         }
+        
         updateLinesAndIndices(); // 根据加载的文本内容计算换行
         setCursorPosition(this.textContent.length()); // 将光标置于末尾
         
         this.buttonList.clear();
         this.buttonList.add(new GuiButton(0, this.width / 2 - 100, this.height - 25, LangUtil.translate("ghost.gui.note.save_and_close")));
 
-        // vvv --- 修改 --- vvv
         // 创建 Markdown 开关按钮
         int buttonWidth = 120;
         int buttonHeight = 20;
@@ -100,7 +104,6 @@ public class GuiNote extends GuiScreen {
         this.markdownToggleButton = new GuiButton(1, this.textAreaX - buttonWidth - 5, this.textAreaY, buttonWidth, buttonHeight, "");
         updateMarkdownButtonText(); // 根据当前配置设置按钮文本
         this.buttonList.add(this.markdownToggleButton);
-        // ^^^ --- 修改 --- ^^^
     }
 
     /**
@@ -209,72 +212,71 @@ public class GuiNote extends GuiScreen {
      * V8更新：添加了对Markdown格式的支持，同时保持了精确的光标位置计算。
      */
     private void drawStringAndCachePositions(String text, int x, int y, int color) {
-        // 如果禁用了Markdown渲染，则使用原始的、高性能的逐字渲染逻辑。
-        if (!GhostConfig.enableMarkdownRendering) {
-            this.charXPositions.clear();
-            float currentX = (float) x;
-            this.charXPositions.add(x); // 缓存字符串开始的位置（即第0个字符的起始位置）
-
-            for (int i = 0; i < text.length(); ++i) {
-                char character = text.charAt(i);
-                String s = String.valueOf(character);
-                
-                this.fontRendererObj.drawStringWithShadow(s, currentX, (float)y, color);
-                
-                currentX += this.fontRendererObj.getStringWidth(s);
-                this.charXPositions.add((int)Math.round(currentX)); // 四舍五入以提高精度
-            }
-            return;
-        }
-
-        // --- NEW MARKDOWN-AWARE RENDERER ---
-        // 如果启用了Markdown渲染，则使用能够处理格式的新逻辑。
+        // 渲染逻辑重构，以同时支持 Minecraft 颜色代码 (§) 和 Markdown
         this.charXPositions.clear();
         float currentX = (float) x;
-        
-        // 一个简单的状态机来解析Markdown。
-        // 注意：这个解析器很简单，不支持复杂的嵌套或转义，但能很好地处理常见情况。
+
+        String activeMinecraftFormat = ""; // 用于追踪 § 颜色/格式代码
         boolean isBold = false;
         boolean isItalic = false;
         boolean isStrikethrough = false;
-
+        
         for (int i = 0; i < text.length(); ++i) {
-            // 关键：在处理字符之前，为其在原始字符串中的索引`i`缓存起始X坐标。
+            // 缓存每个字符（包括格式符）的起始X坐标
             this.charXPositions.add((int)Math.round(currentX));
             
             char currentChar = text.charAt(i);
-            char nextChar = (i + 1 < text.length()) ? text.charAt(i + 1) : '\0';
-
-            // 检查Markdown控制符，并优先匹配更长的符号（如 "**" 优先于 "*"）
-            if (currentChar == '*' && nextChar == '*') {
-                isBold = !isBold;
-                i++; // 跳过第二个 '*'
-                // 为被跳过的字符也添加一个位置缓存，保持索引同步。它的宽度为0。
-                this.charXPositions.add((int)Math.round(currentX));
-                continue; // 不渲染控制符
-            } else if (currentChar == '~' && nextChar == '~') {
-                isStrikethrough = !isStrikethrough;
-                i++; // 跳过第二个 '~'
-                this.charXPositions.add((int)Math.round(currentX));
-                continue;
-            } else if (currentChar == '*') {
-                isItalic = !isItalic;
-                continue;
+            
+            // 优先处理 Minecraft 颜色代码
+            if (currentChar == '§' && i + 1 < text.length()) {
+                char formatChar = text.toLowerCase().charAt(i + 1);
+                if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
+                    if (formatChar == 'r') { // 重置代码
+                        activeMinecraftFormat = "";
+                        isBold = isItalic = isStrikethrough = false;
+                    } else {
+                        activeMinecraftFormat += "§" + formatChar;
+                    }
+                    i++; // 跳过格式字符
+                    this.charXPositions.add((int)Math.round(currentX)); // 格式符本身是零宽度的
+                    continue;
+                }
+            }
+            
+            // 如果禁用了 Markdown，则跳过 Markdown 解析
+            if (GhostConfig.enableMarkdownRendering) {
+                char nextChar = (i + 1 < text.length()) ? text.charAt(i + 1) : '\0';
+                if (currentChar == '*' && nextChar == '*') {
+                    isBold = !isBold;
+                    i++; 
+                    this.charXPositions.add((int)Math.round(currentX));
+                    continue;
+                } else if (currentChar == '~' && nextChar == '~') {
+                    isStrikethrough = !isStrikethrough;
+                    i++;
+                    this.charXPositions.add((int)Math.round(currentX));
+                    continue;
+                } else if (currentChar == '*') {
+                    isItalic = !isItalic;
+                    continue;
+                }
             }
 
-            // 根据当前状态构建格式化字符串
-            StringBuilder format = new StringBuilder();
-            if (isItalic) format.append(EnumChatFormatting.ITALIC);
-            if (isBold) format.append(EnumChatFormatting.BOLD);
-            if (isStrikethrough) format.append(EnumChatFormatting.STRIKETHROUGH);
+            // 构建最终的格式化字符串
+            StringBuilder finalFormat = new StringBuilder(activeMinecraftFormat);
+            if (isItalic) finalFormat.append(EnumChatFormatting.ITALIC);
+            if (isBold) finalFormat.append(EnumChatFormatting.BOLD);
+            if (isStrikethrough) finalFormat.append(EnumChatFormatting.STRIKETHROUGH);
             
-            String charToRender = format.toString() + currentChar;
+            String charToRender = finalFormat.toString() + currentChar;
 
-            // 渲染这个带格式的单个字符
+            // 绘制带格式的单个字符
             this.fontRendererObj.drawStringWithShadow(charToRender, currentX, (float)y, color);
             
-            // 使用带格式的字符来计算其渲染宽度，并更新下一个字符的起始X坐标
-            currentX += this.fontRendererObj.getStringWidth(charToRender);
+            // 关键：计算字符宽度时要排除格式化代码本身的影响，以保证定位准确
+            int fullWidth = this.fontRendererObj.getStringWidth(charToRender);
+            int formatWidth = this.fontRendererObj.getStringWidth(finalFormat.toString());
+            currentX += (fullWidth - formatWidth);
         }
         
         // 为字符串末尾的光标位置添加最后的坐标
@@ -339,8 +341,8 @@ public class GuiNote extends GuiScreen {
             case Keyboard.KEY_END: setCursorPosition(this.textContent.length(), GuiScreen.isShiftKeyDown()); return;
             case Keyboard.KEY_RETURN: insertText("\n"); return;
         }
-        // 处理可打印字符
-        if (ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
+        // 处理可打印字符，并允许输入 § 符号
+        if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§') {
             insertText(Character.toString(typedChar));
         }
     }
@@ -460,8 +462,15 @@ public class GuiNote extends GuiScreen {
         int manualNewlinePos = text.indexOf('\n');
         for (int chars = 1; chars <= text.length(); ++chars) {
             if (manualNewlinePos != -1 && chars > manualNewlinePos) return manualNewlinePos;
+            // 计算宽度时，需要考虑 § 颜色代码，它们不计入宽度
             String sub = text.substring(0, chars);
-            if (this.fontRendererObj.getStringWidth(sub) > width) return chars - 1;
+            if (this.fontRendererObj.getStringWidth(sub) > width) {
+                // 如果超宽了，需要确保我们没有在 § 符号和它的代码之间断开
+                if (chars > 1 && text.charAt(chars - 2) == '§') {
+                    return chars - 2;
+                }
+                return chars - 1;
+            }
         }
         if (manualNewlinePos != -1) return manualNewlinePos;
         return text.length();
@@ -480,13 +489,8 @@ public class GuiNote extends GuiScreen {
         String clickedLine = this.renderedLines.get(clickedLineIndex);
         
         // 在后台计算被点击行的字符坐标，以找到最近的插入点
-        this.charXPositions.clear();
-        float currentX = (float) (this.textAreaX + PADDING);
-        this.charXPositions.add((int)currentX); 
-        for (int i = 0; i < clickedLine.length(); ++i) {
-            currentX += this.fontRendererObj.getStringWidth(String.valueOf(clickedLine.charAt(i)));
-            this.charXPositions.add((int)Math.round(currentX));
-        }
+        // (调用这个方法会填充 charXPositions 缓存)
+        drawStringAndCachePositions(clickedLine, this.textAreaX + PADDING, -9999, 0); // Y坐标不重要，我们只需要X坐标
         
         int bestIndexInLine = 0;
         int minDistance = Integer.MAX_VALUE;
@@ -520,9 +524,28 @@ public class GuiNote extends GuiScreen {
 
     private void insertText(String text) {
         if (hasSelection()) deleteSelection();
-        String textToInsert = ChatAllowedCharacters.filterAllowedCharacters(text);
-        if (textToInsert.isEmpty() && !text.equals("\n")) return;
-        if (text.equals("\n")) textToInsert = "\n";
+        // 修改过滤器，以允许 § 符号及其后的格式代码
+        String textToInsert;
+        if (text.equals("\n")) {
+            textToInsert = "\n";
+        } else {
+            StringBuilder filtered = new StringBuilder();
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
+                if (c == '§' && i + 1 < text.length()) {
+                    char formatChar = text.toLowerCase().charAt(i + 1);
+                    if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
+                        filtered.append('§').append(text.charAt(i + 1));
+                        i++;
+                    }
+                } else if (ChatAllowedCharacters.isAllowedCharacter(c)) {
+                    filtered.append(c);
+                }
+            }
+            textToInsert = filtered.toString();
+        }
+        if (textToInsert.isEmpty()) return;
+        
         StringBuilder sb = new StringBuilder(this.textContent);
         sb.insert(this.cursorPosition, textToInsert);
         this.textContent = sb.toString();
@@ -535,10 +558,15 @@ public class GuiNote extends GuiScreen {
     private void deleteCharBackwards() {
         if (hasSelection()) deleteSelection();
         else if (this.cursorPosition > 0) {
+            // 如果光标前是颜色代码，则一次性删除两个字符 (§ 和代码)
+            int numToDelete = 1;
+            if (this.cursorPosition > 1 && this.textContent.charAt(this.cursorPosition - 2) == '§') {
+                numToDelete = 2;
+            }
             StringBuilder sb = new StringBuilder(this.textContent);
-            sb.deleteCharAt(this.cursorPosition - 1);
+            sb.delete(this.cursorPosition - numToDelete, this.cursorPosition);
             this.textContent = sb.toString();
-            this.cursorPosition--;
+            this.cursorPosition -= numToDelete;
             this.selectionAnchor = this.cursorPosition;
             this.cursorBlink = 0;
             updateLinesAndIndices();
@@ -559,7 +587,20 @@ public class GuiNote extends GuiScreen {
     }
     
     private void moveCursorBy(int amount, boolean extendSelection) {
-        setCursorPosition(this.cursorPosition + amount, extendSelection);
+        // 调整光标移动，使其能跳过颜色代码
+        int newPos = this.cursorPosition;
+        if (amount < 0) { // 向左移动
+            newPos = Math.max(0, this.cursorPosition + amount);
+            if (newPos > 0 && this.textContent.charAt(newPos - 1) == '§') {
+                newPos--;
+            }
+        } else { // 向右移动
+            newPos = Math.min(this.textContent.length(), this.cursorPosition + amount);
+            if (newPos < this.textContent.length() - 1 && this.textContent.charAt(newPos) == '§') {
+                newPos++;
+            }
+        }
+        setCursorPosition(newPos, extendSelection);
     }
     
     private void setCursorPosition(int newPosition) { setCursorPosition(newPosition, false); }
