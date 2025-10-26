@@ -16,8 +16,10 @@ import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 /**
  * 游戏内笔记的GUI界面。
@@ -67,6 +69,11 @@ public class GuiNote extends GuiScreen {
     /** 新增的颜色渲染功能开关按钮 */
     private GuiButton colorToggleButton;
 
+    // 用于实现撤销/重做功能的堆叠
+    private final Deque<String> undoStack = new ArrayDeque<>();
+    private final Deque<String> redoStack = new ArrayDeque<>();
+    private static final int HISTORY_LIMIT = 100; // 限制历史记录步数，防止占用过多记忆体
+
     // MARK: - GUI生命周期方法
 
     /**
@@ -94,6 +101,10 @@ public class GuiNote extends GuiScreen {
                 this.textContent = NoteManager.loadNote();
             }
         }
+        
+        // 每次打开GUI时，清空历史记录，开始新的编辑会话
+        this.undoStack.clear();
+        this.redoStack.clear();
         
         updateLinesAndIndices(); // 根据加载的文本内容计算换行
         setCursorPosition(this.textContent.length()); // 将光标置于末尾
@@ -218,7 +229,8 @@ public class GuiNote extends GuiScreen {
     }
     
     /**
-     * 重构后的核心渲染方法，现已支持标题和列表。
+     * 修正后的核心渲染方法。
+     * 它正确地区分了格式指令（零宽度）和可见字符（有宽度），从而解决了光标定位问题。
      */
     private void drawStringAndCachePositions(String text, int x, int y, int color) {
         this.charXPositions.clear();
@@ -277,11 +289,12 @@ public class GuiNote extends GuiScreen {
         boolean isStrikethrough = false;
         
         for (int i = 0; i < lineToRender.length(); ++i) {
-            this.charXPositions.add((int)Math.round(currentX));
+            this.charXPositions.add((int)Math.round(currentX)); // 始终为当前索引的字符缓存起始位置
             
             char currentChar = lineToRender.charAt(i);
             boolean isFormatter = false;
 
+            // 尝试将当前字符及其后续作为格式指令来解析
             if (GhostConfig.enableColorRendering && (currentChar == '§' || currentChar == '&') && i + 1 < lineToRender.length()) {
                 char formatChar = lineToRender.toLowerCase().charAt(i + 1);
                 if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
@@ -291,8 +304,8 @@ public class GuiNote extends GuiScreen {
                     } else {
                         activeMinecraftFormat += "§" + formatChar;
                     }
-                    i++;
-                    this.charXPositions.add((int)Math.round(currentX));
+                    i++; // 跳过已经处理的格式字符
+                    this.charXPositions.add((int)Math.round(currentX)); // 为被跳过的格式字符也缓存一个零宽度的位置
                     isFormatter = true;
                 }
             } else if (GhostConfig.enableMarkdownRendering) {
@@ -313,6 +326,7 @@ public class GuiNote extends GuiScreen {
                 }
             }
 
+            // 如果当前字符不是任何格式指令的一部分，那么它就是一个需要被绘制的可见字符
             if (!isFormatter) {
                 StringBuilder finalFormat = new StringBuilder(activeMinecraftFormat);
                 if (isItalic) finalFormat.append(EnumChatFormatting.ITALIC);
@@ -323,9 +337,11 @@ public class GuiNote extends GuiScreen {
 
                 this.fontRendererObj.drawStringWithShadow(charToRenderWithFormat, currentX, (float)y, color);
                 
+                // 只为可见字符增加渲染位置的偏移量
                 int charWidth = this.fontRendererObj.getStringWidth(charToRenderWithFormat) - this.fontRendererObj.getStringWidth(finalFormat.toString());
                 currentX += charWidth;
             }
+            // 如果是格式指令，currentX 保持不变，实现了零宽度的效果
         }
         
         this.charXPositions.add((int)Math.round(currentX));
@@ -362,33 +378,69 @@ public class GuiNote extends GuiScreen {
 
     // MARK: - 输入处理方法
 
+    /**
+     * 覆写 handleKeyboardInput 来拦截更高优先级的键盘事件。
+     */
     @Override
     public void handleKeyboardInput() throws IOException {
-        // 优先处理回车键，因为它在 keyTyped 中行为不一致
-        if (Keyboard.getEventKeyState() && Keyboard.getEventKey() == Keyboard.KEY_RETURN) {
-            this.insertText("\n");
-            return;
+        // 检查按键是否被按下
+        if (Keyboard.getEventKeyState()) {
+            // 根据配置拦截 @ 键，阻止 Twitch 窗口
+            if (GhostConfig.disableTwitchAtKey && Keyboard.getEventCharacter() == '@') {
+                this.insertText("@");
+                return; // 消耗此事件，不让 super 处理
+            }
+            // 优先处理回车键，因为它在 keyTyped 中行为不一致
+            if (Keyboard.getEventKey() == Keyboard.KEY_RETURN) {
+                this.insertText("\n");
+                return;
+            }
         }
+        
+        // 对于所有其他按键，调用父类的方法来处理
         super.handleKeyboardInput();
     }
     
     @Override
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        // 注意：@ 和回车键的逻辑已经移动到 handleKeyboardInput 中，这里不再需要处理它们
+        
         if (keyCode == Keyboard.KEY_ESCAPE) { this.mc.displayGuiScreen(null); return; }
-        // 处理Ctrl+A/C/V/X等组合键
+        // 处理Ctrl+A/C/V/X等组合键，以及新增的撤销/重做
         if (GhostConfig.enableAdvancedEditing && GuiScreen.isCtrlKeyDown()) {
             if (keyCode == Keyboard.KEY_A) { selectAll(); return; }
             if (keyCode == Keyboard.KEY_C) { GuiScreen.setClipboardString(getSelectedText()); return; }
-            if (keyCode == Keyboard.KEY_X) { GuiScreen.setClipboardString(getSelectedText()); deleteSelection(); return; }
-            if (keyCode == Keyboard.KEY_V) { insertText(GuiScreen.getClipboardString()); return; }
+            if (keyCode == Keyboard.KEY_X) {
+                saveStateForUndo(); // 剪切是修改操作
+                GuiScreen.setClipboardString(getSelectedText());
+                deleteSelection();
+                return;
+            }
+            if (keyCode == Keyboard.KEY_V) {
+                saveStateForUndo(); // 粘贴是修改操作
+                insertText(GuiScreen.getClipboardString());
+                return;
+            }
+            // 处理撤销 (Ctrl+Z)
+            if (keyCode == Keyboard.KEY_Z && !isShiftKeyDown()) {
+                handleUndo();
+                return;
+            }
+            // 处理重做 (Ctrl+Y 或 Ctrl+Shift+Z)
+            if (keyCode == Keyboard.KEY_Y || (keyCode == Keyboard.KEY_Z && isShiftKeyDown())) {
+                handleRedo();
+                return;
+            }
         }
         // 处理功能键
         switch (keyCode) {
             case Keyboard.KEY_BACK:
+                saveStateForUndo(); // 删除是修改操作
                 if (hasSelection()) deleteSelection();
                 else if (this.cursorPosition > 0) deleteCharBackwards();
                 return;
             case Keyboard.KEY_DELETE:
+                saveStateForUndo(); // 删除是修改操作
                 if (hasSelection()) deleteSelection();
                 else if (this.cursorPosition < this.textContent.length()) {
                     this.textContent = new StringBuilder(this.textContent).deleteCharAt(this.cursorPosition).toString();
@@ -399,10 +451,11 @@ public class GuiNote extends GuiScreen {
             case Keyboard.KEY_RIGHT: moveCursorBy(1, GuiScreen.isShiftKeyDown()); return;
             case Keyboard.KEY_HOME: setCursorPosition(0, GuiScreen.isShiftKeyDown()); return;
             case Keyboard.KEY_END: setCursorPosition(this.textContent.length(), GuiScreen.isShiftKeyDown()); return;
-            case Keyboard.KEY_RETURN: insertText("\n"); return;
+            // 回车键已在 handleKeyboardInput 中处理
         }
         // 处理可打印字符，并允许输入 § 和 & 符号
         if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§' || typedChar == '&') {
+            saveStateForUndo(); // 输入是修改操作
             insertText(Character.toString(typedChar));
         }
     }
@@ -765,6 +818,57 @@ public class GuiNote extends GuiScreen {
             // 这两个调用对于在设置文本后正确更新视图和光标至关重要
             updateLinesAndIndices();
             setCursorPosition(this.textContent.length());
+        }
+    }
+    
+    // --- 撤销/重做 逻辑 ---
+    
+    /**
+     * 在即将修改文本内容前，保存当前状态到撤销堆叠。
+     */
+    private void saveStateForUndo() {
+        // 防止连续保存完全相同的状态
+        if (!this.undoStack.isEmpty() && this.undoStack.peek().equals(this.textContent)) {
+            return;
+        }
+        this.undoStack.push(this.textContent);
+        
+        // 当有新的操作时，重做历史就失效了
+        this.redoStack.clear();
+        
+        // 如果历史记录超过上限，移除最旧的记录
+        if (this.undoStack.size() > HISTORY_LIMIT) {
+            this.undoStack.removeLast();
+        }
+    }
+
+    /**
+     * 处理撤销操作 (Ctrl+Z)。
+     */
+    private void handleUndo() {
+        if (!this.undoStack.isEmpty()) {
+            // 将当前状态存入重做堆叠，以便可以“重做”这次撤销
+            this.redoStack.push(this.textContent);
+            // 从撤销堆叠中取出上一个状态并应用
+            this.textContent = this.undoStack.pop();
+            
+            updateLinesAndIndices();
+            setCursorPosition(this.textContent.length()); // 简单地将光标移到末尾
+        }
+    }
+
+    /**
+     * 处理重做操作 (Ctrl+Y / Ctrl+Shift+Z)。
+     */
+    private void handleRedo() {
+        if (!this.redoStack.isEmpty()) {
+            // 将当前状态存入撤销堆叠，以便可以“撤销”这次重做
+            this.undoStack.push(this.textContent);
+            // 从重做堆叠中取出下一个状态并应用
+            this.textContent = this.redoStack.pop();
+            
+            updateLinesAndIndices();
+            setCursorPosition(this.textContent.length()); // 简单地将光标移到末尾
         }
     }
 }
