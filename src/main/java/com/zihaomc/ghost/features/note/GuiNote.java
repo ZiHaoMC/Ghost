@@ -16,16 +16,11 @@ import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * 游戏内笔记的GUI界面。
- * Final Version (V7) - Unified Renderer for Visual Consistency with Optifine
- * 最终版本 (V7) - 使用统一渲染器以确保在Optifine环境下的视觉一致性
- * @version V8.3 - Final Button Position Adjustment
  */
 public class GuiNote extends GuiScreen {
 
@@ -69,10 +64,10 @@ public class GuiNote extends GuiScreen {
     /** 新增的颜色渲染功能开关按钮 */
     private GuiButton colorToggleButton;
 
-    // 用于实现撤销/重做功能的堆叠
-    private final Deque<String> undoStack = new ArrayDeque<>();
-    private final Deque<String> redoStack = new ArrayDeque<>();
-    private static final int HISTORY_LIMIT = 100; // 限制历史记录步数，防止占用过多记忆体
+    // --- 智慧型撤销/重做相关变量 ---
+    private long lastEditTime = 0L; // 上次编辑的时间戳
+    private static final long EDIT_MERGE_INTERVAL = 1000L; // 连续编辑的合并间隔（毫秒），1秒
+    private boolean isTypingAction = false; // 标记当前是否正在进行连续输入
 
     // MARK: - GUI生命周期方法
 
@@ -90,21 +85,13 @@ public class GuiNote extends GuiScreen {
         this.textAreaHeight = this.height - 90;
         this.wrappingWidth = this.textAreaWidth - PADDING * 2; 
         
-        // 根据配置项决定加载逻辑
-        if (!GhostConfig.fixGuiStateLossOnResize) {
-            // 配置关闭时：强制从文件重新加载，这会覆盖掉任何未保存的修改，从而“实现”了状态丢失。
+        // 当 NoteManager 的历史记录为空时，表示这是一个全新的会话，需要加载文件
+        if (NoteManager.undoStack.isEmpty()) {
             this.textContent = NoteManager.loadNote();
         } else {
-            // 配置开启时：只有在文本内容确实为空（例如首次打开）时才加载。
-            // 状态的恢复将由外部的事件处理器来完成。
-            if (this.textContent.isEmpty()) {
-                this.textContent = NoteManager.loadNote();
-            }
+            // 否则，从撤销历史的顶端恢复最新的文本状态
+            this.textContent = NoteManager.undoStack.peek();
         }
-        
-        // 每次打开GUI时，清空历史记录，开始新的编辑会话
-        this.undoStack.clear();
-        this.redoStack.clear();
         
         updateLinesAndIndices(); // 根据加载的文本内容计算换行
         setCursorPosition(this.textContent.length()); // 将光标置于末尾
@@ -136,6 +123,8 @@ public class GuiNote extends GuiScreen {
     public void onGuiClosed() {
         super.onGuiClosed();
         Keyboard.enableRepeatEvents(false); // 关闭键盘连续输入
+        // 确保在关闭前，将最后一次连续输入的状态保存到历史记录中
+        commitTypingAction();
         NoteManager.saveNote(this.textContent);
     }
     
@@ -147,6 +136,11 @@ public class GuiNote extends GuiScreen {
     public void updateScreen() {
         super.updateScreen();
         this.cursorBlink++;
+
+        // 检查连续输入是否超时，如果超时则提交本次输入作为一个历史记录
+        if (isTypingAction && System.currentTimeMillis() - lastEditTime > EDIT_MERGE_INTERVAL) {
+            commitTypingAction();
+        }
     }
 
     // MARK: - 渲染方法
@@ -411,13 +405,13 @@ public class GuiNote extends GuiScreen {
             if (keyCode == Keyboard.KEY_A) { selectAll(); return; }
             if (keyCode == Keyboard.KEY_C) { GuiScreen.setClipboardString(getSelectedText()); return; }
             if (keyCode == Keyboard.KEY_X) {
-                saveStateForUndo(); // 剪切是修改操作
+                saveStateForUndo(false); // 剪切是“大动作”，立即保存
                 GuiScreen.setClipboardString(getSelectedText());
                 deleteSelection();
                 return;
             }
             if (keyCode == Keyboard.KEY_V) {
-                saveStateForUndo(); // 粘贴是修改操作
+                saveStateForUndo(false); // 粘贴是“大动作”，立即保存
                 insertText(GuiScreen.getClipboardString());
                 return;
             }
@@ -435,12 +429,12 @@ public class GuiNote extends GuiScreen {
         // 处理功能键
         switch (keyCode) {
             case Keyboard.KEY_BACK:
-                saveStateForUndo(); // 删除是修改操作
+                saveStateForUndo(true); // 退格属于连续输入
                 if (hasSelection()) deleteSelection();
                 else if (this.cursorPosition > 0) deleteCharBackwards();
                 return;
             case Keyboard.KEY_DELETE:
-                saveStateForUndo(); // 删除是修改操作
+                saveStateForUndo(true); // 删除键也属于连续输入
                 if (hasSelection()) deleteSelection();
                 else if (this.cursorPosition < this.textContent.length()) {
                     this.textContent = new StringBuilder(this.textContent).deleteCharAt(this.cursorPosition).toString();
@@ -455,7 +449,7 @@ public class GuiNote extends GuiScreen {
         }
         // 处理可打印字符，并允许输入 § 和 & 符号
         if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§' || typedChar == '&') {
-            saveStateForUndo(); // 输入是修改操作
+            saveStateForUndo(true); // 正常打字属于连续输入
             insertText(Character.toString(typedChar));
         }
     }
@@ -824,21 +818,44 @@ public class GuiNote extends GuiScreen {
     // --- 撤销/重做 逻辑 ---
     
     /**
-     * 在即将修改文本内容前，保存当前状态到撤销堆叠。
+     * 在即将修改文本内容前，根据操作类型决定如何保存状态。
+     * @param isTypingAction 如果是连续输入（如打字、退格），则为true；如果是“大动作”（如粘贴、剪切），则为false。
      */
-    private void saveStateForUndo() {
-        // 防止连续保存完全相同的状态
-        if (!this.undoStack.isEmpty() && this.undoStack.peek().equals(this.textContent)) {
-            return;
+    private void saveStateForUndo(boolean isTypingAction) {
+        long now = System.currentTimeMillis();
+        // 如果是“大动作”，或者距离上次编辑时间太长，或者之前不是连续输入状态
+        // 那么就立即提交之前的连续输入（如果有），并为本次操作创建一个新的历史记录
+        if (!isTypingAction || now - lastEditTime > EDIT_MERGE_INTERVAL || !this.isTypingAction) {
+            commitTypingAction(); // 先提交旧的
+            
+            // 为当前的新操作保存状态
+            if (NoteManager.undoStack.isEmpty() || !NoteManager.undoStack.peek().equals(this.textContent)) {
+                NoteManager.undoStack.push(this.textContent);
+                if (NoteManager.undoStack.size() > NoteManager.HISTORY_LIMIT) {
+                    NoteManager.undoStack.removeLast();
+                }
+            }
         }
-        this.undoStack.push(this.textContent);
         
-        // 当有新的操作时，重做历史就失效了
-        this.redoStack.clear();
-        
-        // 如果历史记录超过上限，移除最旧的记录
-        if (this.undoStack.size() > HISTORY_LIMIT) {
-            this.undoStack.removeLast();
+        this.lastEditTime = now;
+        this.isTypingAction = isTypingAction;
+        NoteManager.redoStack.clear(); // 任何新的编辑都会让重做历史失效
+    }
+    
+    /**
+     * 将最后一次的文本状态提交到撤销堆叠。
+     * 这通常在连续输入停止时调用。
+     */
+    private void commitTypingAction() {
+        if (isTypingAction) {
+            // 确保与堆叠顶部的内容不同才添加
+            if (NoteManager.undoStack.isEmpty() || !NoteManager.undoStack.peek().equals(this.textContent)) {
+                 NoteManager.undoStack.push(this.textContent);
+                 if (NoteManager.undoStack.size() > NoteManager.HISTORY_LIMIT) {
+                    NoteManager.undoStack.removeLast();
+                }
+            }
+            isTypingAction = false;
         }
     }
 
@@ -846,14 +863,16 @@ public class GuiNote extends GuiScreen {
      * 处理撤销操作 (Ctrl+Z)。
      */
     private void handleUndo() {
-        if (!this.undoStack.isEmpty()) {
-            // 将当前状态存入重做堆叠，以便可以“重做”这次撤销
-            this.redoStack.push(this.textContent);
+        commitTypingAction(); // 在执行撤销前，先提交当前可能正在进行的输入
+        
+        if (!NoteManager.undoStack.isEmpty()) {
+            // 将当前状态存入重做堆叠
+            NoteManager.redoStack.push(this.textContent);
             // 从撤销堆叠中取出上一个状态并应用
-            this.textContent = this.undoStack.pop();
+            this.textContent = NoteManager.undoStack.pop();
             
             updateLinesAndIndices();
-            setCursorPosition(this.textContent.length()); // 简单地将光标移到末尾
+            setCursorPosition(this.textContent.length());
         }
     }
 
@@ -861,14 +880,16 @@ public class GuiNote extends GuiScreen {
      * 处理重做操作 (Ctrl+Y / Ctrl+Shift+Z)。
      */
     private void handleRedo() {
-        if (!this.redoStack.isEmpty()) {
-            // 将当前状态存入撤销堆叠，以便可以“撤销”这次重做
-            this.undoStack.push(this.textContent);
+        commitTypingAction(); // 在执行重做前也提交
+        
+        if (!NoteManager.redoStack.isEmpty()) {
+            // 将当前状态存入撤销堆叠
+            NoteManager.undoStack.push(this.textContent);
             // 从重做堆叠中取出下一个状态并应用
-            this.textContent = this.redoStack.pop();
+            this.textContent = NoteManager.redoStack.pop();
             
             updateLinesAndIndices();
-            setCursorPosition(this.textContent.length()); // 简单地将光标移到末尾
+            setCursorPosition(this.textContent.length());
         }
     }
 }
