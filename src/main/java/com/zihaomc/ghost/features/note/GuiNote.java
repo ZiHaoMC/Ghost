@@ -21,6 +21,9 @@ import java.util.ArrayList;
 
 /**
  * 游戏内笔记的GUI界面。
+ * Final Version (V7) - Unified Renderer for Visual Consistency with Optifine
+ * 最终版本 (V7) - 使用统一渲染器以确保在Optifine环境下的视觉一致性
+ * @version V8.3 - Final Button Position Adjustment
  */
 public class GuiNote extends GuiScreen {
 
@@ -61,8 +64,10 @@ public class GuiNote extends GuiScreen {
     
     /** Markdown 渲染功能的开关按钮 */
     private GuiButton markdownToggleButton;
-    /** 新增的颜色渲染功能开关按钮 */
+    /** 颜色渲染功能开关按钮 */
     private GuiButton colorToggleButton;
+    /** 帮助按钮 */
+    private GuiButton helpButton;
 
     // --- 智慧型撤销/重做相关变量 ---
     private long lastEditTime = 0L; // 上次编辑的时间戳
@@ -102,17 +107,21 @@ public class GuiNote extends GuiScreen {
         // 创建功能开关按钮
         int buttonWidth = 120;
         int buttonHeight = 20;
-        int buttonX = this.textAreaX - buttonWidth - 5;
         
-        // Markdown 开关按钮
-        this.markdownToggleButton = new GuiButton(1, buttonX, this.textAreaY, buttonWidth, buttonHeight, "");
+        // 左侧按钮
+        int leftButtonX = this.textAreaX - buttonWidth - 5;
+        this.markdownToggleButton = new GuiButton(1, leftButtonX, this.textAreaY, buttonWidth, buttonHeight, "");
         updateMarkdownButtonText();
         this.buttonList.add(this.markdownToggleButton);
         
-        // 颜色代码开关按钮，位于 Markdown 按钮下方
-        this.colorToggleButton = new GuiButton(2, buttonX, this.textAreaY + buttonHeight + 5, buttonWidth, buttonHeight, "");
+        this.colorToggleButton = new GuiButton(2, leftButtonX, this.textAreaY + buttonHeight + 5, buttonWidth, buttonHeight, "");
         updateColorButtonText();
         this.buttonList.add(this.colorToggleButton);
+
+        // 右侧帮助按钮
+        int rightButtonX = this.textAreaX + this.textAreaWidth + 5;
+        this.helpButton = new GuiButton(3, rightButtonX, this.textAreaY, 20, 20, "?");
+        this.buttonList.add(this.helpButton);
     }
 
     /**
@@ -505,6 +514,11 @@ public class GuiNote extends GuiScreen {
                 GhostConfig.setEnableColorRendering(!GhostConfig.enableColorRendering);
                 updateColorButtonText();
             }
+            else if (button.id == 3) {
+                // 打开帮助界面
+                commitTypingAction(); // 在切换界面前，提交当前输入
+                this.mc.displayGuiScreen(new GuiNoteHelp(this));
+            }
         }
         super.actionPerformed(button);
     }
@@ -865,11 +879,12 @@ public class GuiNote extends GuiScreen {
     private void handleUndo() {
         commitTypingAction(); // 在执行撤销前，先提交当前可能正在进行的输入
         
-        if (!NoteManager.undoStack.isEmpty()) {
+        if (NoteManager.undoStack.size() > 1) { // 至少要保留一个“基底”状态
             // 将当前状态存入重做堆叠
             NoteManager.redoStack.push(this.textContent);
             // 从撤销堆叠中取出上一个状态并应用
-            this.textContent = NoteManager.undoStack.pop();
+            NoteManager.undoStack.pop(); // 先弹出当前状态
+            this.textContent = NoteManager.undoStack.peek(); // 再获取弹出后的顶部状态
             
             updateLinesAndIndices();
             setCursorPosition(this.textContent.length());

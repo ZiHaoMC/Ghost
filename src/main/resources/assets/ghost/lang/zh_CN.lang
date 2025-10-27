@@ -323,6 +323,32 @@ ghost.keybind.toggle.autosneak=自动边缘下蹲
 ghost.keybind.toggle.playeresp=玩家透视 (ESP)
 ghost.keybind.toggle.bedrockminer=破基岩模式
 
+# 帮助界面
+
+ghost.gui.note.help.done=完成
+ghost.gui.note.help.title=笔记帮助
+ghost.gui.note.help.markdown_header=Markdown 语法
+ghost.gui.note.help.headings.title=# 标题
+ghost.gui.note.help.headings.desc=使用 #, ##, ### 在行首创建不同大小的标题。
+ghost.gui.note.help.bold.title=**粗体**
+ghost.gui.note.help.bold.desc=使用两个星号包裹文本以加粗。
+ghost.gui.note.help.italic.title=*斜体*
+ghost.gui.note.help.italic.desc=使用一个星号包裹文本以倾斜。
+ghost.gui.note.help.strike.title=~~删除线~~
+ghost.gui.note.help.strike.desc=使用两个波浪号包裹文本以添加删除线。
+ghost.gui.note.help.list.title=- 列表
+ghost.gui.note.help.list.desc=在行首使用 - 或 * 创建无序列表。
+ghost.gui.note.help.color_header=颜色代码
+ghost.gui.note.help.color_desc=使用 '&' 或 '§' 加上数字(0-9)或字母(a-f)来设置颜色。例如: &c红色, &a绿色。
+ghost.gui.note.help.color_example=颜色示例:
+ghost.gui.note.help.format_header=格式代码
+ghost.gui.note.help.format_desc=使用 '&' 或 '§' 加上以下字母来应用特殊格式:
+ghost.gui.note.help.format.bold=粗体 &l
+ghost.gui.note.help.format.italic=斜体 &o
+ghost.gui.note.help.format.underline=下划线 &n
+ghost.gui.note.help.format.strike=删除线 &m
+ghost.gui.note.help.format.reset=重置 &r
+
 # ==================================
 # ===          日志记录          ===
 # ==================================
