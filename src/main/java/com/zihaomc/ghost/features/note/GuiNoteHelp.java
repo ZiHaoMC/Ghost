@@ -4,6 +4,7 @@ import com.zihaomc.ghost.LangUtil;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.util.EnumChatFormatting;
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
 import java.io.IOException;
@@ -28,7 +29,8 @@ public class GuiNoteHelp extends GuiScreen {
     @Override
     public void initGui() {
         super.initGui();
-        this.buttonList.add(new GuiButton(0, this.width / 2 - 100, this.height - 28, LangUtil.translate("ghost.gui.note.help.done")));
+        // 将按钮文字从“完成”改为“返回”
+        this.buttonList.add(new GuiButton(0, this.width / 2 - 100, this.height - 28, LangUtil.translate("ghost.gui.note.help.back")));
         
         populateHelpLines();
     }
@@ -73,6 +75,18 @@ public class GuiNoteHelp extends GuiScreen {
         if (button.id == 0) {
             this.mc.displayGuiScreen(this.parentScreen);
         }
+    }
+
+    /**
+     * 覆写键盘输入方法，以自定义 ESC 键的行为。
+     */
+    @Override
+    protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        // 当按下 ESC 键 (keyCode 为 1) 时，返回到父界面 (笔记编辑器)
+        if (keyCode == Keyboard.KEY_ESCAPE) {
+            this.mc.displayGuiScreen(this.parentScreen);
+        }
+        // 对于其他按键，不执行任何操作，因为这是一个只读界面
     }
 
     @Override

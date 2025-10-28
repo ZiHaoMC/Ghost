@@ -16,8 +16,10 @@ import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 /**
  * 游戏内笔记的GUI界面。
@@ -90,12 +92,22 @@ public class GuiNote extends GuiScreen {
         this.textAreaHeight = this.height - 90;
         this.wrappingWidth = this.textAreaWidth - PADDING * 2; 
         
-        // 当 NoteManager 的历史记录为空时，表示这是一个全新的会话，需要加载文件
-        if (NoteManager.undoStack.isEmpty()) {
+        // --- 修正后的加载逻辑 ---
+        // 外部的 KeybindHandler 会在调整大小时（如果fix功能开启）预先填充 textContent。
+        // 因此，我们只在 textContent 仍然为空时执行加载逻辑。
+        if (this.textContent.isEmpty()) {
+            // 如果历史记录不为空，说明是延续上一次的编辑会话，从历史记录恢复
+            if (!NoteManager.undoStack.isEmpty()) {
+                this.textContent = NoteManager.undoStack.peek();
+            } else {
+                // 否则，这是一个全新的会话（例如游戏刚启动），从文件加载
+                this.textContent = NoteManager.loadNote();
+            }
+        }
+        
+        // 如果修复功能被强制关闭，则无论如何都从文件重新加载，以模拟原版的状态丢失行为
+        if (!GhostConfig.fixGuiStateLossOnResize) {
             this.textContent = NoteManager.loadNote();
-        } else {
-            // 否则，从撤销历史的顶端恢复最新的文本状态
-            this.textContent = NoteManager.undoStack.peek();
         }
         
         updateLinesAndIndices(); // 根据加载的文本内容计算换行

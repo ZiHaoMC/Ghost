@@ -326,6 +326,7 @@ ghost.keybind.toggle.bedrockminer=破基岩模式
 # 帮助界面
 
 ghost.gui.note.help.done=完成
+ghost.gui.note.help.back=返回
 ghost.gui.note.help.title=笔记帮助
 ghost.gui.note.help.markdown_header=Markdown 语法
 ghost.gui.note.help.headings.title=# 标题
