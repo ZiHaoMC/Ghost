@@ -51,6 +51,7 @@ public class GhostConfig {
     public static boolean enableAdvancedEditing = true;
     public static boolean enableMarkdownRendering = true;
     public static boolean enableColorRendering = true;
+    public static boolean enableAmpersandColorCodes = true; // 新增配置项
     public static boolean fixGuiStateLossOnResize = true;
 
     // --- 功能数值 ---
@@ -147,6 +148,9 @@ public class GhostConfig {
 
         String enableColorRenderingComment = LangUtil.translate("ghost.config.comment.enableColorRendering");
         enableColorRendering = config.getBoolean("enableColorRendering", CATEGORY_NOTE, true, enableColorRenderingComment);
+        
+        String enableAmpersandComment = LangUtil.translate("ghost.config.comment.enableAmpersandColorCodes");
+        enableAmpersandColorCodes = config.getBoolean("enableAmpersandColorCodes", CATEGORY_NOTE, true, enableAmpersandComment);
 
         // --- GUI 调整 ---
         String fixGuiStateLossComment = LangUtil.translate("ghost.config.comment.fixGuiStateLossOnResize");
@@ -469,6 +473,14 @@ public class GhostConfig {
         Property prop = config.get(CATEGORY_NOTE, "enableColorRendering", true);
         prop.set(value);
         enableColorRendering = value;
+        config.save();
+    }
+
+    public static void setEnableAmpersandColorCodes(boolean value) {
+        if (config == null) return;
+        Property prop = config.get(CATEGORY_NOTE, "enableAmpersandColorCodes", true);
+        prop.set(value);
+        enableAmpersandColorCodes = value;
         config.save();
     }
 

@@ -68,6 +68,8 @@ public class GuiNote extends GuiScreen {
     private GuiButton markdownToggleButton;
     /** 颜色渲染功能开关按钮 */
     private GuiButton colorToggleButton;
+    /** 新增：& 颜色代码功能开关按钮 */
+    private GuiButton ampersandToggleButton;
     /** 帮助按钮 */
     private GuiButton helpButton;
     /** 撤销按钮 */
@@ -136,6 +138,10 @@ public class GuiNote extends GuiScreen {
         this.colorToggleButton = new GuiButton(2, leftButtonX, this.textAreaY + buttonHeight + 5, buttonWidth, buttonHeight, "");
         updateColorButtonText();
         this.buttonList.add(this.colorToggleButton);
+        
+        this.ampersandToggleButton = new GuiButton(6, leftButtonX, this.textAreaY + (buttonHeight + 5) * 2, buttonWidth, buttonHeight, "");
+        updateAmpersandButtonText();
+        this.buttonList.add(this.ampersandToggleButton);
 
         // 右侧按钮
         int rightButtonX = this.textAreaX + this.textAreaWidth + 5;
@@ -315,7 +321,8 @@ public class GuiNote extends GuiScreen {
             char nextChar = (i + 1 < lineToRender.length()) ? lineToRender.charAt(i + 1) : '\0';
 
             // 检查是否是有效的格式化指令组合
-            boolean isColorCode = GhostConfig.enableColorRendering && currentChar == '§' && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(nextChar)) != -1;
+            boolean isColorPrefix = (GhostConfig.enableAmpersandColorCodes && currentChar == '&') || currentChar == '§';
+            boolean isColorCode = GhostConfig.enableColorRendering && isColorPrefix && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(nextChar)) != -1;
             boolean isBoldMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '*' && nextChar == '*';
             boolean isStrikeMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '~' && nextChar == '~';
             boolean isItalicMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '*';
@@ -342,11 +349,19 @@ public class GuiNote extends GuiScreen {
                 if (isBold || isBoldTitle) finalFormat.append(EnumChatFormatting.BOLD);
                 if (isStrikethrough) finalFormat.append(EnumChatFormatting.STRIKETHROUGH);
                 
-                String charToRenderWithFormat = finalFormat.toString() + currentChar;
+                String formatPrefix = finalFormat.toString();
+                String charToRenderWithFormat = formatPrefix + currentChar;
 
                 this.fontRendererObj.drawStringWithShadow(charToRenderWithFormat, currentX, (float)y, color);
                 
-                int charWidth = this.fontRendererObj.getStringWidth(charToRenderWithFormat) - this.fontRendererObj.getStringWidth(finalFormat.toString());
+                int charWidth;
+                // 对 § 和 & 符号进行特殊宽度处理，以确保光标正常移动
+                if (currentChar == '§' || (GhostConfig.enableAmpersandColorCodes && currentChar == '&')) {
+                    charWidth = this.fontRendererObj.getCharWidth('s');
+                } else {
+                    charWidth = this.fontRendererObj.getStringWidth(charToRenderWithFormat) - this.fontRendererObj.getStringWidth(formatPrefix);
+                }
+                
                 currentX += charWidth;
                 i++;
             }
@@ -465,8 +480,8 @@ public class GuiNote extends GuiScreen {
             case Keyboard.KEY_END: setCursorPosition(this.textContent.length(), GuiScreen.isShiftKeyDown()); return;
             // 回车键已在 handleKeyboardInput 中处理
         }
-        // 处理可打印字符，并允许输入 § 符号
-        if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§') {
+        // 处理可打印字符，并允许输入 § 和 & 符号
+        if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§' || typedChar == '&') {
             saveStateForUndo(true); // 正常打字属于连续输入
             insertText(Character.toString(typedChar));
         }
@@ -536,6 +551,11 @@ public class GuiNote extends GuiScreen {
                 // 重做按钮
                 handleRedo();
             }
+            else if (button.id == 6) {
+                // 切换 & 颜色代码配置
+                GhostConfig.setEnableAmpersandColorCodes(!GhostConfig.enableAmpersandColorCodes);
+                updateAmpersandButtonText();
+            }
         }
         super.actionPerformed(button);
     }
@@ -563,6 +583,19 @@ public class GuiNote extends GuiScreen {
                     LangUtil.translate("ghost.generic.enabled") :
                     LangUtil.translate("ghost.generic.disabled");
             this.colorToggleButton.displayString = prefix + status;
+        }
+    }
+    
+    /**
+     * 更新 & 颜色代码开关按钮的显示文本。
+     */
+    private void updateAmpersandButtonText() {
+        if (this.ampersandToggleButton != null) {
+            String prefix = LangUtil.translate("ghost.gui.note.ampersand.prefix");
+            String status = GhostConfig.enableAmpersandColorCodes ?
+                    LangUtil.translate("ghost.generic.enabled") :
+                    LangUtil.translate("ghost.generic.disabled");
+            this.ampersandToggleButton.displayString = prefix + status;
         }
     }
 
@@ -632,9 +665,12 @@ public class GuiNote extends GuiScreen {
             if (manualNewlinePos != -1 && chars > manualNewlinePos) return manualNewlinePos;
             String sub = text.substring(0, chars);
             if (this.fontRendererObj.getStringWidth(sub) > width) {
-                // 如果超宽了，需要确保我们没有在颜色代码（§）和它的代码之间断开
-                if (chars > 1 && text.charAt(chars - 2) == '§') {
-                    return chars - 2;
+                // 如果超宽了，需要确保我们没有在颜色代码（§或&）和它的代码之间断开
+                if (chars > 1) {
+                    char potentialPrefix = text.charAt(chars - 2);
+                    if (potentialPrefix == '§' || (GhostConfig.enableAmpersandColorCodes && potentialPrefix == '&')) {
+                        return chars - 2;
+                    }
                 }
                 return chars - 1;
             }
@@ -696,10 +732,10 @@ public class GuiNote extends GuiScreen {
         if (text.equals("\n")) {
             textToInsert = "\n";
         } else {
-            // 修正了过滤器，以正确允许单个 § 字符的输入，同时过滤掉其他非法字符。
+            // 修正了过滤器，以正确允许单个 § 和 & 字符的输入
             StringBuilder filtered = new StringBuilder();
             for (char c : text.toCharArray()) {
-                if (c == '§' || ChatAllowedCharacters.isAllowedCharacter(c)) {
+                if (c == '§' || c == '&' || ChatAllowedCharacters.isAllowedCharacter(c)) {
                     filtered.append(c);
                 }
             }
@@ -720,12 +756,13 @@ public class GuiNote extends GuiScreen {
     private void deleteCharBackwards() {
         if (hasSelection()) deleteSelection();
         else if (this.cursorPosition > 0) {
-            // 如果光标前是颜色代码（§c），则一次性删除两个字符
+            // 如果光标前是颜色代码（§c 或 &c），则一次性删除两个字符
             int numToDelete = 1;
             if (this.cursorPosition > 1) {
                 char precedingChar = this.textContent.charAt(this.cursorPosition - 2);
                 char lastChar = this.textContent.charAt(this.cursorPosition - 1);
-                if (precedingChar == '§' && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(lastChar)) != -1) {
+                boolean isColorPrefix = precedingChar == '§' || (GhostConfig.enableAmpersandColorCodes && precedingChar == '&');
+                if (isColorPrefix && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(lastChar)) != -1) {
                     numToDelete = 2;
                 }
             }
@@ -761,7 +798,7 @@ public class GuiNote extends GuiScreen {
             // 如果目标位置的前一个字符是颜色前缀，则再向左移动一格
             if (newPos > 0) {
                  char precedingChar = this.textContent.charAt(newPos - 1);
-                 if(precedingChar == '§') {
+                 if(precedingChar == '§' || (GhostConfig.enableAmpersandColorCodes && precedingChar == '&')) {
                     newPos--;
                  }
             }
@@ -770,7 +807,7 @@ public class GuiNote extends GuiScreen {
             // 如果目标位置是颜色前缀，则再向右移动一格
             if (newPos < this.textContent.length() - 1) {
                 char currentChar = this.textContent.charAt(newPos);
-                if(currentChar == '§') {
+                if(currentChar == '§' || (GhostConfig.enableAmpersandColorCodes && currentChar == '&')) {
                     newPos++;
                 }
             }

@@ -271,6 +271,16 @@ public class GhostConfigCommand extends CommandBase {
                     sendBooleanError(sender, valueStr);
                 }
                 break;
+            
+            case "enableampersandcolorcodes":
+                try {
+                    boolean value = CommandBase.parseBoolean(valueStr);
+                    GhostConfig.setEnableAmpersandColorCodes(value);
+                    sendSuccessMessage(sender, "enableAmpersandColorCodes", value);
+                } catch (CommandException e) {
+                    sendBooleanError(sender, valueStr);
+                }
+                break;
 
             case "autosneakforwardoffset":
                 try {
@@ -423,6 +433,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("enableAdvancedEditing", GhostConfig.enableAdvancedEditing));
         sender.addChatMessage(formatSettingLine("enableMarkdownRendering", GhostConfig.enableMarkdownRendering));
         sender.addChatMessage(formatSettingLine("enableColorRendering", GhostConfig.enableColorRendering));
+        sender.addChatMessage(formatSettingLine("enableAmpersandColorCodes", GhostConfig.enableAmpersandColorCodes));
         sender.addChatMessage(formatSettingLine("fixGuiStateLossOnResize", GhostConfig.fixGuiStateLossOnResize));
 
         String apiKeyDisplay = (GhostConfig.niuTransApiKey != null && !GhostConfig.niuTransApiKey.isEmpty()) ?
@@ -494,6 +505,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  enableAdvancedEditing " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableAdvancedEditing")));
         sender.addChatMessage(new ChatComponentText(op + "  enableMarkdownRendering " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableMarkdownRendering")));
         sender.addChatMessage(new ChatComponentText(op + "  enableColorRendering " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableColorRendering")));
+        sender.addChatMessage(new ChatComponentText(op + "  enableAmpersandColorCodes " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.enableAmpersandColorCodes")));
         sender.addChatMessage(new ChatComponentText(op + "  fixGuiStateLossOnResize " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.fixGuiStateLossOnResize")));
         sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
         sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
@@ -561,7 +573,7 @@ public class GhostConfigCommand extends CommandBase {
                     "enableAutomaticTranslation", "autoShowCachedTranslation", "showTranslationOnly", "hideTranslationKeybindTooltip", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
                     "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
                     "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers", "enableNoteFeature",
-                    "enableAdvancedEditing", "enableMarkdownRendering", "enableColorRendering", "fixGuiStateLossOnResize",
+                    "enableAdvancedEditing", "enableMarkdownRendering", "enableColorRendering", "enableAmpersandColorCodes", "fixGuiStateLossOnResize",
                     "niuTransApiKey", "translationSourceLang", "translationTargetLang",
                     "toggleSuggest");
         } else if (args.length == 2) {
@@ -592,6 +604,7 @@ public class GhostConfigCommand extends CommandBase {
                 case "enableadvancedediting":
                 case "enablemarkdownrendering":
                 case "enablecolorrendering":
+                case "enableampersandcolorcodes":
                 case "fixguistatelossonresize":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
 

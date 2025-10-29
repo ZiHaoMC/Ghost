@@ -61,6 +61,9 @@ public class GuiNoteHelp extends GuiScreen {
         helpLines.add("§00 §11 §22 §33 §44 §55 §66 §77");
         helpLines.add("§88 §99 §aa §bb §cc §dd §ee §ff");
         helpLines.add("");
+        helpLines.addAll(this.fontRendererObj.listFormattedStringToWidth(LangUtil.translate("ghost.gui.note.help.ampersand_desc"), wrapWidth));
+        helpLines.add(LangUtil.translate("ghost.gui.note.help.ampersand_example"));
+        helpLines.add("");
 
         // 格式代码部分
         helpLines.add(EnumChatFormatting.AQUA + LangUtil.translate("ghost.gui.note.help.format_header"));

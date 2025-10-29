@@ -66,6 +66,7 @@ ghost.gui.note.save_and_close=保存并关闭
 ghost.gui.note.scroll_hint=(使用鼠标滚轮滚动)
 ghost.gui.note.markdown.prefix=Markdown 渲染: 
 ghost.gui.note.color.prefix=颜色代码渲染: 
+ghost.gui.note.ampersand.prefix=& 颜色代码: 
 
 # ==================================
 # ===      通用命令和错误      ===
@@ -222,7 +223,8 @@ ghost.config.comment.hideArrowsOnPlayers=启用后，将隐藏射在其他玩家
 ghost.config.comment.enableNoteFeature=启用游戏内笔记功能。启用后，可通过指定按键打开一个可以随时记录文本的界面。
 ghost.config.comment.enableAdvancedEditing=启用笔记界面的高级编辑功能(如鼠标选择、Ctrl+A/C/X)。
 ghost.config.comment.enableMarkdownRendering=启用笔记界面的Markdown格式渲染 (例如 **粗体**, *斜体* 和 ~~删除线~~)。
-ghost.config.comment.enableColorRendering=启用笔记界面的颜色代码渲染 (例如 &c红色, §b蓝色)。
+ghost.config.comment.enableColorRendering=启用笔记界面的颜色代码渲染 (例如 §b蓝色)。
+ghost.config.comment.enableAmpersandColorCodes=启用笔记界面的 '&' 颜色代码。启用后，可以使用 '&c' 代替 '§c' 来设置颜色。
 ghost.config.comment.fixGuiStateLossOnResize=修复因全屏切换或窗口大小调整导致的输入框文本丢失问题。[默认: true]
 
 # ==================================
@@ -283,6 +285,7 @@ ghost.commands.gconfig.help.setting.enableNoteFeature=启用游戏内笔记功�
 ghost.commands.gconfig.help.setting.enableAdvancedEditing=启用笔记界面的高级编辑功能。
 ghost.commands.gconfig.help.setting.enableMarkdownRendering=启用笔记界面的Markdown格式渲染。
 ghost.commands.gconfig.help.setting.enableColorRendering=启用笔记界面的颜色代码渲染。
+ghost.commands.gconfig.help.setting.enableAmpersandColorCodes=启用笔记界面的 '&' 颜色代码。
 ghost.commands.gconfig.help.setting.fixGuiStateLossOnResize=修复GUI因窗口大小调整导致的状态丢失问题。
 ghostblock.commands.gconfig.help.setting.niuTransApiKey=设置小牛翻译的API Key。
 ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的源语言。
@@ -300,7 +303,6 @@ ghostblock.commands.gconfig.help.example.enablePlayerESP=/gconfig enablePlayerES
 ghostblock.commands.gconfig.help.example.enableBedrockMiner=/gconfig enableBedrockMiner true
 ghostblock.commands.gconfig.help.example.fastPistonBreaking=/gconfig fastPistonBreaking true
 ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers=/gconfig hideArrowsOnPlayers true
-/gconfig fixGuiStateLossOnResize false
 ghostblock.commands.gconfig.help.example.niuTransApiKey=/gconfig niuTransApiKey your_api_key_here
 ghostblock.commands.gconfig.help.example.translationTargetLang=/gconfig translationTargetLang en
 ghostblock.commands.gconfig.help.aliases=别名
@@ -324,7 +326,6 @@ ghost.keybind.toggle.playeresp=玩家透视 (ESP)
 ghost.keybind.toggle.bedrockminer=破基岩模式
 
 # 帮助界面
-
 ghost.gui.note.help.done=完成
 ghost.gui.note.help.back=返回
 ghost.gui.note.help.title=笔记帮助
@@ -340,15 +341,17 @@ ghost.gui.note.help.strike.desc=使用两个波浪号包裹文本以添加删除
 ghost.gui.note.help.list.title=- 列表
 ghost.gui.note.help.list.desc=在行首使用 - 或 * 创建无序列表。
 ghost.gui.note.help.color_header=颜色代码
-ghost.gui.note.help.color_desc=使用 '&' 或 '§' 加上数字(0-9)或字母(a-f)来设置颜色。例如: &c红色, &a绿色。
+ghost.gui.note.help.color_desc=使用 '§' 加上数字(0-9)或字母(a-f)来设置颜色。
 ghost.gui.note.help.color_example=颜色示例:
+ghost.gui.note.help.ampersand_desc=此外，当 '& 颜色代码' 功能开启时，所有 '§' 符号均可被 '&' 符号替代，以方便输入。
+ghost.gui.note.help.ampersand_example=例如: '&c红色' 与 '§c红色' 效果相同。
 ghost.gui.note.help.format_header=格式代码
-ghost.gui.note.help.format_desc=使用 '&' 或 '§' 加上以下字母来应用特殊格式:
-ghost.gui.note.help.format.bold=粗体 &l
-ghost.gui.note.help.format.italic=斜体 &o
-ghost.gui.note.help.format.underline=下划线 &n
-ghost.gui.note.help.format.strike=删除线 &m
-ghost.gui.note.help.format.reset=重置 &r
+ghost.gui.note.help.format_desc=使用 '§' 或 '&' 加上以下字母来应用特殊格式:
+ghost.gui.note.help.format.bold=粗体
+ghost.gui.note.help.format.italic=斜体
+ghost.gui.note.help.format.underline=下划线
+ghost.gui.note.help.format.strike=删除线
+ghost.gui.note.help.format.reset=重置
 
 # ==================================
 # ===          日志记录          ===
