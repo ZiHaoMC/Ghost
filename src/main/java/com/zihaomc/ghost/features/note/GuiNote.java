@@ -70,10 +70,17 @@ public class GuiNote extends GuiScreen {
     private GuiButton colorToggleButton;
     /** 帮助按钮 */
     private GuiButton helpButton;
+    /** 撤销按钮 */
+    private GuiButton undoButton;
+    /** 重做按钮 */
+    private GuiButton redoButton;
 
     // --- 智慧型撤销/重做相关变量 ---
     private long lastEditTime = 0L; // 上次编辑的时间戳
+    private long lastForcedSaveTime = 0L; // 上次强制保存的时间戳
     private static final long EDIT_MERGE_INTERVAL = 1000L; // 连续编辑的合并间隔（毫秒），1秒
+    private static final long FORCED_SAVE_INTERVAL = 5000L; // 强制保存的最长时间间隔（毫秒），5秒
+    private static final int LARGE_INPUT_THRESHOLD = 5; // 单次输入超过该字元数则立即保存
     private boolean isTypingAction = false; // 标记当前是否正在进行连续输入
 
     // MARK: - GUI生命周期方法
@@ -130,10 +137,18 @@ public class GuiNote extends GuiScreen {
         updateColorButtonText();
         this.buttonList.add(this.colorToggleButton);
 
-        // 右侧帮助按钮
+        // 右侧按钮
         int rightButtonX = this.textAreaX + this.textAreaWidth + 5;
         this.helpButton = new GuiButton(3, rightButtonX, this.textAreaY, 20, 20, "?");
         this.buttonList.add(this.helpButton);
+
+        // 新增撤销/重做按钮，调整了按钮间距
+        int smallButtonGap = 2; // 右侧小按钮之间的间距
+        this.undoButton = new GuiButton(4, rightButtonX, this.textAreaY + buttonHeight + 5, 20, 20, "<");
+        this.redoButton = new GuiButton(5, rightButtonX + 20 + smallButtonGap, this.textAreaY + buttonHeight + 5, 20, 20, ">");
+        this.buttonList.add(this.undoButton);
+        this.buttonList.add(this.redoButton);
+        updateUndoRedoButtonState();
     }
 
     /**
@@ -158,9 +173,17 @@ public class GuiNote extends GuiScreen {
         super.updateScreen();
         this.cursorBlink++;
 
+        long now = System.currentTimeMillis();
         // 检查连续输入是否超时，如果超时则提交本次输入作为一个历史记录
-        if (isTypingAction && System.currentTimeMillis() - lastEditTime > EDIT_MERGE_INTERVAL) {
+        if (isTypingAction && now - lastEditTime > EDIT_MERGE_INTERVAL) {
             commitTypingAction();
+            updateUndoRedoButtonState();
+        }
+        
+        // 检查是否需要强制保存历史记录
+        if (isTypingAction && now - lastForcedSaveTime > FORCED_SAVE_INTERVAL) {
+            commitTypingAction();
+            updateUndoRedoButtonState();
         }
     }
 
@@ -244,8 +267,8 @@ public class GuiNote extends GuiScreen {
     }
     
     /**
-     * 修正后的核心渲染方法。
-     * 它正确地区分了格式指令（零宽度）和可见字符（有宽度），从而解决了光标定位问题。
+     * 最终修正版的核心渲染方法。
+     * 它能正确处理所有格式指令（Markdown, 颜色代码）和普通字符，确保光标定位精确无误。
      */
     private void drawStringAndCachePositions(String text, int x, int y, int color) {
         this.charXPositions.clear();
@@ -257,42 +280,24 @@ public class GuiNote extends GuiScreen {
 
         // 仅在 Markdown 开启时处理标题和列表
         if (GhostConfig.enableMarkdownRendering) {
-            // 检查标题语法
             if (lineToRender.startsWith("# ")) {
-                scale = 1.5f;
-                isBoldTitle = true;
-                lineToRender = lineToRender.substring(2);
-                // 为被移除的 "# " 符号填充占位坐标
-                this.charXPositions.add((int)currentX);
-                this.charXPositions.add((int)currentX);
+                scale = 1.5f; isBoldTitle = true; lineToRender = lineToRender.substring(2);
+                this.charXPositions.add((int)currentX); this.charXPositions.add((int)currentX);
             } else if (lineToRender.startsWith("## ")) {
-                scale = 1.2f;
-                isBoldTitle = true;
-                lineToRender = lineToRender.substring(3);
-                this.charXPositions.add((int)currentX);
-                this.charXPositions.add((int)currentX);
-                this.charXPositions.add((int)currentX);
+                scale = 1.2f; isBoldTitle = true; lineToRender = lineToRender.substring(3);
+                this.charXPositions.add((int)currentX); this.charXPositions.add((int)currentX); this.charXPositions.add((int)currentX);
             } else if (lineToRender.startsWith("### ")) {
-                scale = 1.0f; // 三级标题不放大，但加粗
-                isBoldTitle = true;
-                lineToRender = lineToRender.substring(4);
-                this.charXPositions.add((int)currentX);
-                this.charXPositions.add((int)currentX);
-                this.charXPositions.add((int)currentX);
-                this.charXPositions.add((int)currentX);
-            }
-            // 检查列表语法
-            else if (lineToRender.startsWith("- ") || lineToRender.startsWith("* ")) {
+                scale = 1.0f; isBoldTitle = true; lineToRender = lineToRender.substring(4);
+                this.charXPositions.add((int)currentX); this.charXPositions.add((int)currentX); this.charXPositions.add((int)currentX); this.charXPositions.add((int)currentX);
+            } else if (lineToRender.startsWith("- ") || lineToRender.startsWith("* ")) {
                 String bullet = "• ";
                 this.fontRendererObj.drawStringWithShadow(bullet, currentX, (float)y, color);
                 currentX += this.fontRendererObj.getStringWidth(bullet);
                 lineToRender = lineToRender.substring(2);
-                this.charXPositions.add((int)x); // 用起始位置填充
-                this.charXPositions.add((int)x);
+                this.charXPositions.add((int)x); this.charXPositions.add((int)x);
             }
         }
 
-        // 应用缩放变换
         GlStateManager.pushMatrix();
         GlStateManager.translate(currentX, y, 0);
         GlStateManager.scale(scale, scale, 1);
@@ -303,65 +308,53 @@ public class GuiNote extends GuiScreen {
         boolean isItalic = false;
         boolean isStrikethrough = false;
         
-        for (int i = 0; i < lineToRender.length(); ++i) {
-            this.charXPositions.add((int)Math.round(currentX)); // 始终为当前索引的字符缓存起始位置
+        for (int i = 0; i < lineToRender.length();) {
+            this.charXPositions.add((int)Math.round(currentX));
             
             char currentChar = lineToRender.charAt(i);
-            boolean isFormatter = false;
+            char nextChar = (i + 1 < lineToRender.length()) ? lineToRender.charAt(i + 1) : '\0';
 
-            // 尝试将当前字符及其后续作为格式指令来解析
-            if (GhostConfig.enableColorRendering && (currentChar == '§' || currentChar == '&') && i + 1 < lineToRender.length()) {
-                char formatChar = lineToRender.toLowerCase().charAt(i + 1);
-                if ("0123456789abcdefklmnor".indexOf(formatChar) != -1) {
-                    if (formatChar == 'r') {
-                        activeMinecraftFormat = "";
-                        isBold = isItalic = isStrikethrough = false;
-                    } else {
-                        activeMinecraftFormat += "§" + formatChar;
-                    }
-                    i++; // 跳过已经处理的格式字符
-                    this.charXPositions.add((int)Math.round(currentX)); // 为被跳过的格式字符也缓存一个零宽度的位置
-                    isFormatter = true;
-                }
-            } else if (GhostConfig.enableMarkdownRendering) {
-                char nextChar = (i + 1 < lineToRender.length()) ? lineToRender.charAt(i + 1) : '\0';
-                if (currentChar == '*' && nextChar == '*') {
-                    isBold = !isBold;
-                    i++;
-                    this.charXPositions.add((int)Math.round(currentX));
-                    isFormatter = true;
-                } else if (currentChar == '~' && nextChar == '~') {
-                    isStrikethrough = !isStrikethrough;
-                    i++;
-                    this.charXPositions.add((int)Math.round(currentX));
-                    isFormatter = true;
-                } else if (currentChar == '*') {
-                    isItalic = !isItalic;
-                    isFormatter = true;
-                }
-            }
+            // 检查是否是有效的格式化指令组合
+            boolean isColorCode = GhostConfig.enableColorRendering && currentChar == '§' && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(nextChar)) != -1;
+            boolean isBoldMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '*' && nextChar == '*';
+            boolean isStrikeMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '~' && nextChar == '~';
+            boolean isItalicMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '*';
 
-            // 如果当前字符不是任何格式指令的一部分，那么它就是一个需要被绘制的可见字符
-            if (!isFormatter) {
+            if (isColorCode) {
+                if (Character.toLowerCase(nextChar) == 'r') {
+                    activeMinecraftFormat = ""; isBold = isItalic = isStrikethrough = false;
+                } else {
+                    activeMinecraftFormat += "§" + nextChar;
+                }
+                i += 2;
+                this.charXPositions.add((int)Math.round(currentX));
+            } else if (isBoldMarkdown) {
+                isBold = !isBold; i += 2;
+                this.charXPositions.add((int)Math.round(currentX));
+            } else if (isStrikeMarkdown) {
+                isStrikethrough = !isStrikethrough; i += 2;
+                this.charXPositions.add((int)Math.round(currentX));
+            } else if (isItalicMarkdown) {
+                isItalic = !isItalic; i += 1;
+            } else {
                 StringBuilder finalFormat = new StringBuilder(activeMinecraftFormat);
                 if (isItalic) finalFormat.append(EnumChatFormatting.ITALIC);
-                if (isBold || isBoldTitle) finalFormat.append(EnumChatFormatting.BOLD); // 标题也应用粗体
+                if (isBold || isBoldTitle) finalFormat.append(EnumChatFormatting.BOLD);
                 if (isStrikethrough) finalFormat.append(EnumChatFormatting.STRIKETHROUGH);
                 
                 String charToRenderWithFormat = finalFormat.toString() + currentChar;
 
                 this.fontRendererObj.drawStringWithShadow(charToRenderWithFormat, currentX, (float)y, color);
                 
-                // 只为可见字符增加渲染位置的偏移量
                 int charWidth = this.fontRendererObj.getStringWidth(charToRenderWithFormat) - this.fontRendererObj.getStringWidth(finalFormat.toString());
                 currentX += charWidth;
+                i++;
             }
-            // 如果是格式指令，currentX 保持不变，实现了零宽度的效果
         }
         
         this.charXPositions.add((int)Math.round(currentX));
         
-        GlStateManager.popMatrix(); // 恢复缩放
+        GlStateManager.popMatrix();
     }
 
     /**
@@ -402,11 +395,13 @@ public class GuiNote extends GuiScreen {
         if (Keyboard.getEventKeyState()) {
             // 根据配置拦截 @ 键，阻止 Twitch 窗口
             if (GhostConfig.disableTwitchAtKey && Keyboard.getEventCharacter() == '@') {
+                this.saveStateForUndo(true); // @ 也是一种输入
                 this.insertText("@");
                 return; // 消耗此事件，不让 super 处理
             }
             // 优先处理回车键，因为它在 keyTyped 中行为不一致
             if (Keyboard.getEventKey() == Keyboard.KEY_RETURN) {
+                this.saveStateForUndo(false); // 回车视为“大动作”
                 this.insertText("\n");
                 return;
             }
@@ -432,8 +427,10 @@ public class GuiNote extends GuiScreen {
                 return;
             }
             if (keyCode == Keyboard.KEY_V) {
-                saveStateForUndo(false); // 粘贴是“大动作”，立即保存
-                insertText(GuiScreen.getClipboardString());
+                String clipboard = GuiScreen.getClipboardString();
+                // 如果粘贴的内容很多，则视为“大动作”，立即保存
+                saveStateForUndo(clipboard.length() < LARGE_INPUT_THRESHOLD);
+                insertText(clipboard);
                 return;
             }
             // 处理撤销 (Ctrl+Z)
@@ -468,8 +465,8 @@ public class GuiNote extends GuiScreen {
             case Keyboard.KEY_END: setCursorPosition(this.textContent.length(), GuiScreen.isShiftKeyDown()); return;
             // 回车键已在 handleKeyboardInput 中处理
         }
-        // 处理可打印字符，并允许输入 § 和 & 符号
-        if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§' || typedChar == '&') {
+        // 处理可打印字符，并允许输入 § 符号
+        if (ChatAllowedCharacters.isAllowedCharacter(typedChar) || typedChar == '§') {
             saveStateForUndo(true); // 正常打字属于连续输入
             insertText(Character.toString(typedChar));
         }
@@ -531,6 +528,14 @@ public class GuiNote extends GuiScreen {
                 commitTypingAction(); // 在切换界面前，提交当前输入
                 this.mc.displayGuiScreen(new GuiNoteHelp(this));
             }
+            else if (button.id == 4) {
+                // 撤销按钮
+                handleUndo();
+            }
+            else if (button.id == 5) {
+                // 重做按钮
+                handleRedo();
+            }
         }
         super.actionPerformed(button);
     }
@@ -558,6 +563,19 @@ public class GuiNote extends GuiScreen {
                     LangUtil.translate("ghost.generic.enabled") :
                     LangUtil.translate("ghost.generic.disabled");
             this.colorToggleButton.displayString = prefix + status;
+        }
+    }
+
+    /**
+     * 更新撤销和重做按钮的可用状态。
+     */
+    private void updateUndoRedoButtonState() {
+        if (this.undoButton != null) {
+            // 只有当撤销堆叠中有超过一个状态（基底状态之外）时，才能撤销
+            this.undoButton.enabled = NoteManager.undoStack.size() > 1;
+        }
+        if (this.redoButton != null) {
+            this.redoButton.enabled = !NoteManager.redoStack.isEmpty();
         }
     }
     
@@ -614,8 +632,8 @@ public class GuiNote extends GuiScreen {
             if (manualNewlinePos != -1 && chars > manualNewlinePos) return manualNewlinePos;
             String sub = text.substring(0, chars);
             if (this.fontRendererObj.getStringWidth(sub) > width) {
-                // 如果超宽了，需要确保我们没有在颜色代码（§ 或 &）和它的代码之间断开
-                if (chars > 1 && (text.charAt(chars - 2) == '§' || text.charAt(chars - 2) == '&')) {
+                // 如果超宽了，需要确保我们没有在颜色代码（§）和它的代码之间断开
+                if (chars > 1 && text.charAt(chars - 2) == '§') {
                     return chars - 2;
                 }
                 return chars - 1;
@@ -678,11 +696,10 @@ public class GuiNote extends GuiScreen {
         if (text.equals("\n")) {
             textToInsert = "\n";
         } else {
-            // 修正了过滤器，以正确允许单个 § 和 & 字符的输入，同时过滤掉其他非法字符。
-            // 这个过滤器在处理粘贴的文本时尤其重要。
+            // 修正了过滤器，以正确允许单个 § 字符的输入，同时过滤掉其他非法字符。
             StringBuilder filtered = new StringBuilder();
             for (char c : text.toCharArray()) {
-                if (c == '§' || c == '&' || ChatAllowedCharacters.isAllowedCharacter(c)) {
+                if (c == '§' || ChatAllowedCharacters.isAllowedCharacter(c)) {
                     filtered.append(c);
                 }
             }
@@ -703,12 +720,12 @@ public class GuiNote extends GuiScreen {
     private void deleteCharBackwards() {
         if (hasSelection()) deleteSelection();
         else if (this.cursorPosition > 0) {
-            // 如果光标前是颜色代码（§c 或 &c），则一次性删除两个字符
+            // 如果光标前是颜色代码（§c），则一次性删除两个字符
             int numToDelete = 1;
             if (this.cursorPosition > 1) {
                 char precedingChar = this.textContent.charAt(this.cursorPosition - 2);
                 char lastChar = this.textContent.charAt(this.cursorPosition - 1);
-                if ((precedingChar == '§' || precedingChar == '&') && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(lastChar)) != -1) {
+                if (precedingChar == '§' && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(lastChar)) != -1) {
                     numToDelete = 2;
                 }
             }
@@ -744,7 +761,7 @@ public class GuiNote extends GuiScreen {
             // 如果目标位置的前一个字符是颜色前缀，则再向左移动一格
             if (newPos > 0) {
                  char precedingChar = this.textContent.charAt(newPos - 1);
-                 if(precedingChar == '§' || precedingChar == '&') {
+                 if(precedingChar == '§') {
                     newPos--;
                  }
             }
@@ -753,7 +770,7 @@ public class GuiNote extends GuiScreen {
             // 如果目标位置是颜色前缀，则再向右移动一格
             if (newPos < this.textContent.length() - 1) {
                 char currentChar = this.textContent.charAt(newPos);
-                if(currentChar == '§' || currentChar == '&') {
+                if(currentChar == '§') {
                     newPos++;
                 }
             }
@@ -860,12 +877,14 @@ public class GuiNote extends GuiScreen {
                 if (NoteManager.undoStack.size() > NoteManager.HISTORY_LIMIT) {
                     NoteManager.undoStack.removeLast();
                 }
+                this.lastForcedSaveTime = now; // 新的独立操作重置强制保存计时器
             }
         }
         
         this.lastEditTime = now;
         this.isTypingAction = isTypingAction;
         NoteManager.redoStack.clear(); // 任何新的编辑都会让重做历史失效
+        updateUndoRedoButtonState();
     }
     
     /**
@@ -882,6 +901,7 @@ public class GuiNote extends GuiScreen {
                 }
             }
             isTypingAction = false;
+            this.lastForcedSaveTime = System.currentTimeMillis(); // 提交后重置强制保存计时器
         }
     }
 
@@ -892,14 +912,18 @@ public class GuiNote extends GuiScreen {
         commitTypingAction(); // 在执行撤销前，先提交当前可能正在进行的输入
         
         if (NoteManager.undoStack.size() > 1) { // 至少要保留一个“基底”状态
-            // 将当前状态存入重做堆叠
-            NoteManager.redoStack.push(this.textContent);
-            // 从撤销堆叠中取出上一个状态并应用
-            NoteManager.undoStack.pop(); // 先弹出当前状态
-            this.textContent = NoteManager.undoStack.peek(); // 再获取弹出后的顶部状态
+            String currentState = NoteManager.undoStack.pop();
+            NoteManager.redoStack.push(currentState);
+            
+            this.textContent = NoteManager.undoStack.peek();
             
             updateLinesAndIndices();
             setCursorPosition(this.textContent.length());
+            updateUndoRedoButtonState();
+            
+            // 撤销/重做是“大动作”，需要重置计时器和状态
+            this.isTypingAction = false;
+            this.lastEditTime = 0L;
         }
     }
 
@@ -910,13 +934,18 @@ public class GuiNote extends GuiScreen {
         commitTypingAction(); // 在执行重做前也提交
         
         if (!NoteManager.redoStack.isEmpty()) {
-            // 将当前状态存入撤销堆叠
-            NoteManager.undoStack.push(this.textContent);
-            // 从重做堆叠中取出下一个状态并应用
-            this.textContent = NoteManager.redoStack.pop();
+            String stateToRestore = NoteManager.redoStack.pop();
+            NoteManager.undoStack.push(stateToRestore);
+            
+            this.textContent = stateToRestore;
             
             updateLinesAndIndices();
             setCursorPosition(this.textContent.length());
+            updateUndoRedoButtonState();
+
+            // 撤销/重做是“大动作”，需要重置计时器和状态
+            this.isTypingAction = false;
+            this.lastEditTime = 0L;
         }
     }
 }
