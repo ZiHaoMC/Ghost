@@ -1,6 +1,7 @@
 package com.zihaomc.ghost.commands;
 
 import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.commands.utils.CommandHelper;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.GhostBlockData;
 import net.minecraft.client.Minecraft;
@@ -322,7 +323,7 @@ public class GhostConfigCommand extends CommandBase {
                     GhostConfig.setEnableBedrockMiner(value);
                     sendSuccessMessage(sender, "enableBedrockMiner", value);
                     if (value) {
-                        sender.addChatMessage(GhostBlockCommand.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.gconfig.fastpiston_autogen"));
+                        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.gconfig.fastpiston_autogen"));
                     }
                 } catch (CommandException e) {
                     sendBooleanError(sender, valueStr);
@@ -363,9 +364,9 @@ public class GhostConfigCommand extends CommandBase {
                 String keyToSet = (args.length > 1) ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "";
                 GhostConfig.setNiuTransApiKey(keyToSet);
                 if (keyToSet.trim().isEmpty()) {
-                    sender.addChatMessage(GhostBlockCommand.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.gconfig.success.key_cleared"));
+                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.gconfig.success.key_cleared"));
                 } else {
-                    sender.addChatMessage(GhostBlockCommand.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.gconfig.success.key_set"));
+                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.gconfig.success.key_set"));
                 }
                 break;
 

@@ -4,11 +4,7 @@ import com.zihaomc.ghost.commands.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.handlers.CacheSavingHandler;
-import com.zihaomc.ghost.handlers.ChatSuggestEventHandler;
-import com.zihaomc.ghost.handlers.ItemTooltipTranslationHandler;
-import com.zihaomc.ghost.handlers.SignTranslationHandler;
-import com.zihaomc.ghost.handlers.KeybindHandler;
+import com.zihaomc.ghost.handlers.*;
 import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
 import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
 import com.zihaomc.ghost.features.gameplay.FastPistonBreakingHandler;
@@ -97,6 +93,11 @@ public class Ghost {
 
             MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
             LogUtil.debug("log.handler.registered.itemTooltip");
+            
+            // **** 修改点 ****
+            // 注册新的 GhostBlock 事件处理器，它现在负责处理所有与 /cgb 相关的事件
+            MinecraftForge.EVENT_BUS.register(new GhostBlockEventHandler());
+            LogUtil.debug("log.handler.registered.ghostBlockCommand");
         }
     }
 
@@ -113,14 +114,18 @@ public class Ghost {
 
         if (event.getSide() == Side.CLIENT) {
             LogUtil.debug("log.command.registering.client");
-            GhostBlockCommand.register();
-            LogUtil.debug("log.handler.registered.ghostBlockCommand");
-            ClientCommandHandler.instance.registerCommand(new GhostConfigCommand());
-            LogUtil.debug("log.command.registered.ghostConfig");
+            
+            // **** 修改点 ****
+            // 注册重构后的 GhostBlockCommand 实例
             ClientCommandHandler.instance.registerCommand(new GhostBlockCommand());
             LogUtil.debug("log.command.registered.cgb");
+            
+            // 注册其他命令保持不变
+            ClientCommandHandler.instance.registerCommand(new GhostConfigCommand());
+            LogUtil.debug("log.command.registered.ghostConfig");
             ClientCommandHandler.instance.registerCommand(new TranslateCommand());
             LogUtil.debug("log.command.registered.gtranslate");
+
         } else {
             LogUtil.debug("log.command.skipping.server");
         }
