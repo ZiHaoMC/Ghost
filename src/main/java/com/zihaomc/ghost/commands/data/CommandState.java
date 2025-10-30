@@ -12,7 +12,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 集中存储 GhostBlockCommand 的所有状态。
+ * 集中存储 GhostBlockCommand 的所有状态，
+ * 以便在不同的处理器和事件监听器之间共享。
  */
 public class CommandState {
 
@@ -32,19 +33,35 @@ public class CommandState {
 
     // --- 内部数据结构 ---
 
+    /**
+     * 代表一次可撤销的操作记录。
+     */
     public static class UndoRecord {
-        public enum OperationType { SET, CLEAR_BLOCK }
+        public enum OperationType {
+            SET, // 用于 set, fill, load
+            CLEAR_BLOCK // 用于 clear block, clear file
+        }
         public final String undoFileName;
         public final Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups;
         public final OperationType operationType;
+        public final Integer relatedTaskId; // [新增] 关联的任务ID，如果没有则为 null
 
-        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type) {
+        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type, Integer relatedTaskId) {
             this.undoFileName = undoFileName;
             this.fileBackups = fileBackups != null ? new HashMap<>(fileBackups) : new HashMap<>();
             this.operationType = type;
+            this.relatedTaskId = relatedTaskId;
+        }
+        
+        // 保留旧构造函数以兼容（虽然这里都重写了，但保持个好习惯）
+        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type) {
+            this(undoFileName, fileBackups, type, null);
         }
     }
 
+    /**
+     * 代表一个待确认的清除文件操作。
+     */
     public static class ClearConfirmation {
         public final long timestamp;
         public final List<File> targetFiles;
@@ -55,6 +72,9 @@ public class CommandState {
         }
     }
 
+    /**
+     * 方块状态的轻量级代理。
+     */
     public static class BlockStateProxy {
         public final int blockId;
         public final int metadata;
@@ -65,6 +85,9 @@ public class CommandState {
         }
     }
 
+    /**
+     * 用于保存已暂停任务的状态快照。
+     */
     public static class TaskSnapshot {
         public final String type;
         public final List<BlockPos> remainingBlocks;

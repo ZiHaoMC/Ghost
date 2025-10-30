@@ -4,6 +4,9 @@ import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.commands.data.CommandState;
 import com.zihaomc.ghost.commands.data.CommandState.UndoRecord;
 import com.zihaomc.ghost.commands.data.CommandState.BlockStateProxy;
+import com.zihaomc.ghost.commands.tasks.ClearTask;
+import com.zihaomc.ghost.commands.tasks.FillTask;
+import com.zihaomc.ghost.commands.tasks.LoadTask;
 import com.zihaomc.ghost.commands.utils.CommandHelper;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
@@ -19,6 +22,7 @@ import net.minecraft.world.World;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -34,6 +38,11 @@ public class UndoHandler implements ICommandHandler {
             throw new CommandException(LangUtil.translate("ghostblock.commands.undo.empty"));
         }
         UndoRecord record = CommandState.undoHistory.pop();
+
+        // [新增] 核心逻辑：如果此撤销操作关联了一个仍在运行的任务，强制终止它。
+        if (record.relatedTaskId != null) {
+            cancelRelatedTask(record.relatedTaskId);
+        }
 
         // 1. 恢复用户文件备份
         restoreUserFileBackups(sender, world, record);
@@ -51,6 +60,51 @@ public class UndoHandler implements ICommandHandler {
     }
     
     // --- 辅助方法 ---
+
+    /**
+     * 强制终止与撤销操作关联的任务。
+     * 注意：这里只调用 .cancel()，任务会在下一次Tick时自动从活动列表中移除，不会进入暂停列表。
+     */
+    private void cancelRelatedTask(int taskId) {
+        boolean cancelled = false;
+        // 检查 FillTask
+        synchronized (CommandState.activeFillTasks) {
+            for (FillTask task : CommandState.activeFillTasks) {
+                if (task.getTaskId() == taskId) {
+                    task.cancel();
+                    cancelled = true;
+                    break;
+                }
+            }
+        }
+        // 检查 LoadTask
+        if (!cancelled) {
+            synchronized (CommandState.activeLoadTasks) {
+                for (LoadTask task : CommandState.activeLoadTasks) {
+                    if (task.getTaskId() == taskId) {
+                        task.cancel();
+                        cancelled = true;
+                        break;
+                    }
+                }
+            }
+        }
+        // 检查 ClearTask
+        if (!cancelled) {
+            synchronized (CommandState.activeClearTasks) {
+                for (ClearTask task : CommandState.activeClearTasks) {
+                    if (task.getTaskId() == taskId) {
+                        task.cancel();
+                        cancelled = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (cancelled) {
+            LogUtil.info("log.info.undo.taskCancelled", taskId);
+        }
+    }
 
     private void restoreUserFileBackups(ICommandSender sender, WorldClient world, UndoRecord record) {
         if (record.fileBackups != null && !record.fileBackups.isEmpty()) {
@@ -113,14 +167,13 @@ public class UndoHandler implements ICommandHandler {
     }
     
     private void undoClearOperation(ICommandSender sender, WorldClient world, UndoRecord record, List<GhostBlockEntry> entriesFromUndoFile) throws CommandException {
-        // 撤销 clear file (文件删除操作) - 文件已在 restoreUserFileBackups 中恢复
         if (record.undoFileName.startsWith("undo_clear_file_")) {
             if (record.fileBackups != null && !record.fileBackups.isEmpty()) {
                 sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.undo.success_clear_file"));
             } else {
                 sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.undo.warning.no_files_to_restore"));
             }
-        } else { // 撤销 clear block (方块清除操作)
+        } else {
             if (entriesFromUndoFile.isEmpty()) {
                 sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.undo.error.data_file_empty_ghost"));
                 return;
@@ -168,9 +221,6 @@ public class UndoHandler implements ICommandHandler {
         }
     }
     
-    /**
-     * 从自动清除文件中移除指定位置的条目。
-     */
     private void removeEntriesFromAutoClearFile(World world, List<BlockPos> positionsToRemove) {
         if (positionsToRemove.isEmpty()) return;
         String autoFileName = CommandHelper.getAutoClearFileName((WorldClient) world);

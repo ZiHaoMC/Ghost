@@ -11,7 +11,6 @@ import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -30,8 +29,6 @@ public class LoadHandler implements ICommandHandler {
 
     @Override
     public void processCommand(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
-        // load [filename...] [-b [size]]
-
         List<String> fileNames = new ArrayList<>();
         int loadBatchSize = 100;
         boolean useBatch = false;
@@ -65,38 +62,29 @@ public class LoadHandler implements ICommandHandler {
             }
         }
 
-        // 处理无参数或只带 -b 的情况
         if (!explicitFilesProvided || fileNames.isEmpty()) {
             String defaultFile = GhostBlockData.getWorldIdentifier(world);
             if (!defaultFile.toLowerCase().startsWith("clear_") && !defaultFile.toLowerCase().startsWith("undo_")) {
-                fileNames.clear(); // 清空之前可能添加的无效文件
-                fileNames.add(null); // null 代表默认文件
+                fileNames.clear();
+                fileNames.add(null);
                 sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.load.using_default_file"));
             } else {
                 throw new CommandException(LangUtil.translate("ghostblock.commands.load.error.default_is_internal"));
             }
         }
 
-        // 1. 加载数据
         List<GhostBlockEntry> entries = GhostBlockData.loadData(world, fileNames);
-
         if (entries.isEmpty()) {
             String fileDescription = (fileNames.contains(null)) ? LangUtil.translate("ghostblock.displayname.default_file", GhostBlockData.getWorldIdentifier(world)) : String.join(", ", fileNames.stream().filter(Objects::nonNull).collect(Collectors.toList()));
             sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.load.empty_or_missing", fileDescription));
             return;
         }
 
-        // 2. 自动保存和撤销记录
         List<GhostBlockEntry> autoSaveEntries = collectOriginalBlocksForAutoSave(world, entries);
         if (!autoSaveEntries.isEmpty()) {
             GhostBlockData.saveData(world, autoSaveEntries, CommandHelper.getAutoClearFileName(world), false);
         }
-        String baseId = GhostBlockData.getWorldBaseIdentifier(world);
-        String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
-        GhostBlockData.saveData(world, autoSaveEntries, undoFileName, true);
-        CommandState.undoHistory.push(new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.SET));
 
-        // 3. 检查是否需要隐式批处理
         boolean implicitBatchRequired = false;
         if (!useBatch && !entries.isEmpty()) {
             for (GhostBlockEntry entry : entries) {
@@ -108,15 +96,22 @@ public class LoadHandler implements ICommandHandler {
             }
         }
 
-        // 4. 执行加载
-        if (useBatch || implicitBatchRequired) {
-            int loadTaskId = CommandState.taskIdCounter.incrementAndGet();
+        // [新增] 预先生成 TaskId
+        Integer taskId = (useBatch || implicitBatchRequired) ? CommandState.taskIdCounter.incrementAndGet() : null;
+
+        String baseId = GhostBlockData.getWorldBaseIdentifier(world);
+        String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
+        GhostBlockData.saveData(world, autoSaveEntries, undoFileName, true);
+        
+        // [修改] 传入 taskId
+        CommandState.undoHistory.push(new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.SET, taskId));
+
+        if (taskId != null) {
             int actualBatchSize = useBatch ? loadBatchSize : 100;
-            CommandState.activeLoadTasks.add(new LoadTask(world, entries, actualBatchSize, sender, loadTaskId));
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY,"ghostblock.commands.load.batch_started", loadTaskId, entries.size(), actualBatchSize));
+            CommandState.activeLoadTasks.add(new LoadTask(world, entries, actualBatchSize, sender, taskId));
+            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY,"ghostblock.commands.load.batch_started", taskId, entries.size(), actualBatchSize));
             sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.task.chunk_aware_notice"));
         } else {
-            // 同步加载
             int successCount = 0;
             int failCount = 0;
             int skippedCount = 0;
@@ -174,16 +169,11 @@ public class LoadHandler implements ICommandHandler {
         return CommandBase.getListOfStringsMatchingLastWord(args, suggestions);
     }
     
-    /**
-     * 收集加载条目对应位置的原始方块信息，用于自动保存和撤销。
-     */
     private List<GhostBlockEntry> collectOriginalBlocksForAutoSave(WorldClient world, List<GhostBlockEntry> entriesToLoad) {
         List<GhostBlockEntry> validAutoSaveEntries = new ArrayList<>();
         String autoFileName = CommandHelper.getAutoClearFileName(world);
         List<GhostBlockEntry> existingAutoEntries = GhostBlockData.loadData(world, Collections.singletonList(autoFileName));
-        Set<String> existingKeys = existingAutoEntries.stream()
-                .map(e -> e.x + "," + e.y + "," + e.z)
-                .collect(Collectors.toSet());
+        Set<String> existingKeys = existingAutoEntries.stream().map(e -> e.x + "," + e.y + "," + e.z).collect(Collectors.toSet());
 
         for (GhostBlockEntry loadedEntry : entriesToLoad) {
             BlockPos pos = new BlockPos(loadedEntry.x, loadedEntry.y, loadedEntry.z);
@@ -191,13 +181,8 @@ public class LoadHandler implements ICommandHandler {
             if (!existingKeys.contains(key)) {
                 IBlockState originalState = world.getBlockState(pos);
                 Block originalBlock = originalState.getBlock();
-                validAutoSaveEntries.add(new GhostBlockEntry(
-                        pos,
-                        loadedEntry.blockId,
-                        loadedEntry.metadata,
-                        originalBlock.getRegistryName().toString(),
-                        originalBlock.getMetaFromState(originalState)
-                ));
+                validAutoSaveEntries.add(new GhostBlockEntry(pos, loadedEntry.blockId, loadedEntry.metadata,
+                        originalBlock.getRegistryName().toString(), originalBlock.getMetaFromState(originalState)));
             }
         }
         return validAutoSaveEntries;

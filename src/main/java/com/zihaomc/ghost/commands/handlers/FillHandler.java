@@ -31,12 +31,10 @@ public class FillHandler implements ICommandHandler {
 
     @Override
     public void processCommand(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
-        // fill x1 y1 z1 x2 y2 z2 block [-b [size]] [-s [filename]]
         if (args.length < 8) {
             throw new WrongUsageException(LangUtil.translate("ghostblock.commands.cghostblock.fill.usage"));
         }
         
-        // 1. 解析必须参数
         BlockPos from = CommandHelper.parseBlockPosLegacy(sender, args, 1);
         BlockPos to = CommandHelper.parseBlockPosLegacy(sender, args, 4);
         BlockStateProxy state = CommandHelper.parseBlockState(args[7]);
@@ -45,7 +43,6 @@ public class FillHandler implements ICommandHandler {
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block"));
         }
 
-        // 2. 配置和参数解析
         boolean configForceBatch = GhostConfig.alwaysBatchFill;
         int configForcedSize = GhostConfig.forcedBatchSize;
 
@@ -92,7 +89,6 @@ public class FillHandler implements ICommandHandler {
             }
         }
 
-        // 3. 最终确定批次大小和自动保存
         if (useBatch && !userProvidedBatchSize) {
             batchSize = (configForceBatch && configForcedSize > 0) ? configForcedSize : 100;
         }
@@ -104,7 +100,6 @@ public class FillHandler implements ICommandHandler {
             }
         }
 
-        // 4. 计算所有方块位置
         List<BlockPos> allBlocks = new ArrayList<>();
         int minX = Math.min(from.getX(), to.getX());
         int maxX = Math.max(from.getX(), to.getX());
@@ -114,7 +109,7 @@ public class FillHandler implements ICommandHandler {
         int maxZ = Math.max(from.getZ(), to.getZ());
 
         long volume = (long)(maxX - minX + 1) * (maxY - minY + 1) * (maxZ - minZ + 1);
-        if (volume > Integer.MAX_VALUE) { // 避免 int 溢出，虽然 BlockPos 限制了 Y
+        if (volume > Integer.MAX_VALUE) {
             LogUtil.warn("log.warn.fill.largeVolume", volume);
         }
 
@@ -131,25 +126,13 @@ public class FillHandler implements ICommandHandler {
             return;
         }
 
-        // 5. 自动保存 (填充前收集) 和 撤销记录
         List<GhostBlockEntry> autoEntries = collectOriginalBlocks(world, allBlocks, state);
         if (!autoEntries.isEmpty()) {
             GhostBlockData.saveData(world, autoEntries, CommandHelper.getAutoClearFileName(world), false);
         }
-        String baseId = GhostBlockData.getWorldBaseIdentifier(world);
-        String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
-        GhostBlockData.saveData(world, autoEntries, undoFileName, true);
-        Map<String, List<GhostBlockEntry>> fileBackups = new HashMap<>();
-        if (saveToFile) {
-            String actualSaveFileName = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
-            List<GhostBlockEntry> existingEntries = GhostBlockData.loadData(world, Collections.singletonList(actualSaveFileName));
-            fileBackups.put(actualSaveFileName, existingEntries);
-        }
-        CommandState.undoHistory.push(new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET));
 
-        // 6. 检查是否需要隐式批处理
         boolean implicitBatchRequired = false;
-        if (!useBatch && !allBlocks.isEmpty() && volume < 32768) { // 避免对超大区域进行完整的 EBS 检查
+        if (!useBatch && !allBlocks.isEmpty() && volume < 32768) {
             for (BlockPos pos : allBlocks) {
                 if (!CommandHelper.isBlockSectionReady(world, pos)) {
                     implicitBatchRequired = true;
@@ -160,25 +143,34 @@ public class FillHandler implements ICommandHandler {
                 }
             }
         } else if (volume >= 32768) {
-            // 对于大型区域，即使没有用户明确请求，也强制批处理以防止主线程卡顿
             implicitBatchRequired = true;
-            if (!useBatch) {
-                useBatch = true;
-                // 不再提示，因为这是强制保护
-            }
+            if (!useBatch) useBatch = true;
         }
 
-        // 7. 执行填充
-        if (useBatch || implicitBatchRequired) {
-            int fillTaskId = CommandState.taskIdCounter.incrementAndGet();
-            int actualBatchSize = batchSize;
+        // [新增] 预先生成 TaskId (如果需要)
+        Integer taskId = (useBatch || implicitBatchRequired) ? CommandState.taskIdCounter.incrementAndGet() : null;
 
-            FillTask task = new FillTask(world, state, allBlocks, actualBatchSize, saveToFile, saveFileName, sender, fillTaskId, autoEntries);
+        String baseId = GhostBlockData.getWorldBaseIdentifier(world);
+        String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
+        GhostBlockData.saveData(world, autoEntries, undoFileName, true);
+        Map<String, List<GhostBlockEntry>> fileBackups = new HashMap<>();
+        if (saveToFile) {
+            String actualSaveFileName = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
+            List<GhostBlockEntry> existingEntries = GhostBlockData.loadData(world, Collections.singletonList(actualSaveFileName));
+            fileBackups.put(actualSaveFileName, existingEntries);
+        }
+        
+        // [修改] 将 taskId 传入 UndoRecord
+        CommandState.undoHistory.push(new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId));
+
+        if (taskId != null) {
+            // 批处理模式
+            FillTask task = new FillTask(world, state, allBlocks, batchSize, saveToFile, saveFileName, sender, taskId, autoEntries);
             CommandState.activeFillTasks.add(task);
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.fill.batch_started", fillTaskId, allBlocks.size(), actualBatchSize));
+            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.fill.batch_started", taskId, allBlocks.size(), batchSize));
             sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.task.chunk_aware_notice"));
         } else {
-            // 同步填充
+            // 同步模式
             int count = 0;
             for(BlockPos pos : allBlocks) {
                 CommandHelper.setGhostBlock(world, pos, state);
@@ -233,9 +225,6 @@ public class FillHandler implements ICommandHandler {
         return Collections.emptyList();
     }
     
-    /**
-     * 收集指定位置的原始方块信息，用于自动保存和撤销。
-     */
     private List<GhostBlockEntry> collectOriginalBlocks(WorldClient world, List<BlockPos> blocks, BlockStateProxy state) {
         List<GhostBlockEntry> entries = new ArrayList<>();
         Block ghostBlock = (state != null) ? Block.getBlockById(state.blockId) : null;
