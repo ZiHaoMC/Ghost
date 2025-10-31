@@ -8,7 +8,6 @@ import com.zihaomc.ghost.commands.tasks.LoadTask;
 import com.zihaomc.ghost.commands.utils.CommandHelper;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
-import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -95,15 +94,13 @@ public class LoadHandler implements ICommandHandler {
                 }
             }
         }
-
-        // [新增] 预先生成 TaskId
+        
         Integer taskId = (useBatch || implicitBatchRequired) ? CommandState.taskIdCounter.incrementAndGet() : null;
 
         String baseId = GhostBlockData.getWorldBaseIdentifier(world);
         String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
         GhostBlockData.saveData(world, autoSaveEntries, undoFileName, true);
         
-        // [修改] 传入 taskId
         CommandState.undoHistory.push(new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.SET, taskId));
 
         if (taskId != null) {
@@ -119,7 +116,8 @@ public class LoadHandler implements ICommandHandler {
                 BlockPos pos = new BlockPos(entry.x, entry.y, entry.z);
                 if (world.isBlockLoaded(pos)) {
                     Block block = Block.getBlockFromName(entry.blockId);
-                    if (block != null && block != Block.getBlockFromName("minecraft:air")) {
+                    // 允许加载 air 方块
+                    if (block != null) {
                         try {
                             CommandHelper.setGhostBlock(world, pos, new BlockStateProxy(Block.getIdFromBlock(block), entry.metadata));
                             successCount++;
@@ -144,13 +142,11 @@ public class LoadHandler implements ICommandHandler {
         int currentArgIndex = args.length - 1;
         String prevArg = (currentArgIndex > 0) ? args[currentArgIndex - 1].toLowerCase() : "";
         String prefix = args[currentArgIndex].toLowerCase();
-
         if (prevArg.equals("-b") || prevArg.equals("--batch")) {
             if (!CommandHelper.isNumber(prefix)) {
                 return CommandBase.getListOfStringsMatchingLastWord(args, Arrays.asList("100", "500", "1000"));
             }
         }
-
         List<String> suggestions = new ArrayList<>();
         List<String> allFiles = CommandHelper.getAvailableFileNames();
         List<String> enteredFiles = new ArrayList<>();
@@ -162,7 +158,6 @@ public class LoadHandler implements ICommandHandler {
             }
         }
         allFiles.stream().filter(file -> !CommandHelper.containsIgnoreCase(enteredFiles, file)).forEach(suggestions::add);
-
         if (!CommandHelper.hasFlag(args, "-b", "--batch") && !(prevArg.equals("-b") || prevArg.equals("--batch"))) {
             suggestions.add("-b");
         }
@@ -174,7 +169,6 @@ public class LoadHandler implements ICommandHandler {
         String autoFileName = CommandHelper.getAutoClearFileName(world);
         List<GhostBlockEntry> existingAutoEntries = GhostBlockData.loadData(world, Collections.singletonList(autoFileName));
         Set<String> existingKeys = existingAutoEntries.stream().map(e -> e.x + "," + e.y + "," + e.z).collect(Collectors.toSet());
-
         for (GhostBlockEntry loadedEntry : entriesToLoad) {
             BlockPos pos = new BlockPos(loadedEntry.x, loadedEntry.y, loadedEntry.z);
             String key = pos.getX() + "," + pos.getY() + "," + pos.getZ();

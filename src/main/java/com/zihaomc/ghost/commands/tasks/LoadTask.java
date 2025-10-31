@@ -1,6 +1,5 @@
 package com.zihaomc.ghost.commands.tasks;
 
-import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.commands.utils.CommandHelper;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
@@ -12,14 +11,15 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.BlockPos;
-import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.IChatComponent;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * 代表一个后台批量从文件加载幽灵方块的任务。
- * 这个任务是区块感知和玩家距离感知的。
  */
 public class LoadTask {
     private volatile boolean cancelled = false;
@@ -31,10 +31,9 @@ public class LoadTask {
     private long lastUpdateTime = 0;
     private float lastReportedPercent = -1;
     private final int taskId;
-    // 跟踪哪些索引之前是因为 (isBlockLoaded=false 或 距离远) 而未处理的
     private final Set<Integer> previouslyWaitingForLoadOrProximityIndices = new HashSet<>();
-    private static final double TASK_PLACEMENT_PROXIMITY_SQ = 32.0 * 32.0; // 32格
-
+    private static final double TASK_PLACEMENT_PROXIMITY_SQ = 32.0 * 32.0;
+    
     public LoadTask(WorldClient world, List<GhostBlockData.GhostBlockEntry> entriesToLoad, int batchSize,
                     ICommandSender sender, int taskId) {
         this.world = world;
@@ -46,14 +45,10 @@ public class LoadTask {
         LogUtil.info("log.info.task.load.init", taskId, this.entries.size(), this.batchSize);
     }
 
-    /**
-     * 由 Tick 事件循环调用，处理一个批次的加载。
-     * @return 如果任务完成或被取消，则返回 true。
-     */
     public boolean processBatch() {
         if (cancelled || entries.isEmpty() || currentIndex >= entries.size()) {
             if (!cancelled && !entries.isEmpty() && lastReportedPercent < 100.0f) {
-                sendFinalProgress(); // 确保在任务结束时发送最终消息
+                sendFinalProgress();
             }
             return true;
         }
@@ -66,19 +61,17 @@ public class LoadTask {
             return true;
         }
 
-        // 批次内迭代
         for (int i = 0; i < batchSize && currentIndex < entries.size(); ) {
             if (cancelled) break;
 
             GhostBlockData.GhostBlockEntry entry = entries.get(currentIndex);
             BlockPos pos = new BlockPos(entry.x, entry.y, entry.z);
-
-            // 检查放置条件
             boolean canPlaceNow = checkPlacementConditions(pos, currentPlayer, currentIndex);
             
             if (canPlaceNow) {
                 Block block = Block.getBlockFromName(entry.blockId);
-                if (block != null && block != Blocks.air) {
+                // 允许加载 air
+                if (block != null) {
                     try {
                         IBlockState blockStateToSet = block.getStateFromMeta(entry.metadata);
                         world.setBlockState(pos, blockStateToSet, 3);
@@ -90,15 +83,13 @@ public class LoadTask {
                     LogUtil.warn("log.warn.task.load.invalidBlock", taskId, entry.blockId, pos, currentIndex);
                 }
                 currentIndex++;
-                i++; // 增加批次内处理计数
+                i++;
             } else {
-                // Y轴无效，跳过
                 if (pos.getY() < 0 || pos.getY() >= 256) {
                     LogUtil.debug("log.info.task.load.posInvalidY", taskId, pos.getY(), pos, currentIndex);
                     currentIndex++;
                     i++;
                 } else {
-                    // 等待加载或距离，中断批次
                     break;
                 }
             }
@@ -107,7 +98,6 @@ public class LoadTask {
         if (cancelled) return true;
 
         boolean finished = currentIndex >= entries.size();
-
         if (finished) {
             sendFinalProgress();
         } else {
@@ -117,14 +107,7 @@ public class LoadTask {
         }
         return finished;
     }
-    
-    /**
-     * 检查给定位置的方块是否满足放置条件。
-     * @param pos 要检查的位置
-     * @param player 玩家实体
-     * @param index 当前条目的索引
-     * @return 如果可以放置则返回 true
-     */
+
     private boolean checkPlacementConditions(BlockPos pos, EntityPlayer player, int index) {
         if (pos.getY() < 0 || pos.getY() >= 256) {
             return false;
@@ -145,11 +128,6 @@ public class LoadTask {
         return false;
     }
 
-    /**
-     * 根据需要发送进度消息。
-     * @param currentPercent 当前进度
-     * @param forceSend 是否强制发送
-     */
     private void sendProgressIfNeeded(float currentPercent, boolean forceSend) {
         if (entries.isEmpty()) currentPercent = 100.0f;
         currentPercent = Math.min(100.0f, Math.max(0.0f, currentPercent));
@@ -179,9 +157,6 @@ public class LoadTask {
         }
     }
 
-    /**
-     * 发送最终进度和完成消息。
-     */
     private void sendFinalProgress() {
         if (lastReportedPercent < 100.0f && !cancelled) {
             sendProgressIfNeeded(100.0f, true);
@@ -193,9 +168,6 @@ public class LoadTask {
         }
     }
     
-    /**
-     * 标记任务为取消。
-     */
     public void cancel() {
         if (!this.cancelled) {
             LogUtil.info("log.info.task.load.markedCancelled", taskId);
@@ -204,7 +176,6 @@ public class LoadTask {
         }
     }
     
-    // --- Getters for TaskSnapshot ---
     public int getTaskId() { return taskId; }
     public List<GhostBlockData.GhostBlockEntry> getRemainingEntries() {
         return (entries != null && currentIndex < entries.size())

@@ -25,7 +25,7 @@ public class FastPistonBreakingHandler {
 
     @SubscribeEvent
     public void onPlayerBreakSpeed(PlayerEvent.BreakSpeed event) {
-        if (!GhostConfig.fastPistonBreaking || event.entityPlayer == null) {
+        if (!GhostConfig.GameplayTweaks.fastPistonBreaking || event.entityPlayer == null) {
             return;
         }
 

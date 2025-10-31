@@ -20,7 +20,7 @@ public class SignTranslationHandler {
 
     @SubscribeEvent
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK || !event.world.isRemote || (!GhostConfig.enableSignTranslation && !GhostConfig.enableAutomaticTranslation)) {
+        if (event.action != PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK || !event.world.isRemote || (!GhostConfig.Translation.enableSignTranslation && !GhostConfig.Translation.enableAutomaticTranslation)) {
             return;
         }
 

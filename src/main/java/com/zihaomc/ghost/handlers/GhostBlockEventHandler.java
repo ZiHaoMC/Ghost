@@ -142,7 +142,7 @@ public class GhostBlockEventHandler {
         }
 
         // 检查是否需要执行自动放置逻辑
-        if (GhostConfig.enableAutoPlaceOnJoin) {
+        if (GhostConfig.AutoPlace.enableAutoPlaceOnJoin) {
             String autoPlaceFileName = CommandHelper.getAutoPlaceSaveFileName(world);
             List<GhostBlockData.GhostBlockEntry> autoPlaceEntries = GhostBlockData.loadData(world, Collections.singletonList(autoPlaceFileName));
 
@@ -180,7 +180,7 @@ public class GhostBlockEventHandler {
     public void onWorldLoad(WorldEvent.Load event) {
         if (!event.world.isRemote || !(event.world instanceof WorldClient)) return;
         
-        if (GhostConfig.enableAutoPlaceOnJoin) {
+        if (GhostConfig.AutoPlace.enableAutoPlaceOnJoin) {
             LogUtil.info("log.info.worldLoad.skipCleanup");
             return;
         }
@@ -203,7 +203,7 @@ public class GhostBlockEventHandler {
         }
         
         // 如果启用了自动放置，则在退出时保存脚下的幽灵方块信息
-        if (GhostConfig.enableAutoPlaceOnJoin) {
+        if (GhostConfig.AutoPlace.enableAutoPlaceOnJoin) {
             saveAutoPlaceDataOnUnload(clientWorld);
         }
 

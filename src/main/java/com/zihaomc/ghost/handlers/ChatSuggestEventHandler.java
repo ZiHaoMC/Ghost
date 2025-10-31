@@ -98,7 +98,7 @@ public class ChatSuggestEventHandler {
     public void onGuiOpen(GuiOpenEvent event) {
         
         // 根据配置决定是否启用GUI修复功能
-        if (!GhostConfig.fixGuiStateLossOnResize) {
+        if (!GhostConfig.GuiTweaks.fixGuiStateLossOnResize) {
             return;
         }
         
@@ -140,7 +140,7 @@ public class ChatSuggestEventHandler {
 
     @SubscribeEvent
     public void onCommand(CommandEvent event) {
-        if (!GhostConfig.enableChatSuggestions) return;
+        if (!GhostConfig.ChatFeatures.enableChatSuggestions) return;
         try {
             StringBuilder commandBuilder = new StringBuilder("/").append(event.command.getCommandName());
             if (event.parameters != null) {
@@ -159,7 +159,7 @@ public class ChatSuggestEventHandler {
         if (processedMessageHashes.contains(messageHash)) return;
 
         // --- 命令建议逻辑 (优先级高) ---
-        if (GhostConfig.enableChatSuggestions && event.message instanceof ChatComponentTranslation) {
+        if (GhostConfig.ChatFeatures.enableChatSuggestions && event.message instanceof ChatComponentTranslation) {
             ChatComponentTranslation translation = (ChatComponentTranslation) event.message;
             String key = translation.getKey();
             if ("commands.generic.unknownCommand".equals(key) || "commands.generic.notFound".equals(key)) {
@@ -187,11 +187,11 @@ public class ChatSuggestEventHandler {
         }
 
         if ((event.type == 0 || event.type == 1) && !unformattedText.trim().isEmpty()) {
-            if (GhostConfig.enableAutomaticTranslation) {
+            if (GhostConfig.Translation.enableAutomaticTranslation) {
                 // 自动翻译模式
                 triggerAutomaticChatTranslation(unformattedText);
                 processedMessageHashes.add(messageHash);
-            } else if (GhostConfig.enableChatTranslation) {
+            } else if (GhostConfig.Translation.enableChatTranslation) {
                 // 手动翻译模式（添加按钮）
                 appendTranslateButton(event.message, unformattedText);
                 processedMessageHashes.add(messageHash);
@@ -210,7 +210,7 @@ public class ChatSuggestEventHandler {
             originalChatText = null;
         }
 
-        if (!GhostConfig.enableChatSuggestions || lastCommand == null) return;
+        if (!GhostConfig.ChatFeatures.enableChatSuggestions || lastCommand == null) return;
         if (mc.ingameGUI == null || mc.ingameGUI.getChatGUI() == null || drawnChatLinesField == null || chatComponentField == null) return;
         
         processTickFallbackV2(mc, lastCommand);
@@ -275,7 +275,7 @@ public class ChatSuggestEventHandler {
     @SubscribeEvent
     public void onGuiKeyboardInput(GuiScreenEvent.KeyboardInputEvent.Pre event) {
         // 拦截并禁用聊天框中@键打开Twitch的功能
-        if (GhostConfig.disableTwitchAtKey && event.gui instanceof GuiChat) {
+        if (GhostConfig.ChatFeatures.disableTwitchAtKey && event.gui instanceof GuiChat) {
             if (Keyboard.getEventCharacter() == '@') {
                 event.setCanceled(true); // 阻止原生的 @ 键逻辑执行
                 try {
@@ -292,7 +292,7 @@ public class ChatSuggestEventHandler {
         }
 
         // --- 以下是原有的命令历史滚动逻辑 ---
-        if (!GhostConfig.enableCommandHistoryScroll || chatInputField == null) return;
+        if (!GhostConfig.ChatFeatures.enableCommandHistoryScroll || chatInputField == null) return;
         
         if (!(event.gui instanceof GuiChat)) {
             if (activeGuiChatInstance != null) {
@@ -329,7 +329,7 @@ public class ChatSuggestEventHandler {
 
     @SubscribeEvent
     public void onGuiMouseInput(MouseInputEvent.Pre event) {
-        if (!GhostConfig.enableCommandHistoryScroll || chatInputField == null) return;
+        if (!GhostConfig.ChatFeatures.enableCommandHistoryScroll || chatInputField == null) return;
         if (!(event.gui instanceof GuiChat)) return;
         
         int wheelDelta = Mouse.getEventDWheel();

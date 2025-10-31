@@ -34,7 +34,7 @@ public class AutoSneakHandler {
             return;
         }
 
-        if (!GhostConfig.enableAutoSneakAtEdge) {
+        if (!GhostConfig.AutoSneak.enableAutoSneakAtEdge) {
             if (modIsControllingSneakKey) {
                 releaseSneakKeyByMod(); // 如果功能被禁用，释放由 Mod 触发的蹲下
             }
@@ -102,8 +102,8 @@ public class AutoSneakHandler {
         float moveStrafe = player.moveStrafing;
         Vec3 moveDirection;
 
-        double forwardOffset = GhostConfig.autoSneakForwardOffset;
-        double verticalCheckDepth = GhostConfig.autoSneakVerticalCheckDepth;
+        double forwardOffset = GhostConfig.AutoSneak.autoSneakForwardOffset;
+        double verticalCheckDepth = GhostConfig.AutoSneak.autoSneakVerticalCheckDepth;
 
         // 判断是基于玩家的移动意图还是朝向
         if (Math.abs(moveForward) > 0.001f || Math.abs(moveStrafe) > 0.001f) {

@@ -37,9 +37,8 @@ public class FillTask {
     private volatile boolean cancelled = false;
     private final int taskId;
     private final List<GhostBlockData.GhostBlockEntry> entriesToSaveForUserFile;
-    // 跟踪哪些位置之前是因为 (isBlockLoaded=false 或 距离远) 而未处理的
     private final Set<BlockPos> previouslyWaitingForLoadOrProximity = new HashSet<>();
-    private static final double TASK_PLACEMENT_PROXIMITY_SQ = 32.0 * 32.0; // 任务执行时，玩家需要在此距离平方内才放置 (32格)
+    private static final double TASK_PLACEMENT_PROXIMITY_SQ = 32.0 * 32.0;
 
     public FillTask(WorldClient world, BlockStateProxy state, List<BlockPos> allBlocks,
                     int batchSize, boolean saveToFile, String saveFileName, ICommandSender sender, int taskId,
@@ -68,7 +67,8 @@ public class FillTask {
         }
 
         Block block = Block.getBlockById(state.blockId);
-        if (block == null || block == Blocks.air) {
+        // 允许使用 air，只检查 null。
+        if (block == null) {
             if (processedCount == 0 && !cancelled) {
                 sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED, "ghostblock.commands.error.invalid_block"));
                 LogUtil.error("log.error.task.fill.invalidBlock", taskId, state.blockId);
@@ -81,7 +81,6 @@ public class FillTask {
         int successfullyProcessedThisTick = 0;
         Iterator<BlockPos> iterator = remainingBlocks.iterator();
 
-        // 获取当前玩家实例 (如果 sender 是玩家)
         EntityPlayer currentPlayer = (sender instanceof EntityPlayer) ? (EntityPlayer) sender : null;
         if (currentPlayer != null && (!currentPlayer.isEntityAlive() || currentPlayer.worldObj != this.world)) {
             LogUtil.info("log.info.task.fill.playerInvalid", taskId);
@@ -90,22 +89,18 @@ public class FillTask {
         }
 
         while (iterator.hasNext() && attemptsThisTick < batchSize) {
-            if (cancelled) break; // 在循环内部也检查取消状态
+            if (cancelled) break;
             
             BlockPos pos = iterator.next();
             attemptsThisTick++;
 
-            // 检查方块是否可以立即放置
             boolean canPlaceNow = checkPlacementConditions(pos, currentPlayer);
 
             if (canPlaceNow) {
-                // 如果之前在等待，现在条件满足了，可以记录一下日志
                 if (previouslyWaitingForLoadOrProximity.remove(pos)) {
                     LogUtil.debug("log.info.task.fill.posReady", taskId, pos);
                 }
-
                 try {
-                    // 执行放置
                     IBlockState blockStateToSet = block.getStateFromMeta(state.metadata);
                     world.setBlockState(pos, blockStateToSet, 3);
                     iterator.remove();
@@ -113,16 +108,14 @@ public class FillTask {
                     processedCount++;
                 } catch (Exception e) {
                     LogUtil.printStackTrace("log.warn.task.fill.placeError", e, taskId, pos, e.getMessage());
-                    iterator.remove(); // 即使失败也移除，避免任务卡住
+                    iterator.remove();
                 }
             } else {
-                // 如果Y轴无效，直接从任务中移除
                 if (pos.getY() < 0 || pos.getY() >= 256) {
                     LogUtil.debug("log.info.task.fill.posInvalidY", taskId, pos.getY(), pos);
                     iterator.remove();
                 } else {
-                    // 如果是因为区块未加载或距离远，则保留并在下次tick重试
-                    break; // 中断当前批次，让其他任务有机会执行或等待玩家移动
+                    break;
                 }
             }
         }
@@ -145,17 +138,13 @@ public class FillTask {
     }
 
     /**
-     * 检查给定位置的方块是否满足放置条件（Y轴有效、区块加载、玩家距离近）。
-     * @param pos 要检查的位置
-     * @param player 玩家实体
-     * @return 如果可以放置则返回 true
+     * 检查给定位置的方块是否满足放置条件。
      */
     private boolean checkPlacementConditions(BlockPos pos, EntityPlayer player) {
         if (pos.getY() < 0 || pos.getY() >= 256) {
-            return false; // Y轴无效
+            return false;
         }
         if (CommandHelper.isBlockSectionReady(world, pos)) {
-            // 区块已加载，检查距离
             if (player != null) {
                 if (player.getDistanceSqToCenter(pos) <= TASK_PLACEMENT_PROXIMITY_SQ) {
                     return true;
@@ -166,7 +155,7 @@ public class FillTask {
                     return false;
                 }
             }
-            return true; // 没有玩家上下文，但区块已加载，允许放置
+            return true;
         }
         if (previouslyWaitingForLoadOrProximity.add(pos)) {
             LogUtil.debug("log.info.task.fill.posWaiting", taskId, pos, "isBlockLoaded=false");
@@ -175,9 +164,7 @@ public class FillTask {
     }
 
     /**
-     * 根据需要发送进度消息，避免刷屏。
-     * @param currentPercent 当前进度百分比
-     * @param forceSend 是否强制发送
+     * 根据需要发送进度消息。
      */
     private void sendProgressIfNeeded(float currentPercent, boolean forceSend) {
         if (totalBlocks == 0) currentPercent = 100.0f;
@@ -209,14 +196,13 @@ public class FillTask {
     }
 
     /**
-     * 发送最终的100%进度，执行保存逻辑，并发送完成消息。
+     * 发送最终进度并执行清理。
      */
     private void sendFinalProgress() {
         if (lastReportedPercent < 100.0f && !cancelled) {
             sendProgressIfNeeded(100.0f, true);
         }
 
-        // 保存文件逻辑 (仅当任务未取消时)
         if (saveToFile && !cancelled) {
             String actualSaveFileName = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
             if (this.entriesToSaveForUserFile != null && !this.entriesToSaveForUserFile.isEmpty()) {
@@ -229,7 +215,6 @@ public class FillTask {
             }
         }
 
-        // 发送完成消息 (仅当任务未取消时)
         if (!cancelled) {
             String finishKey = (totalBlocks == 1 && processedCount <= 1) ? "ghostblock.commands.fill.finish_single" : "ghostblock.commands.fill.finish";
             sender.addChatMessage(CommandHelper.formatMessage(CommandHelper.FINISH_COLOR, finishKey, processedCount));
@@ -249,7 +234,6 @@ public class FillTask {
         }
     }
 
-    // --- Getters for TaskSnapshot ---
     public int getTaskId() { return taskId; }
     public List<BlockPos> getRemainingBlocks() { return remainingBlocks; }
     public int getBatchSize() { return batchSize; }

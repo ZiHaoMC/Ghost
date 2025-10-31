@@ -115,7 +115,7 @@ public class GuiNote extends GuiScreen {
         }
         
         // 如果修复功能被强制关闭，则无论如何都从文件重新加载，以模拟原版的状态丢失行为
-        if (!GhostConfig.fixGuiStateLossOnResize) {
+        if (!GhostConfig.GuiTweaks.fixGuiStateLossOnResize) {
             this.textContent = NoteManager.loadNote();
         }
         
@@ -285,7 +285,7 @@ public class GuiNote extends GuiScreen {
         boolean isBoldTitle = false;
 
         // 仅在 Markdown 开启时处理标题和列表
-        if (GhostConfig.enableMarkdownRendering) {
+        if (GhostConfig.NoteTaking.enableMarkdownRendering) {
             if (lineToRender.startsWith("# ")) {
                 scale = 1.5f; isBoldTitle = true; lineToRender = lineToRender.substring(2);
                 this.charXPositions.add((int)currentX); this.charXPositions.add((int)currentX);
@@ -321,11 +321,11 @@ public class GuiNote extends GuiScreen {
             char nextChar = (i + 1 < lineToRender.length()) ? lineToRender.charAt(i + 1) : '\0';
 
             // 检查是否是有效的格式化指令组合
-            boolean isColorPrefix = (GhostConfig.enableAmpersandColorCodes && currentChar == '&') || currentChar == '§';
-            boolean isColorCode = GhostConfig.enableColorRendering && isColorPrefix && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(nextChar)) != -1;
-            boolean isBoldMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '*' && nextChar == '*';
-            boolean isStrikeMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '~' && nextChar == '~';
-            boolean isItalicMarkdown = GhostConfig.enableMarkdownRendering && currentChar == '*';
+            boolean isColorPrefix = (GhostConfig.NoteTaking.enableAmpersandColorCodes && currentChar == '&') || currentChar == '§';
+            boolean isColorCode = GhostConfig.NoteTaking.enableColorRendering && isColorPrefix && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(nextChar)) != -1;
+            boolean isBoldMarkdown = GhostConfig.NoteTaking.enableMarkdownRendering && currentChar == '*' && nextChar == '*';
+            boolean isStrikeMarkdown = GhostConfig.NoteTaking.enableMarkdownRendering && currentChar == '~' && nextChar == '~';
+            boolean isItalicMarkdown = GhostConfig.NoteTaking.enableMarkdownRendering && currentChar == '*';
 
             if (isColorCode) {
                 if (Character.toLowerCase(nextChar) == 'r') {
@@ -356,7 +356,7 @@ public class GuiNote extends GuiScreen {
                 
                 int charWidth;
                 // 对 § 和 & 符号进行特殊宽度处理，以确保光标正常移动
-                if (currentChar == '§' || (GhostConfig.enableAmpersandColorCodes && currentChar == '&')) {
+                if (currentChar == '§' || (GhostConfig.NoteTaking.enableAmpersandColorCodes && currentChar == '&')) {
                     charWidth = this.fontRendererObj.getCharWidth('s');
                 } else {
                     charWidth = this.fontRendererObj.getStringWidth(charToRenderWithFormat) - this.fontRendererObj.getStringWidth(formatPrefix);
@@ -389,7 +389,7 @@ public class GuiNote extends GuiScreen {
             // 修正光标的Y坐标以适应缩放
             String line = this.renderedLines.get(lineIndex);
             float scale = 1.0f;
-            if (GhostConfig.enableMarkdownRendering) {
+            if (GhostConfig.NoteTaking.enableMarkdownRendering) {
                 if (line.startsWith("# ")) scale = 1.5f;
                 else if (line.startsWith("## ")) scale = 1.2f;
             }
@@ -409,7 +409,7 @@ public class GuiNote extends GuiScreen {
         // 检查按键是否被按下
         if (Keyboard.getEventKeyState()) {
             // 根据配置拦截 @ 键，阻止 Twitch 窗口
-            if (GhostConfig.disableTwitchAtKey && Keyboard.getEventCharacter() == '@') {
+            if (GhostConfig.ChatFeatures.disableTwitchAtKey && Keyboard.getEventCharacter() == '@') {
                 this.saveStateForUndo(true); // @ 也是一种输入
                 this.insertText("@");
                 return; // 消耗此事件，不让 super 处理
@@ -432,7 +432,7 @@ public class GuiNote extends GuiScreen {
         
         if (keyCode == Keyboard.KEY_ESCAPE) { this.mc.displayGuiScreen(null); return; }
         // 处理Ctrl+A/C/V/X等组合键，以及新增的撤销/重做
-        if (GhostConfig.enableAdvancedEditing && GuiScreen.isCtrlKeyDown()) {
+        if (GhostConfig.NoteTaking.enableAdvancedEditing && GuiScreen.isCtrlKeyDown()) {
             if (keyCode == Keyboard.KEY_A) { selectAll(); return; }
             if (keyCode == Keyboard.KEY_C) { GuiScreen.setClipboardString(getSelectedText()); return; }
             if (keyCode == Keyboard.KEY_X) {
@@ -530,12 +530,12 @@ public class GuiNote extends GuiScreen {
             }
             else if (button.id == 1) {
                 // 切换 Markdown 配置
-                GhostConfig.setEnableMarkdownRendering(!GhostConfig.enableMarkdownRendering);
+                GhostConfig.setEnableMarkdownRendering(!GhostConfig.NoteTaking.enableMarkdownRendering);
                 updateMarkdownButtonText();
             }
             else if (button.id == 2) {
                 // 切换颜色代码配置
-                GhostConfig.setEnableColorRendering(!GhostConfig.enableColorRendering);
+                GhostConfig.setEnableColorRendering(!GhostConfig.NoteTaking.enableColorRendering);
                 updateColorButtonText();
             }
             else if (button.id == 3) {
@@ -553,7 +553,7 @@ public class GuiNote extends GuiScreen {
             }
             else if (button.id == 6) {
                 // 切换 & 颜色代码配置
-                GhostConfig.setEnableAmpersandColorCodes(!GhostConfig.enableAmpersandColorCodes);
+                GhostConfig.setEnableAmpersandColorCodes(!GhostConfig.NoteTaking.enableAmpersandColorCodes);
                 updateAmpersandButtonText();
             }
         }
@@ -566,7 +566,7 @@ public class GuiNote extends GuiScreen {
     private void updateMarkdownButtonText() {
         if (this.markdownToggleButton != null) {
             String prefix = LangUtil.translate("ghost.gui.note.markdown.prefix");
-            String status = GhostConfig.enableMarkdownRendering ?
+            String status = GhostConfig.NoteTaking.enableMarkdownRendering ?
                     LangUtil.translate("ghost.generic.enabled") :
                     LangUtil.translate("ghost.generic.disabled");
             this.markdownToggleButton.displayString = prefix + status;
@@ -579,7 +579,7 @@ public class GuiNote extends GuiScreen {
     private void updateColorButtonText() {
         if (this.colorToggleButton != null) {
             String prefix = LangUtil.translate("ghost.gui.note.color.prefix");
-            String status = GhostConfig.enableColorRendering ?
+            String status = GhostConfig.NoteTaking.enableColorRendering ?
                     LangUtil.translate("ghost.generic.enabled") :
                     LangUtil.translate("ghost.generic.disabled");
             this.colorToggleButton.displayString = prefix + status;
@@ -592,7 +592,7 @@ public class GuiNote extends GuiScreen {
     private void updateAmpersandButtonText() {
         if (this.ampersandToggleButton != null) {
             String prefix = LangUtil.translate("ghost.gui.note.ampersand.prefix");
-            String status = GhostConfig.enableAmpersandColorCodes ?
+            String status = GhostConfig.NoteTaking.enableAmpersandColorCodes ?
                     LangUtil.translate("ghost.generic.enabled") :
                     LangUtil.translate("ghost.generic.disabled");
             this.ampersandToggleButton.displayString = prefix + status;
@@ -668,7 +668,7 @@ public class GuiNote extends GuiScreen {
                 // 如果超宽了，需要确保我们没有在颜色代码（§或&）和它的代码之间断开
                 if (chars > 1) {
                     char potentialPrefix = text.charAt(chars - 2);
-                    if (potentialPrefix == '§' || (GhostConfig.enableAmpersandColorCodes && potentialPrefix == '&')) {
+                    if (potentialPrefix == '§' || (GhostConfig.NoteTaking.enableAmpersandColorCodes && potentialPrefix == '&')) {
                         return chars - 2;
                     }
                 }
@@ -761,7 +761,7 @@ public class GuiNote extends GuiScreen {
             if (this.cursorPosition > 1) {
                 char precedingChar = this.textContent.charAt(this.cursorPosition - 2);
                 char lastChar = this.textContent.charAt(this.cursorPosition - 1);
-                boolean isColorPrefix = precedingChar == '§' || (GhostConfig.enableAmpersandColorCodes && precedingChar == '&');
+                boolean isColorPrefix = precedingChar == '§' || (GhostConfig.NoteTaking.enableAmpersandColorCodes && precedingChar == '&');
                 if (isColorPrefix && "0123456789abcdefklmnor".indexOf(Character.toLowerCase(lastChar)) != -1) {
                     numToDelete = 2;
                 }
@@ -798,7 +798,7 @@ public class GuiNote extends GuiScreen {
             // 如果目标位置的前一个字符是颜色前缀，则再向左移动一格
             if (newPos > 0) {
                  char precedingChar = this.textContent.charAt(newPos - 1);
-                 if(precedingChar == '§' || (GhostConfig.enableAmpersandColorCodes && precedingChar == '&')) {
+                 if(precedingChar == '§' || (GhostConfig.NoteTaking.enableAmpersandColorCodes && precedingChar == '&')) {
                     newPos--;
                  }
             }
@@ -807,7 +807,7 @@ public class GuiNote extends GuiScreen {
             // 如果目标位置是颜色前缀，则再向右移动一格
             if (newPos < this.textContent.length() - 1) {
                 char currentChar = this.textContent.charAt(newPos);
-                if(currentChar == '§' || (GhostConfig.enableAmpersandColorCodes && currentChar == '&')) {
+                if(currentChar == '§' || (GhostConfig.NoteTaking.enableAmpersandColorCodes && currentChar == '&')) {
                     newPos++;
                 }
             }

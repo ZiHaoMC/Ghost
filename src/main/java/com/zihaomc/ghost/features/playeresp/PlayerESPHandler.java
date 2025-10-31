@@ -14,7 +14,7 @@ public class PlayerESPHandler {
 
     @SubscribeEvent
     public void onRenderPlayerPre(RenderLivingEvent.Pre<EntityPlayer> event) {
-        if (!GhostConfig.enablePlayerESP || !(event.entity instanceof EntityPlayer) || event.entity == mc.thePlayer) {
+        if (!GhostConfig.PlayerESP.enablePlayerESP || !(event.entity instanceof EntityPlayer) || event.entity == mc.thePlayer) {
             return;
         }
 
@@ -34,7 +34,7 @@ public class PlayerESPHandler {
 
     @SubscribeEvent
     public void onRenderPlayerPost(RenderLivingEvent.Post<EntityPlayer> event) {
-        if (!GhostConfig.enablePlayerESP || !(event.entity instanceof EntityPlayer) || event.entity == mc.thePlayer) {
+        if (!GhostConfig.PlayerESP.enablePlayerESP || !(event.entity instanceof EntityPlayer) || event.entity == mc.thePlayer) {
             return;
         }
         

@@ -31,9 +31,9 @@ public class NiuTransUtil {
      * @return 翻译结果，如果失败则返回带前缀的错误信息
      */
     public static String translate(String sourceText) {
-        String apiKey = GhostConfig.niuTransApiKey;
-        String fromLang = GhostConfig.translationSourceLang;
-        String toLang = GhostConfig.translationTargetLang;
+        String apiKey = GhostConfig.Translation.niuTransApiKey;
+        String fromLang = GhostConfig.Translation.translationSourceLang;
+        String toLang = GhostConfig.Translation.translationTargetLang;
 
         if (apiKey == null || apiKey.trim().isEmpty()) {
             return ERROR_PREFIX + LangUtil.translate("ghost.error.translation.no_api_key");

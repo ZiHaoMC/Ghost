@@ -34,7 +34,7 @@ public class GhostConfigCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return LangUtil.translate("ghostblock.commands.gconfig.usage.extended", "/gconfig [setting_name] [value] or /gconfig or /gconfig help");
+        return LangUtil.translate("ghostblock.commands.gconfig.usage.extended");
     }
 
     @Override
@@ -49,345 +49,67 @@ public class GhostConfigCommand extends CommandBase {
 
     @Override
     public void processCommand(ICommandSender sender, String[] args) throws CommandException {
-        if (args.length == 1 && args[0].equalsIgnoreCase("help")) {
-            displayHelp(sender);
-            return;
-        }
         if (args.length == 0) {
             displayCurrentSettings(sender);
             return;
         }
-        if (args.length == 1 && args[0].equalsIgnoreCase("toggleSuggest")) {
+
+        String command = args[0].toLowerCase();
+        
+        if ("help".equalsIgnoreCase(command)) {
+            displayHelp(sender);
+            return;
+        }
+
+        if ("togglesuggest".equalsIgnoreCase(command)) {
             toggleChatSuggestions(sender);
             return;
         }
 
-        if (args.length < 2 && !args[0].equalsIgnoreCase("niutransapikey")) {
-            throw new WrongUsageException(getCommandUsage(sender) + " - " + LangUtil.translate("ghostblock.commands.gconfig.extra_usage_toggle", "Use '/gconfig toggleSuggest' to quickly toggle suggestions."));
-        }
+        String settingName = args[0];
+        String settingKey = settingName.toLowerCase();
 
-        String settingName = args[0].toLowerCase();
-        String valueStr = (args.length > 1) ? args[1] : "";
+        if (GhostConfig.settingUpdaters.containsKey(settingKey)) {
+            if (settingKey.equals("niutransapikey") && args.length == 1) {
+                GhostConfig.setNiuTransApiKey("");
+                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.gconfig.success.key_cleared"));
+                return;
+            }
 
-        switch (settingName) {
-            case "alwaysbatchfill":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setAlwaysBatchFill(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "forcedbatchsize":
-                try {
-                    int value = CommandBase.parseInt(valueStr, 1);
-                    if (GhostConfig.setForcedBatchSize(value)) {
-                        sendSuccessMessage(sender, settingName, value);
-                    } else {
-                        sendGenericSetError(sender, settingName);
-                    }
-                } catch (NumberFormatException e) {
-                    sendIntegerError(sender, valueStr);
-                } catch (CommandException e) {
-                    sendPositiveIntegerError(sender, valueStr);
-                }
-                break;
-
-            case "enableautosave":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableAutoSave(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "defaultsavename":
-                if (GhostConfig.setDefaultSaveFileName(valueStr)) {
-                    sendSuccessMessage(sender, settingName, "'" + valueStr + "'");
-                } else {
-                    sendGenericSetError(sender, settingName);
-                }
-                break;
-
-            case "enablechatsuggestions":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableChatSuggestions(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
+            if (args.length < 2) {
+                throw new WrongUsageException(getCommandUsage(sender));
+            }
             
-            case "enablecommandhistoryscroll":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableCommandHistoryScroll(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-            
-            case "disabletwitchatkey":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setDisableTwitchAtKey(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-            
-            case "enablechattranslation":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableChatTranslation(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
+            String valueStr = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
-            case "enablesigntranslation":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableSignTranslation(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "enableitemtranslation":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableItemTranslation(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-            
-            case "enableautomatictranslation":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableAutomaticTranslation(value);
-                    sendSuccessMessage(sender, "enableAutomaticTranslation", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "autoshowcachedtranslation":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setAutoShowCachedTranslation(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "showtranslationonly":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setShowTranslationOnly(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "hidetranslationkeybindtooltip":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setHideTranslationKeybindTooltip(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "enableautoplaceonjoin":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableAutoPlaceOnJoin(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "enableautosneakatedge":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableAutoSneakAtEdge(value);
-                    sendSuccessMessage(sender, "enableAutoSneakAtEdge", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-            
-            case "enablenotefeature":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableNoteFeature(value);
-                    sendSuccessMessage(sender, "enableNoteFeature", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "enableadvancedediting":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableAdvancedEditing(value);
-                    sendSuccessMessage(sender, "enableAdvancedEditing", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "enablemarkdownrendering":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableMarkdownRendering(value);
-                    sendSuccessMessage(sender, "enableMarkdownRendering", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "enablecolorrendering":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableColorRendering(value);
-                    sendSuccessMessage(sender, "enableColorRendering", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-            
-            case "enableampersandcolorcodes":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableAmpersandColorCodes(value);
-                    sendSuccessMessage(sender, "enableAmpersandColorCodes", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "autosneakforwardoffset":
-                try {
-                    double value = CommandBase.parseDouble(valueStr, 0.05, 1.0);
-                    GhostConfig.setAutoSneakForwardOffset(value);
-                    sendSuccessMessage(sender, "autoSneakForwardOffset", String.format("%.2f", value));
-                } catch (NumberFormatException e) {
-                    sendDoubleError(sender, valueStr);
-                } catch (CommandException e) {
-                    throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_value.double.range", valueStr, 0.05, 1.0));
-                }
-                break;
-
-            case "autosneakverticalcheckdepth":
-                try {
-                    double value = CommandBase.parseDouble(valueStr, 0.1, 3.0);
-                    GhostConfig.setAutoSneakVerticalCheckDepth(value);
-                    sendSuccessMessage(sender, "autoSneakVerticalCheckDepth", String.format("%.2f", value));
-                } catch (NumberFormatException e) {
-                    sendDoubleError(sender, valueStr);
-                } catch (CommandException e) {
-                    throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_value.double.range", valueStr, 0.1, 3.0));
-                }
-                break;
-
-            case "enableplayeresp":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnablePlayerESP(value);
-                    sendSuccessMessage(sender, "enablePlayerESP", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-            
-            case "enablebedrockminer":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setEnableBedrockMiner(value);
-                    sendSuccessMessage(sender, "enableBedrockMiner", value);
-                    if (value) {
-                        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.gconfig.fastpiston_autogen"));
-                    }
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
+            try {
+                // 执行更新
+                GhostConfig.settingUpdaters.get(settingKey).accept(settingName, valueStr);
                 
-            case "fastpistonbreaking":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setFastPistonBreaking(value, true);
-                    sendSuccessMessage(sender, "fastPistonBreaking", value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-            
-            case "hidearrowsonplayers":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setHideArrowsOnPlayers(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "fixguistatelossonresize":
-                try {
-                    boolean value = CommandBase.parseBoolean(valueStr);
-                    GhostConfig.setFixGuiStateLossOnResize(value);
-                    sendSuccessMessage(sender, settingName, value);
-                } catch (CommandException e) {
-                    sendBooleanError(sender, valueStr);
-                }
-                break;
-
-            case "niutransapikey":
-                String keyToSet = (args.length > 1) ? String.join(" ", Arrays.copyOfRange(args, 1, args.length)) : "";
-                GhostConfig.setNiuTransApiKey(keyToSet);
-                if (keyToSet.trim().isEmpty()) {
-                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.gconfig.success.key_cleared"));
-                } else {
+                // 特殊消息反馈
+                if (settingKey.equals("niutransapikey")) {
                     sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.gconfig.success.key_set"));
+                } else if (settingKey.equals("enablebedrockminer") && "true".equalsIgnoreCase(valueStr)) {
+                    sendSuccessMessage(sender, settingName, valueStr);
+                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.gconfig.fastpiston_autogen"));
+                } else {
+                    sendSuccessMessage(sender, settingName, valueStr);
                 }
-                break;
-
-            case "translationsourcelang":
-                GhostConfig.setTranslationSourceLang(valueStr);
-                sendSuccessMessage(sender, settingName, valueStr);
-                break;
-
-            case "translationtargetlang":
-                GhostConfig.setTranslationTargetLang(valueStr);
-                sendSuccessMessage(sender, settingName, valueStr);
-                break;
-
-            default:
-                throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_setting.all_options", settingName));
+            } catch (RuntimeException e) {
+                // 从 Lambda 表达式中捕获包装的 CommandException 并重新抛出
+                if (e.getCause() instanceof CommandException) {
+                    throw (CommandException) e.getCause();
+                }
+                // 捕获其他运行时异常，例如 NumberFormatException
+                throw new CommandException("commands.generic.exception");
+            }
+        } else {
+            throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_setting.all_options", settingName));
         }
     }
 
     private void toggleChatSuggestions(ICommandSender sender) {
-        boolean currentState = GhostConfig.enableChatSuggestions;
-        boolean newState = !currentState;
+        boolean newState = !GhostConfig.ChatFeatures.enableChatSuggestions;
         GhostConfig.setEnableChatSuggestions(newState);
 
         String feedbackKey = newState ? "ghostblock.commands.gconfig.togglesuggest.enabled" : "ghostblock.commands.gconfig.togglesuggest.disabled";
@@ -395,54 +117,59 @@ public class GhostConfigCommand extends CommandBase {
         feedback.getChatStyle().setColor(newState ? EnumChatFormatting.GREEN : EnumChatFormatting.RED);
         sender.addChatMessage(feedback);
     }
-
+    
     private void displayCurrentSettings(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.current_settings.header")
                 .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.AQUA)));
-
-        sender.addChatMessage(formatSettingLine("alwaysBatchFill", GhostConfig.alwaysBatchFill));
-        sender.addChatMessage(formatSettingLine("forcedBatchSize", GhostConfig.forcedBatchSize));
-        sender.addChatMessage(formatSettingLine("enableAutoSave", GhostConfig.enableAutoSave));
-
-        String displayFileName = GhostConfig.defaultSaveFileName;
-        if (displayFileName == null || displayFileName.trim().isEmpty() || "default".equalsIgnoreCase(displayFileName.trim())) {
+        
+        sender.addChatMessage(formatSettingLine("alwaysBatchFill", GhostConfig.FillCommand.alwaysBatchFill));
+        sender.addChatMessage(formatSettingLine("forcedBatchSize", GhostConfig.FillCommand.forcedBatchSize));
+        
+        sender.addChatMessage(formatSettingLine("enableAutoSave", GhostConfig.SaveOptions.enableAutoSave));
+        String displayFileName = GhostConfig.SaveOptions.defaultSaveFileName;
+        if (displayFileName == null || displayFileName.trim().isEmpty()) {
             displayFileName = "(" + LangUtil.translate("ghostblock.commands.gconfig.current_settings.default_filename_placeholder") + ")";
-        } else {
-            displayFileName = "'" + displayFileName + "'";
         }
         sender.addChatMessage(formatSettingLine("defaultSaveName", displayFileName));
 
-        sender.addChatMessage(formatSettingLine("enableChatSuggestions", GhostConfig.enableChatSuggestions));
-        sender.addChatMessage(formatSettingLine("enableCommandHistoryScroll", GhostConfig.enableCommandHistoryScroll));
-        sender.addChatMessage(formatSettingLine("disableTwitchAtKey", GhostConfig.disableTwitchAtKey));
-        sender.addChatMessage(formatSettingLine("enableChatTranslation", GhostConfig.enableChatTranslation));
-        sender.addChatMessage(formatSettingLine("enableSignTranslation", GhostConfig.enableSignTranslation));
-        sender.addChatMessage(formatSettingLine("enableItemTranslation", GhostConfig.enableItemTranslation));
-        sender.addChatMessage(formatSettingLine("enableAutomaticTranslation", GhostConfig.enableAutomaticTranslation));
-        sender.addChatMessage(formatSettingLine("autoShowCachedTranslation", GhostConfig.autoShowCachedTranslation));
-        sender.addChatMessage(formatSettingLine("showTranslationOnly", GhostConfig.showTranslationOnly));
-        sender.addChatMessage(formatSettingLine("hideTranslationKeybindTooltip", GhostConfig.hideTranslationKeybindTooltip));
-        sender.addChatMessage(formatSettingLine("enableAutoPlaceOnJoin", GhostConfig.enableAutoPlaceOnJoin));
-        sender.addChatMessage(formatSettingLine("enableAutoSneakAtEdge", GhostConfig.enableAutoSneakAtEdge));
-        sender.addChatMessage(formatSettingLine("autoSneakForwardOffset", String.format("%.2f", GhostConfig.autoSneakForwardOffset)));
-        sender.addChatMessage(formatSettingLine("autoSneakVerticalCheckDepth", String.format("%.2f", GhostConfig.autoSneakVerticalCheckDepth)));
-        sender.addChatMessage(formatSettingLine("enablePlayerESP", GhostConfig.enablePlayerESP));
-        sender.addChatMessage(formatSettingLine("enableBedrockMiner", GhostConfig.enableBedrockMiner));
-        sender.addChatMessage(formatSettingLine("fastPistonBreaking", GhostConfig.fastPistonBreaking));
-        sender.addChatMessage(formatSettingLine("hideArrowsOnPlayers", GhostConfig.hideArrowsOnPlayers));
-        sender.addChatMessage(formatSettingLine("enableNoteFeature", GhostConfig.enableNoteFeature));
-        sender.addChatMessage(formatSettingLine("enableAdvancedEditing", GhostConfig.enableAdvancedEditing));
-        sender.addChatMessage(formatSettingLine("enableMarkdownRendering", GhostConfig.enableMarkdownRendering));
-        sender.addChatMessage(formatSettingLine("enableColorRendering", GhostConfig.enableColorRendering));
-        sender.addChatMessage(formatSettingLine("enableAmpersandColorCodes", GhostConfig.enableAmpersandColorCodes));
-        sender.addChatMessage(formatSettingLine("fixGuiStateLossOnResize", GhostConfig.fixGuiStateLossOnResize));
+        sender.addChatMessage(formatSettingLine("enableChatSuggestions", GhostConfig.ChatFeatures.enableChatSuggestions));
+        sender.addChatMessage(formatSettingLine("enableCommandHistoryScroll", GhostConfig.ChatFeatures.enableCommandHistoryScroll));
+        sender.addChatMessage(formatSettingLine("disableTwitchAtKey", GhostConfig.ChatFeatures.disableTwitchAtKey));
 
-        String apiKeyDisplay = (GhostConfig.niuTransApiKey != null && !GhostConfig.niuTransApiKey.isEmpty()) ?
-                "******" + GhostConfig.niuTransApiKey.substring(Math.max(0, GhostConfig.niuTransApiKey.length() - 4)) :
+        sender.addChatMessage(formatSettingLine("enableAutoPlaceOnJoin", GhostConfig.AutoPlace.enableAutoPlaceOnJoin));
+
+        sender.addChatMessage(formatSettingLine("enableAutoSneakAtEdge", GhostConfig.AutoSneak.enableAutoSneakAtEdge));
+        sender.addChatMessage(formatSettingLine("autoSneakForwardOffset", String.format("%.2f", GhostConfig.AutoSneak.autoSneakForwardOffset)));
+        sender.addChatMessage(formatSettingLine("autoSneakVerticalCheckDepth", String.format("%.2f", GhostConfig.AutoSneak.autoSneakVerticalCheckDepth)));
+
+        sender.addChatMessage(formatSettingLine("enablePlayerESP", GhostConfig.PlayerESP.enablePlayerESP));
+        
+        sender.addChatMessage(formatSettingLine("enableBedrockMiner", GhostConfig.BedrockMiner.enableBedrockMiner));
+
+        sender.addChatMessage(formatSettingLine("fastPistonBreaking", GhostConfig.GameplayTweaks.fastPistonBreaking));
+        sender.addChatMessage(formatSettingLine("hideArrowsOnPlayers", GhostConfig.GameplayTweaks.hideArrowsOnPlayers));
+
+        sender.addChatMessage(formatSettingLine("enableChatTranslation", GhostConfig.Translation.enableChatTranslation));
+        sender.addChatMessage(formatSettingLine("enableSignTranslation", GhostConfig.Translation.enableSignTranslation));
+        sender.addChatMessage(formatSettingLine("enableItemTranslation", GhostConfig.Translation.enableItemTranslation));
+        sender.addChatMessage(formatSettingLine("enableAutomaticTranslation", GhostConfig.Translation.enableAutomaticTranslation));
+        sender.addChatMessage(formatSettingLine("autoShowCachedTranslation", GhostConfig.Translation.autoShowCachedTranslation));
+        sender.addChatMessage(formatSettingLine("showTranslationOnly", GhostConfig.Translation.showTranslationOnly));
+        sender.addChatMessage(formatSettingLine("hideTranslationKeybindTooltip", GhostConfig.Translation.hideTranslationKeybindTooltip));
+        String apiKeyDisplay = (GhostConfig.Translation.niuTransApiKey != null && !GhostConfig.Translation.niuTransApiKey.isEmpty()) ?
+                "******" + GhostConfig.Translation.niuTransApiKey.substring(Math.max(0, GhostConfig.Translation.niuTransApiKey.length() - 4)) :
                 LangUtil.translate("ghostblock.commands.gconfig.not_set");
         sender.addChatMessage(formatSettingLine("niuTransApiKey", apiKeyDisplay));
-        sender.addChatMessage(formatSettingLine("translationSourceLang", GhostConfig.translationSourceLang));
-        sender.addChatMessage(formatSettingLine("translationTargetLang", GhostConfig.translationTargetLang));
+        sender.addChatMessage(formatSettingLine("translationSourceLang", GhostConfig.Translation.translationSourceLang));
+        sender.addChatMessage(formatSettingLine("translationTargetLang", GhostConfig.Translation.translationTargetLang));
+
+        sender.addChatMessage(formatSettingLine("enableNoteFeature", GhostConfig.NoteTaking.enableNoteFeature));
+        sender.addChatMessage(formatSettingLine("enableAdvancedEditing", GhostConfig.NoteTaking.enableAdvancedEditing));
+        sender.addChatMessage(formatSettingLine("enableMarkdownRendering", GhostConfig.NoteTaking.enableMarkdownRendering));
+        sender.addChatMessage(formatSettingLine("enableColorRendering", GhostConfig.NoteTaking.enableColorRendering));
+        sender.addChatMessage(formatSettingLine("enableAmpersandColorCodes", GhostConfig.NoteTaking.enableAmpersandColorCodes));
+
+        sender.addChatMessage(formatSettingLine("fixGuiStateLossOnResize", GhostConfig.GuiTweaks.fixGuiStateLossOnResize));
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
@@ -459,6 +186,11 @@ public class GhostConfigCommand extends CommandBase {
         valueComp.getChatStyle().setColor(EnumChatFormatting.YELLOW);
         line.appendSibling(valueComp);
         return line;
+    }
+
+    private void sendSuccessMessage(ICommandSender sender, String setting, Object value) {
+        sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.success", setting, value)
+                .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.GREEN)));
     }
 
     private void displayHelp(ICommandSender sender) {
@@ -540,75 +272,22 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.aliases") + ": " + hl + String.join(", ", getCommandAliases())));
     }
 
-    private void sendSuccessMessage(ICommandSender sender, String setting, Object value) {
-        sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.success", setting, value)
-                .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.GREEN)));
-    }
-
-    private void sendBooleanError(ICommandSender sender, String invalidValue) throws CommandException {
-        throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_value.boolean", invalidValue));
-    }
-
-    private void sendIntegerError(ICommandSender sender, String invalidValue) throws CommandException {
-        throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_value.integer", invalidValue));
-    }
-
-    private void sendPositiveIntegerError(ICommandSender sender, String invalidValue) throws CommandException {
-        throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_value.integer.positive", invalidValue));
-    }
-
-    private void sendDoubleError(ICommandSender sender, String invalidValue) throws CommandException {
-        throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_value.double", invalidValue));
-    }
-
-    private void sendGenericSetError(ICommandSender sender, String setting) throws CommandException {
-        throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.generic_set_failed", setting));
-    }
-
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
-            return CommandBase.getListOfStringsMatchingLastWord(args,
-                    "help", "alwaysBatchFill", "forcedBatchSize", "enableAutoSave", "defaultSaveName",
-                    "enableChatSuggestions", "enableCommandHistoryScroll", "disableTwitchAtKey", "enableChatTranslation", "enableSignTranslation", "enableItemTranslation", 
-                    "enableAutomaticTranslation", "autoShowCachedTranslation", "showTranslationOnly", "hideTranslationKeybindTooltip", "enableAutoPlaceOnJoin", "enableAutoSneakAtEdge",
-                    "autoSneakForwardOffset", "autoSneakVerticalCheckDepth", "enablePlayerESP",
-                    "enableBedrockMiner", "fastPistonBreaking", "hideArrowsOnPlayers", "enableNoteFeature",
-                    "enableAdvancedEditing", "enableMarkdownRendering", "enableColorRendering", "enableAmpersandColorCodes", "fixGuiStateLossOnResize",
-                    "niuTransApiKey", "translationSourceLang", "translationTargetLang",
-                    "toggleSuggest");
+            List<String> settingNames = new ArrayList<>(GhostConfig.settingUpdaters.keySet());
+            settingNames.add("help");
+            settingNames.add("toggleSuggest");
+            Collections.sort(settingNames);
+            return CommandBase.getListOfStringsMatchingLastWord(args, settingNames);
         } else if (args.length == 2) {
             String settingName = args[0].toLowerCase();
-            if (settingName.equals("help")) {
-                return Collections.emptyList();
+            
+            if (isBooleanCommand(settingName)) {
+                return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
             }
+            
             switch (settingName) {
-                case "alwaysbatchfill":
-                case "enableautosave":
-                case "enablechatsuggestions":
-                case "enablecommandhistoryscroll":
-                case "disabletwitchatkey":
-                case "enablechattranslation":
-                case "enablesigntranslation":
-                case "enableitemtranslation":
-                case "enableautomatictranslation":
-                case "autoshowcachedtranslation":
-                case "showtranslationonly":
-                case "hidetranslationkeybindtooltip":
-                case "enableautoplaceonjoin":
-                case "enableautosneakatedge":
-                case "enableplayeresp":
-                case "enablebedrockminer":
-                case "fastpistonbreaking":
-                case "hidearrowsonplayers":
-                case "enablenotefeature":
-                case "enableadvancedediting":
-                case "enablemarkdownrendering":
-                case "enablecolorrendering":
-                case "enableampersandcolorcodes":
-                case "fixguistatelossonresize":
-                    return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
-
                 case "translationsourcelang":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "auto", "zh", "en", "ja", "ko", "fr", "ru", "de");
                 case "translationtargetlang":
@@ -637,14 +316,16 @@ public class GhostConfigCommand extends CommandBase {
                     return CommandBase.getListOfStringsMatchingLastWord(args, "0.25", "0.35", "0.5", "0.75", "1.0");
                 case "autosneakverticalcheckdepth":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "0.5", "1.0", "1.5", "2.0", "2.5", "3.0");
-
-                case "togglesuggest":
-                case "niutransapikey":
-                    return Collections.emptyList();
-                default:
-                    return Collections.emptyList();
             }
         }
         return Collections.emptyList();
+    }
+    
+    // --- 类型检查辅助方法 ---
+    private boolean isBooleanCommand(String key) {
+        return key.startsWith("enable") || key.startsWith("always") || key.startsWith("disable") ||
+               key.startsWith("auto") || key.startsWith("show") || key.startsWith("hide") ||
+               key.equals("headlesspistonmode") || key.equals("blinkduringtaskstick") ||
+               key.equals("fastpistonbreaking") || key.equals("fixguistatelossonresize");
     }
 }

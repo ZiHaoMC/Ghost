@@ -21,7 +21,7 @@ public class PlayerArrowRendererHandler {
     @SubscribeEvent
     public void onRenderPlayerPre(RenderPlayerEvent.Pre event) {
         // 如果功能未开启，直接返回
-        if (!GhostConfig.hideArrowsOnPlayers) {
+        if (!GhostConfig.GameplayTweaks.hideArrowsOnPlayers) {
             return;
         }
 

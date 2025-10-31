@@ -31,6 +31,7 @@ public class SetHandler implements ICommandHandler {
 
     @Override
     public void processCommand(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
+        // 用法检查: set x y z block [-s [filename]]
         if (args.length < 5) {
             throw new WrongUsageException(LangUtil.translate("ghostblock.commands.cghostblock.set.usage"));
         }
@@ -38,6 +39,8 @@ public class SetHandler implements ICommandHandler {
         BlockPos pos = CommandHelper.parseBlockPosLegacy(sender, args, 1);
         BlockStateProxy state = CommandHelper.parseBlockState(args[4]);
         Block block = Block.getBlockById(state.blockId);
+        
+        // 允许使用 minecraft:air。 parseBlockState 已经处理了 null 的情况。
         if (block == null) {
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block"));
         }
@@ -63,9 +66,9 @@ public class SetHandler implements ICommandHandler {
             }
         }
 
-        if (!userProvidedSave && GhostConfig.enableAutoSave) {
+        if (!userProvidedSave && GhostConfig.SaveOptions.enableAutoSave) {
             saveToFile = true;
-            saveFileName = GhostConfig.defaultSaveFileName;
+            saveFileName = GhostConfig.SaveOptions.defaultSaveFileName;
             if (saveFileName == null || saveFileName.trim().isEmpty() || saveFileName.equalsIgnoreCase("default")) {
                 saveFileName = null;
             }
@@ -78,7 +81,6 @@ public class SetHandler implements ICommandHandler {
         }
 
         boolean sectionIsReady = CommandHelper.isBlockSectionReady(world, pos);
-        // [新增] 如果需要延迟任务，生成 TaskId
         Integer taskId = (!sectionIsReady) ? CommandState.taskIdCounter.incrementAndGet() : null;
 
         String baseId = GhostBlockData.getWorldBaseIdentifier(world);
@@ -91,7 +93,6 @@ public class SetHandler implements ICommandHandler {
             fileBackups.put(actualSaveFileName, existingEntries);
         }
 
-        // [修改] 传入 taskId
         CommandState.undoHistory.push(new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId));
 
         if (taskId == null) {
@@ -144,6 +145,9 @@ public class SetHandler implements ICommandHandler {
         return Collections.emptyList();
     }
     
+    /**
+     * 收集指定位置的原始方块信息，用于自动保存和撤销。
+     */
     private List<GhostBlockEntry> collectOriginalBlocks(WorldClient world, List<BlockPos> blocks, BlockStateProxy state) {
         List<GhostBlockEntry> entries = new ArrayList<>();
         Block ghostBlock = (state != null) ? Block.getBlockById(state.blockId) : null;

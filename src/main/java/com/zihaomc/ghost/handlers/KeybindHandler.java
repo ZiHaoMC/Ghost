@@ -57,25 +57,25 @@ public class KeybindHandler {
         }
 
         if (toggleAutoSneak != null && toggleAutoSneak.isPressed()) {
-            boolean newState = !GhostConfig.enableAutoSneakAtEdge;
+            boolean newState = !GhostConfig.AutoSneak.enableAutoSneakAtEdge;
             GhostConfig.setEnableAutoSneakAtEdge(newState);
             sendToggleMessage("ghost.keybind.toggle.autosneak", newState);
         }
 
         if (togglePlayerESP != null && togglePlayerESP.isPressed()) {
-            boolean newState = !GhostConfig.enablePlayerESP;
+            boolean newState = !GhostConfig.PlayerESP.enablePlayerESP;
             GhostConfig.setEnablePlayerESP(newState);
             sendToggleMessage("ghost.keybind.toggle.playeresp", newState);
         }
 
         if (toggleBedrockMiner != null && toggleBedrockMiner.isPressed()) {
-            boolean newState = !GhostConfig.enableBedrockMiner;
+            boolean newState = !GhostConfig.BedrockMiner.enableBedrockMiner;
             GhostConfig.setEnableBedrockMiner(newState);
             sendToggleMessage("ghost.keybind.toggle.bedrockminer", newState);
         }
         
         if (openNoteGui != null && openNoteGui.isPressed()) {
-            if (GhostConfig.enableNoteFeature) {
+            if (GhostConfig.NoteTaking.enableNoteFeature) {
                 // 仅当当前没有打开任何GUI时才打开笔记界面
                 if (Minecraft.getMinecraft().currentScreen == null) {
                     Minecraft.getMinecraft().displayGuiScreen(new GuiNote());
@@ -97,7 +97,7 @@ public class KeybindHandler {
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent event) {
         // 仅当修复功能在配置中开启时，此逻辑才生效
-        if (!GhostConfig.fixGuiStateLossOnResize) {
+        if (!GhostConfig.GuiTweaks.fixGuiStateLossOnResize) {
             return;
         }
         GuiScreen currentScreen = Minecraft.getMinecraft().currentScreen;
@@ -114,7 +114,7 @@ public class KeybindHandler {
     @SubscribeEvent
     public void onGuiInitPost(GuiScreenEvent.InitGuiEvent.Post event) {
         // 仅当修复功能在配置中开启时，此逻辑才生效
-        if (!GhostConfig.fixGuiStateLossOnResize) {
+        if (!GhostConfig.GuiTweaks.fixGuiStateLossOnResize) {
             return;
         }
         if (event.gui instanceof GuiNote) {
@@ -175,7 +175,7 @@ public class KeybindHandler {
     }
     
     private void handleToggleOrTranslatePress() {
-        if (!GhostConfig.enableItemTranslation) {
+        if (!GhostConfig.Translation.enableItemTranslation) {
             return;
         }
         

@@ -3,14 +3,23 @@ package com.zihaomc.ghost.config;
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
+import net.minecraft.command.CommandBase;
+import net.minecraft.command.CommandException;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 
 import java.io.File;
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
+/**
+ * 重构后的配置类。
+ * - 使用静态内部类对配置项进行分组。
+ * - 简化了加载和保存逻辑，减少了重复代码。
+ * - 为 GhostConfigCommand 提供了统一的更新接口。
+ */
 public class GhostConfig {
 
     private static Configuration config = null;
@@ -28,50 +37,87 @@ public class GhostConfig {
     public static final String CATEGORY_NOTE = "note_taking";
     public static final String CATEGORY_GUI_TWEAKS = "gui_tweaks";
 
-    // --- 功能开关 ---
-    public static boolean alwaysBatchFill = false;
-    public static boolean enableAutoSave = false;
-    public static boolean enableChatSuggestions = true;
-    public static boolean enableCommandHistoryScroll = true;
-    public static boolean disableTwitchAtKey = true; // 新增配置项，用于禁用@键功能
-    public static boolean enableChatTranslation = false;
-    public static boolean enableSignTranslation = false;
-    public static boolean enableItemTranslation = false;
-    public static boolean enableAutomaticTranslation = false;
-    public static boolean autoShowCachedTranslation = true;
-    public static boolean showTranslationOnly = false;
-    public static boolean hideTranslationKeybindTooltip = false;
-    public static boolean enableAutoPlaceOnJoin = false;
-    public static boolean enableAutoSneakAtEdge = false;
-    public static boolean enablePlayerESP = false;
-    public static boolean enableBedrockMiner = false;
-    public static boolean fastPistonBreaking = false;
-    public static boolean hideArrowsOnPlayers = false;
-    public static boolean enableNoteFeature = true;
-    public static boolean enableAdvancedEditing = true;
-    public static boolean enableMarkdownRendering = true;
-    public static boolean enableColorRendering = true;
-    public static boolean enableAmpersandColorCodes = true; // 新增配置项
-    public static boolean fixGuiStateLossOnResize = true;
+    // --- 用于命令的统一配置更新器 ---
+    public static final Map<String, BiConsumer<String, String>> settingUpdaters = new HashMap<>();
 
-    // --- 功能数值 ---
-    public static int forcedBatchSize = 100;
-    public static String defaultSaveFileName = "";
-    public static double autoSneakForwardOffset = 0.10;
-    public static double autoSneakVerticalCheckDepth = 2.0;
+    // --- 分组后的配置项 ---
+    public static class FillCommand {
+        public static boolean alwaysBatchFill;
+        public static int forcedBatchSize;
+    }
 
-    // --- 破基岩配置 ---
-    public static int pingSpikeThreshold = 2;
-    public static boolean headlessPistonMode = true;
-    public static boolean blinkDuringTasksTick = true;
-    private static Set<Block> blockWhitelist = new HashSet<>();
-    private static Set<Block> dependBlockWhitelist = new HashSet<>();
+    public static class SaveOptions {
+        public static boolean enableAutoSave;
+        public static String defaultSaveFileName;
+    }
 
-    // --- 在线翻译配置 ---
-    public static String niuTransApiKey = "";
-    public static String translationSourceLang = "auto";
-    public static String translationTargetLang = "zh";
+    public static class ChatFeatures {
+        public static boolean enableChatSuggestions;
+        public static boolean enableCommandHistoryScroll;
+        public static boolean disableTwitchAtKey;
+    }
 
+    public static class AutoPlace {
+        public static boolean enableAutoPlaceOnJoin;
+    }
+
+    public static class AutoSneak {
+        public static boolean enableAutoSneakAtEdge;
+        public static double autoSneakForwardOffset;
+        public static double autoSneakVerticalCheckDepth;
+    }
+
+    public static class PlayerESP {
+        public static boolean enablePlayerESP;
+    }
+
+    public static class BedrockMiner {
+        public static boolean enableBedrockMiner;
+        public static int pingSpikeThreshold;
+        public static boolean headlessPistonMode;
+        public static boolean blinkDuringTasksTick;
+        public static Set<Block> blockWhitelist = new HashSet<>();
+        public static Set<Block> dependBlockWhitelist = new HashSet<>();
+        
+        // Getter 方法
+        public static int getPingSpikeThreshold() { return pingSpikeThreshold; }
+        public static boolean isHeadlessPistonMode() { return headlessPistonMode; }
+        public static Set<Block> getDependBlockWhitelist() { return dependBlockWhitelist; }
+        public static boolean isBlinkDuringTasksTick() { return blinkDuringTasksTick; }
+        public static Set<Block> getBlockWhitelist() { return blockWhitelist; }
+    }
+
+    public static class GameplayTweaks {
+        public static boolean fastPistonBreaking;
+        public static boolean hideArrowsOnPlayers;
+    }
+
+    public static class Translation {
+        public static boolean enableChatTranslation;
+        public static boolean enableSignTranslation;
+        public static boolean enableItemTranslation;
+        public static boolean enableAutomaticTranslation;
+        public static boolean autoShowCachedTranslation;
+        public static boolean showTranslationOnly;
+        public static boolean hideTranslationKeybindTooltip;
+        public static String niuTransApiKey;
+        public static String translationSourceLang;
+        public static String translationTargetLang;
+    }
+
+    public static class NoteTaking {
+        public static boolean enableNoteFeature;
+        public static boolean enableAdvancedEditing;
+        public static boolean enableMarkdownRendering;
+        public static boolean enableColorRendering;
+        public static boolean enableAmpersandColorCodes;
+    }
+
+    public static class GuiTweaks {
+        public static boolean fixGuiStateLossOnResize;
+    }
+
+    // --- 核心方法 ---
     public static void init(File configFile) {
         if (config == null) {
             config = new Configuration(configFile);
@@ -84,415 +130,325 @@ public class GhostConfig {
             LogUtil.error("log.config.notInitialized");
             return;
         }
-
         config.load();
 
-        // --- 填充命令 ---
-        String alwaysBatchComment = LangUtil.translate("ghostblock.config.alwaysBatchFill.tooltip");
-        alwaysBatchFill = config.getBoolean("alwaysBatchFill", CATEGORY_FILL, false, alwaysBatchComment);
-
-        String forcedSizeComment = LangUtil.translate("ghostblock.config.forcedBatchSize.tooltip");
-        forcedBatchSize = config.getInt("forcedBatchSize", CATEGORY_FILL, 100, 1, Integer.MAX_VALUE, forcedSizeComment);
-
-        // --- 保存选项 ---
-        String enableAutoSaveComment = LangUtil.translate("ghostblock.config.enableAutoSave.tooltip");
-        enableAutoSave = config.getBoolean("enableAutoSave", CATEGORY_SAVE, false, enableAutoSaveComment);
-
-        String defaultFileNameComment = LangUtil.translate("ghostblock.config.defaultSaveFileName.tooltip");
-        defaultSaveFileName = config.getString("defaultSaveFileName", CATEGORY_SAVE, "", defaultFileNameComment);
-
-        // --- 聊天功能 ---
-        String enableChatSuggestComment = LangUtil.translate("ghostblock.config.enableChatSuggestions.tooltip");
-        enableChatSuggestions = config.getBoolean("enableChatSuggestions", CATEGORY_CHAT, true, enableChatSuggestComment);
-
-        String enableCmdHistoryScrollComment = LangUtil.translate("ghostblock.config.enableCommandHistoryScroll.tooltip");
-        enableCommandHistoryScroll = config.getBoolean("enableCommandHistoryScroll", CATEGORY_CHAT, true, enableCmdHistoryScrollComment);
-        
-        String disableTwitchComment = LangUtil.translate("ghost.config.comment.disableTwitchAtKey");
-        disableTwitchAtKey = config.getBoolean("disableTwitchAtKey", CATEGORY_CHAT, true, disableTwitchComment);
-
-        // --- 自动放置 ---
-        String enableAutoPlaceComment = LangUtil.translate("ghostblock.config.enableAutoPlaceOnJoin.tooltip");
-        enableAutoPlaceOnJoin = config.getBoolean("enableAutoPlaceOnJoin", CATEGORY_AUTO_PLACE, false, enableAutoPlaceComment);
-
-        // --- 自动蹲伏 ---
-        String enableAutoSneakComment = LangUtil.translate("ghostblock.config.enableAutoSneakAtEdge.tooltip");
-        enableAutoSneakAtEdge = config.getBoolean("enableAutoSneakAtEdge", CATEGORY_AUTO_SNEAK, false, enableAutoSneakComment);
-
-        Property propForwardOffset = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.15, LangUtil.translate("ghostblock.config.autoSneakForwardOffset.tooltip"), 0.05, 1.0);
-        autoSneakForwardOffset = propForwardOffset.getDouble();
-
-        Property propVerticalDepth = config.get(CATEGORY_AUTO_SNEAK, "autoSneakVerticalCheckDepth", 1.0, LangUtil.translate("ghostblock.config.autoSneakVerticalCheckDepth.tooltip"), 0.1, 3.0);
-        autoSneakVerticalCheckDepth = propVerticalDepth.getDouble();
-
-        // --- 玩家透视 ---
-        String enablePlayerESPComment = LangUtil.translate("ghostblock.config.enablePlayerESP.tooltip");
-        enablePlayerESP = config.getBoolean("enablePlayerESP", CATEGORY_PLAYER_ESP, false, enablePlayerESPComment);
-
-        // --- 游戏玩法调整 ---
-        String fastPistonBreakingComment = LangUtil.translate("ghostblock.config.fastPistonBreaking.tooltip");
-        fastPistonBreaking = config.getBoolean("fastPistonBreaking", CATEGORY_GAMEPLAY_TWEAKS, false, fastPistonBreakingComment);
-
-        String hideArrowsComment = LangUtil.translate("ghost.config.comment.hideArrowsOnPlayers");
-        hideArrowsOnPlayers = config.getBoolean("hideArrowsOnPlayers", CATEGORY_GAMEPLAY_TWEAKS, false, hideArrowsComment);
-
-        // --- 笔记功能 ---
-        String enableNoteComment = LangUtil.translate("ghost.config.comment.enableNoteFeature");
-        enableNoteFeature = config.getBoolean("enableNoteFeature", CATEGORY_NOTE, true, enableNoteComment);
-
-        String enableAdvancedEditingComment = LangUtil.translate("ghost.config.comment.enableAdvancedEditing");
-        enableAdvancedEditing = config.getBoolean("enableAdvancedEditing", CATEGORY_NOTE, true, enableAdvancedEditingComment);
-
-        String enableMarkdownRenderingComment = LangUtil.translate("ghost.config.comment.enableMarkdownRendering");
-        enableMarkdownRendering = config.getBoolean("enableMarkdownRendering", CATEGORY_NOTE, true, enableMarkdownRenderingComment);
-
-        String enableColorRenderingComment = LangUtil.translate("ghost.config.comment.enableColorRendering");
-        enableColorRendering = config.getBoolean("enableColorRendering", CATEGORY_NOTE, true, enableColorRenderingComment);
-        
-        String enableAmpersandComment = LangUtil.translate("ghost.config.comment.enableAmpersandColorCodes");
-        enableAmpersandColorCodes = config.getBoolean("enableAmpersandColorCodes", CATEGORY_NOTE, true, enableAmpersandComment);
-
-        // --- GUI 调整 ---
-        String fixGuiStateLossComment = LangUtil.translate("ghost.config.comment.fixGuiStateLossOnResize");
-        fixGuiStateLossOnResize = config.getBoolean("fixGuiStateLossOnResize", CATEGORY_GUI_TWEAKS, true, fixGuiStateLossComment);
-
-        // --- 破基岩 ---
-        String enableBedrockMinerComment = LangUtil.translate("ghostblock.config.enableBedrockMiner.tooltip");
-        enableBedrockMiner = config.getBoolean("enableBedrockMiner", CATEGORY_BEDROCK_MINER, false, enableBedrockMinerComment);
-
-        String pingSpikeComment = LangUtil.translate("ghost.config.comment.pingSpike");
-        pingSpikeThreshold = config.getInt("pingSpikeThreshold", CATEGORY_BEDROCK_MINER, 2, 0, 100, pingSpikeComment);
-
-        String headlessComment = LangUtil.translate("ghost.config.comment.headlessPiston");
-        headlessPistonMode = config.getBoolean("headlessPistonMode", CATEGORY_BEDROCK_MINER, true, headlessComment);
-
-        String blinkComment = LangUtil.translate("ghost.config.comment.blink");
-        blinkDuringTasksTick = config.getBoolean("blinkDuringTasksTick", CATEGORY_BEDROCK_MINER, true, blinkComment);
-
-        String whitelistComment = LangUtil.translate("ghost.config.comment.blockWhitelist");
-        String[] whitelistArr = config.getStringList("blockWhitelist", CATEGORY_BEDROCK_MINER, new String[]{"minecraft:bedrock"}, whitelistComment);
-        blockWhitelist = Arrays.stream(whitelistArr).map(s -> Block.blockRegistry.getObject(new ResourceLocation(s))).filter(Objects::nonNull).collect(Collectors.toSet());
-
-        String dependComment = LangUtil.translate("ghost.config.comment.dependWhitelist");
-        String[] dependArr = config.getStringList("dependBlockWhitelist", CATEGORY_BEDROCK_MINER, new String[]{"minecraft:slime_block"}, dependComment);
-        dependBlockWhitelist = Arrays.stream(dependArr).map(s -> Block.blockRegistry.getObject(new ResourceLocation(s))).filter(Objects::nonNull).collect(Collectors.toSet());
-
-        // --- 在线翻译 ---
-        String enableChatTransComment = LangUtil.translate("ghost.config.comment.enableChatTranslation");
-        enableChatTranslation = config.getBoolean("enableChatTranslation", CATEGORY_TRANSLATION, false, enableChatTransComment);
-
-        String enableSignTransComment = LangUtil.translate("ghost.config.comment.enableSignTranslation");
-        enableSignTranslation = config.getBoolean("enableSignTranslation", CATEGORY_TRANSLATION, false, enableSignTransComment);
-
-        String enableItemTransComment = LangUtil.translate("ghost.config.comment.enableItemTranslation");
-        enableItemTranslation = config.getBoolean("enableItemTranslation", CATEGORY_TRANSLATION, false, enableItemTransComment);
-
-        String enableAutoTransComment = LangUtil.translate("ghost.config.comment.enableAutomaticTranslation");
-        enableAutomaticTranslation = config.getBoolean("enableAutomaticTranslation", CATEGORY_TRANSLATION, false, enableAutoTransComment);
-
-        String autoShowComment = LangUtil.translate("ghost.config.comment.autoShowCachedTranslation");
-        autoShowCachedTranslation = config.getBoolean("autoShowCachedTranslation", CATEGORY_TRANSLATION, true, autoShowComment);
-
-        String showOnlyComment = LangUtil.translate("ghost.config.comment.showTranslationOnly");
-        showTranslationOnly = config.getBoolean("showTranslationOnly", CATEGORY_TRANSLATION, false, showOnlyComment);
-
-        String hideKeybindComment = LangUtil.translate("ghost.config.comment.hideTranslationKeybindTooltip");
-        hideTranslationKeybindTooltip = config.getBoolean("hideTranslationKeybindTooltip", CATEGORY_TRANSLATION, false, hideKeybindComment);
-
-        String apiKeyComment = LangUtil.translate("ghostblock.config.niuTransApiKey.tooltip");
-        niuTransApiKey = config.getString("niuTransApiKey", CATEGORY_TRANSLATION, "", apiKeyComment);
-
-        String sourceLangComment = LangUtil.translate("ghostblock.config.translationSourceLang.tooltip");
-        translationSourceLang = config.getString("translationSourceLang", CATEGORY_TRANSLATION, "auto", sourceLangComment);
-
-        String targetLangComment = LangUtil.translate("ghostblock.config.translationTargetLang.tooltip");
-        translationTargetLang = config.getString("translationTargetLang", CATEGORY_TRANSLATION, "zh", targetLangComment);
+        loadFillCommandSettings();
+        loadSaveOptionsSettings();
+        loadChatFeaturesSettings();
+        loadAutoPlaceSettings();
+        loadAutoSneakSettings();
+        loadPlayerESPSettings();
+        loadBedrockMinerSettings();
+        loadGameplayTweaksSettings();
+        loadTranslationSettings();
+        loadNoteTakingSettings();
+        loadGuiTweaksSettings();
 
         if (config.hasChanged()) {
             config.save();
             LogUtil.info("log.config.loaded");
         }
+        
+        initializeUpdaters();
+    }
+    
+    // --- 加载逻辑 (分组) ---
+    private static void loadFillCommandSettings() {
+        FillCommand.alwaysBatchFill = loadBoolean(CATEGORY_FILL, "alwaysBatchFill", false, "ghostblock.config.alwaysBatchFill.tooltip");
+        FillCommand.forcedBatchSize = loadInt(CATEGORY_FILL, "forcedBatchSize", 100, 1, Integer.MAX_VALUE, "ghostblock.config.forcedBatchSize.tooltip");
+    }
+    
+    private static void loadSaveOptionsSettings() {
+        SaveOptions.enableAutoSave = loadBoolean(CATEGORY_SAVE, "enableAutoSave", false, "ghostblock.config.enableAutoSave.tooltip");
+        SaveOptions.defaultSaveFileName = loadString(CATEGORY_SAVE, "defaultSaveFileName", "", "ghostblock.config.defaultSaveFileName.tooltip");
     }
 
-    // --- Getter 方法 ---
-    public static int getPingSpikeThreshold() {
-        return pingSpikeThreshold;
+    private static void loadChatFeaturesSettings() {
+        ChatFeatures.enableChatSuggestions = loadBoolean(CATEGORY_CHAT, "enableChatSuggestions", true, "ghostblock.config.enableChatSuggestions.tooltip");
+        ChatFeatures.enableCommandHistoryScroll = loadBoolean(CATEGORY_CHAT, "enableCommandHistoryScroll", true, "ghostblock.config.enableCommandHistoryScroll.tooltip");
+        ChatFeatures.disableTwitchAtKey = loadBoolean(CATEGORY_CHAT, "disableTwitchAtKey", true, "ghost.config.comment.disableTwitchAtKey");
     }
 
-    public static boolean isHeadlessPistonMode() {
-        return headlessPistonMode;
+    private static void loadAutoPlaceSettings() {
+        AutoPlace.enableAutoPlaceOnJoin = loadBoolean(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false, "ghostblock.config.enableAutoPlaceOnJoin.tooltip");
     }
 
-    public static Set<Block> getDependBlockWhitelist() {
-        return dependBlockWhitelist;
+    private static void loadAutoSneakSettings() {
+        AutoSneak.enableAutoSneakAtEdge = loadBoolean(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false, "ghostblock.config.enableAutoSneakAtEdge.tooltip");
+        AutoSneak.autoSneakForwardOffset = loadDouble(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.15, 0.05, 1.0, "ghostblock.config.autoSneakForwardOffset.tooltip");
+        AutoSneak.autoSneakVerticalCheckDepth = loadDouble(CATEGORY_AUTO_SNEAK, "autoSneakVerticalCheckDepth", 1.0, 0.1, 3.0, "ghostblock.config.autoSneakVerticalCheckDepth.tooltip");
     }
 
-    public static boolean isBlinkDuringTasksTick() {
-        return blinkDuringTasksTick;
+    private static void loadPlayerESPSettings() {
+        PlayerESP.enablePlayerESP = loadBoolean(CATEGORY_PLAYER_ESP, "enablePlayerESP", false, "ghostblock.config.enablePlayerESP.tooltip");
     }
 
-    public static Set<Block> getBlockWhitelist() {
-        return blockWhitelist;
+    private static void loadBedrockMinerSettings() {
+        BedrockMiner.enableBedrockMiner = loadBoolean(CATEGORY_BEDROCK_MINER, "enableBedrockMiner", false, "ghostblock.config.enableBedrockMiner.tooltip");
+        BedrockMiner.pingSpikeThreshold = loadInt(CATEGORY_BEDROCK_MINER, "pingSpikeThreshold", 2, 0, 100, "ghost.config.comment.pingSpike");
+        BedrockMiner.headlessPistonMode = loadBoolean(CATEGORY_BEDROCK_MINER, "headlessPistonMode", true, "ghost.config.comment.headlessPiston");
+        BedrockMiner.blinkDuringTasksTick = loadBoolean(CATEGORY_BEDROCK_MINER, "blinkDuringTasksTick", true, "ghost.config.comment.blink");
+        
+        String[] whitelistArr = loadStringList(CATEGORY_BEDROCK_MINER, "blockWhitelist", new String[]{"minecraft:bedrock"}, "ghost.config.comment.blockWhitelist");
+        BedrockMiner.blockWhitelist = Arrays.stream(whitelistArr).map(s -> Block.blockRegistry.getObject(new ResourceLocation(s))).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        String[] dependArr = loadStringList(CATEGORY_BEDROCK_MINER, "dependBlockWhitelist", new String[]{"minecraft:slime_block"}, "ghost.config.comment.dependWhitelist");
+        BedrockMiner.dependBlockWhitelist = Arrays.stream(dependArr).map(s -> Block.blockRegistry.getObject(new ResourceLocation(s))).filter(Objects::nonNull).collect(Collectors.toSet());
+    }
+    
+    private static void loadGameplayTweaksSettings() {
+        GameplayTweaks.fastPistonBreaking = loadBoolean(CATEGORY_GAMEPLAY_TWEAKS, "fastPistonBreaking", false, "ghostblock.config.fastPistonBreaking.tooltip");
+        GameplayTweaks.hideArrowsOnPlayers = loadBoolean(CATEGORY_GAMEPLAY_TWEAKS, "hideArrowsOnPlayers", false, "ghost.config.comment.hideArrowsOnPlayers");
     }
 
-    // --- Setter 方法 ---
-    public static void setAlwaysBatchFill(boolean value) {
+    private static void loadTranslationSettings() {
+        Translation.enableChatTranslation = loadBoolean(CATEGORY_TRANSLATION, "enableChatTranslation", false, "ghost.config.comment.enableChatTranslation");
+        Translation.enableSignTranslation = loadBoolean(CATEGORY_TRANSLATION, "enableSignTranslation", false, "ghost.config.comment.enableSignTranslation");
+        Translation.enableItemTranslation = loadBoolean(CATEGORY_TRANSLATION, "enableItemTranslation", false, "ghost.config.comment.enableItemTranslation");
+        Translation.enableAutomaticTranslation = loadBoolean(CATEGORY_TRANSLATION, "enableAutomaticTranslation", false, "ghost.config.comment.enableAutomaticTranslation");
+        Translation.autoShowCachedTranslation = loadBoolean(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true, "ghost.config.comment.autoShowCachedTranslation");
+        Translation.showTranslationOnly = loadBoolean(CATEGORY_TRANSLATION, "showTranslationOnly", false, "ghost.config.comment.showTranslationOnly");
+        Translation.hideTranslationKeybindTooltip = loadBoolean(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false, "ghost.config.comment.hideTranslationKeybindTooltip");
+        Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
+        Translation.translationSourceLang = loadString(CATEGORY_TRANSLATION, "translationSourceLang", "auto", "ghostblock.config.translationSourceLang.tooltip");
+        Translation.translationTargetLang = loadString(CATEGORY_TRANSLATION, "translationTargetLang", "zh", "ghostblock.config.translationTargetLang.tooltip");
+    }
+    
+    private static void loadNoteTakingSettings() {
+        NoteTaking.enableNoteFeature = loadBoolean(CATEGORY_NOTE, "enableNoteFeature", true, "ghost.config.comment.enableNoteFeature");
+        NoteTaking.enableAdvancedEditing = loadBoolean(CATEGORY_NOTE, "enableAdvancedEditing", true, "ghost.config.comment.enableAdvancedEditing");
+        NoteTaking.enableMarkdownRendering = loadBoolean(CATEGORY_NOTE, "enableMarkdownRendering", true, "ghost.config.comment.enableMarkdownRendering");
+        NoteTaking.enableColorRendering = loadBoolean(CATEGORY_NOTE, "enableColorRendering", true, "ghost.config.comment.enableColorRendering");
+        NoteTaking.enableAmpersandColorCodes = loadBoolean(CATEGORY_NOTE, "enableAmpersandColorCodes", true, "ghost.config.comment.enableAmpersandColorCodes");
+    }
+
+    private static void loadGuiTweaksSettings() {
+        GuiTweaks.fixGuiStateLossOnResize = loadBoolean(CATEGORY_GUI_TWEAKS, "fixGuiStateLossOnResize", true, "ghost.config.comment.fixGuiStateLossOnResize");
+    }
+
+    // --- 加载辅助方法 ---
+    private static boolean loadBoolean(String category, String key, boolean defaultValue, String commentKey) {
+        return config.getBoolean(key, category, defaultValue, LangUtil.translate(commentKey));
+    }
+
+    private static int loadInt(String category, String key, int defaultValue, int min, int max, String commentKey) {
+        return config.getInt(key, category, defaultValue, min, max, LangUtil.translate(commentKey));
+    }
+    
+    private static double loadDouble(String category, String key, double defaultValue, double min, double max, String commentKey) {
+        return config.get(category, key, defaultValue, LangUtil.translate(commentKey), min, max).getDouble();
+    }
+        
+    private static String loadString(String category, String key, String defaultValue, String commentKey) {
+        return config.getString(key, category, defaultValue, LangUtil.translate(commentKey));
+    }
+
+    private static String[] loadStringList(String category, String key, String[] defaultValue, String commentKey) {
+        return config.getStringList(key, category, defaultValue, LangUtil.translate(commentKey));
+    }
+    
+    // --- 恢复的 Setter 方法 ---
+
+    private static void updateAndSave(String category, String key, Object value, Runnable fieldUpdater) {
         if (config == null) return;
-        Property prop = config.get(CATEGORY_FILL, "alwaysBatchFill", false);
-        prop.set(value);
-        alwaysBatchFill = value;
+        Property prop = config.get(category, key, "");
+        prop.set(String.valueOf(value));
         config.save();
+        fieldUpdater.run();
+    }
+    
+    public static void setAlwaysBatchFill(boolean value) {
+        updateAndSave(CATEGORY_FILL, "alwaysBatchFill", value, () -> FillCommand.alwaysBatchFill = value);
     }
 
     public static boolean setForcedBatchSize(int value) {
-        if (config == null || value <= 0) return false;
-        Property prop = config.get(CATEGORY_FILL, "forcedBatchSize", 100);
-        prop.set(value);
-        forcedBatchSize = value;
-        config.save();
+        if (value <= 0) return false;
+        updateAndSave(CATEGORY_FILL, "forcedBatchSize", value, () -> FillCommand.forcedBatchSize = value);
         return true;
     }
 
     public static void setEnableAutoSave(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_SAVE, "enableAutoSave", false);
-        prop.set(value);
-        enableAutoSave = value;
-        config.save();
+        updateAndSave(CATEGORY_SAVE, "enableAutoSave", value, () -> SaveOptions.enableAutoSave = value);
     }
 
     public static boolean setDefaultSaveFileName(String value) {
-        if (config == null) return false;
         String processedValue = (value != null) ? value.trim() : "";
-        Property prop = config.get(CATEGORY_SAVE, "defaultSaveFileName", "");
-        prop.set(processedValue);
-        defaultSaveFileName = processedValue;
-        config.save();
+        updateAndSave(CATEGORY_SAVE, "defaultSaveFileName", processedValue, () -> SaveOptions.defaultSaveFileName = processedValue);
         return true;
     }
 
     public static void setEnableChatSuggestions(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_CHAT, "enableChatSuggestions", true);
-        prop.set(value);
-        enableChatSuggestions = value;
-        config.save();
+        updateAndSave(CATEGORY_CHAT, "enableChatSuggestions", value, () -> ChatFeatures.enableChatSuggestions = value);
     }
 
     public static void setEnableCommandHistoryScroll(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_CHAT, "enableCommandHistoryScroll", true);
-        prop.set(value);
-        enableCommandHistoryScroll = value;
-        config.save();
+        updateAndSave(CATEGORY_CHAT, "enableCommandHistoryScroll", value, () -> ChatFeatures.enableCommandHistoryScroll = value);
     }
     
     public static void setDisableTwitchAtKey(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_CHAT, "disableTwitchAtKey", true);
-        prop.set(value);
-        disableTwitchAtKey = value;
-        config.save();
+        updateAndSave(CATEGORY_CHAT, "disableTwitchAtKey", value, () -> ChatFeatures.disableTwitchAtKey = value);
     }
 
     public static void setEnableChatTranslation(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "enableChatTranslation", false);
-        prop.set(value);
-        enableChatTranslation = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "enableChatTranslation", value, () -> Translation.enableChatTranslation = value);
     }
 
     public static void setEnableSignTranslation(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "enableSignTranslation", false);
-        prop.set(value);
-        enableSignTranslation = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "enableSignTranslation", value, () -> Translation.enableSignTranslation = value);
     }
 
     public static void setEnableItemTranslation(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "enableItemTranslation", false);
-        prop.set(value);
-        enableItemTranslation = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "enableItemTranslation", value, () -> Translation.enableItemTranslation = value);
     }
 
     public static void setEnableAutomaticTranslation(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "enableAutomaticTranslation", false);
-        prop.set(value);
-        enableAutomaticTranslation = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "enableAutomaticTranslation", value, () -> Translation.enableAutomaticTranslation = value);
     }
 
     public static void setAutoShowCachedTranslation(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true);
-        prop.set(value);
-        autoShowCachedTranslation = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "autoShowCachedTranslation", value, () -> Translation.autoShowCachedTranslation = value);
     }
 
     public static void setShowTranslationOnly(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "showTranslationOnly", false);
-        prop.set(value);
-        showTranslationOnly = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "showTranslationOnly", value, () -> Translation.showTranslationOnly = value);
     }
 
     public static void setHideTranslationKeybindTooltip(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false);
-        prop.set(value);
-        hideTranslationKeybindTooltip = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", value, () -> Translation.hideTranslationKeybindTooltip = value);
     }
 
     public static void setEnableAutoPlaceOnJoin(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", false);
-        prop.set(value);
-        enableAutoPlaceOnJoin = value;
-        config.save();
+        updateAndSave(CATEGORY_AUTO_PLACE, "enableAutoPlaceOnJoin", value, () -> AutoPlace.enableAutoPlaceOnJoin = value);
     }
 
     public static void setEnableAutoSneakAtEdge(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", false);
-        prop.set(value);
-        enableAutoSneakAtEdge = value;
-        config.save();
+        updateAndSave(CATEGORY_AUTO_SNEAK, "enableAutoSneakAtEdge", value, () -> AutoSneak.enableAutoSneakAtEdge = value);
     }
 
     public static void setAutoSneakForwardOffset(double value) {
-        if (config == null || value < 0.05 || value > 1.0) return;
-        Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", 0.35);
-        prop.set(value);
-        autoSneakForwardOffset = value;
-        config.save();
+        if (value < 0.05 || value > 1.0) return;
+        updateAndSave(CATEGORY_AUTO_SNEAK, "autoSneakForwardOffset", value, () -> AutoSneak.autoSneakForwardOffset = value);
     }
 
     public static void setAutoSneakVerticalCheckDepth(double value) {
-        if (config == null || value < 0.1 || value > 3.0) return;
-        Property prop = config.get(CATEGORY_AUTO_SNEAK, "autoSneakVerticalCheckDepth", 1.0);
-        prop.set(value);
-        autoSneakVerticalCheckDepth = value;
-        config.save();
+        if (value < 0.1 || value > 3.0) return;
+        updateAndSave(CATEGORY_AUTO_SNEAK, "autoSneakVerticalCheckDepth", value, () -> AutoSneak.autoSneakVerticalCheckDepth = value);
     }
 
     public static void setEnablePlayerESP(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_PLAYER_ESP, "enablePlayerESP", false);
-        prop.set(value);
-        enablePlayerESP = value;
-        config.save();
+        updateAndSave(CATEGORY_PLAYER_ESP, "enablePlayerESP", value, () -> PlayerESP.enablePlayerESP = value);
     }
 
     public static void setEnableBedrockMiner(boolean value) {
-        if (config == null) return;
         if (value) {
-            setFastPistonBreaking(true, false);
+            setFastPistonBreaking(true, false); // 先设置依赖，但不立刻保存
         }
-        Property prop = config.get(CATEGORY_BEDROCK_MINER, "enableBedrockMiner", false);
-        prop.set(value);
-        enableBedrockMiner = value;
-        config.save();
+        updateAndSave(CATEGORY_BEDROCK_MINER, "enableBedrockMiner", value, () -> BedrockMiner.enableBedrockMiner = value);
     }
 
     public static void setFastPistonBreaking(boolean value, boolean saveImmediately) {
         if (config == null) return;
         Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "fastPistonBreaking", false);
         prop.set(value);
-        fastPistonBreaking = value;
+        GameplayTweaks.fastPistonBreaking = value;
         if (saveImmediately) {
             config.save();
         }
     }
 
     public static void setHideArrowsOnPlayers(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_GAMEPLAY_TWEAKS, "hideArrowsOnPlayers", false);
-        prop.set(value);
-        hideArrowsOnPlayers = value;
-        config.save();
+        updateAndSave(CATEGORY_GAMEPLAY_TWEAKS, "hideArrowsOnPlayers", value, () -> GameplayTweaks.hideArrowsOnPlayers = value);
     }
 
     public static void setEnableNoteFeature(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_NOTE, "enableNoteFeature", true);
-        prop.set(value);
-        enableNoteFeature = value;
-        config.save();
+        updateAndSave(CATEGORY_NOTE, "enableNoteFeature", value, () -> NoteTaking.enableNoteFeature = value);
     }
 
     public static void setNiuTransApiKey(String value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "niuTransApiKey", "");
-        prop.set(value);
-        niuTransApiKey = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "niuTransApiKey", value, () -> Translation.niuTransApiKey = value);
     }
 
     public static void setTranslationSourceLang(String value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "translationSourceLang", "auto");
-        prop.set(value);
-        translationSourceLang = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "translationSourceLang", value, () -> Translation.translationSourceLang = value);
     }
 
     public static void setTranslationTargetLang(String value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_TRANSLATION, "translationTargetLang", "zh");
-        prop.set(value);
-        translationTargetLang = value;
-        config.save();
+        updateAndSave(CATEGORY_TRANSLATION, "translationTargetLang", value, () -> Translation.translationTargetLang = value);
     }
 
     public static void setEnableAdvancedEditing(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_NOTE, "enableAdvancedEditing", true);
-        prop.set(value);
-        enableAdvancedEditing = value;
-        config.save();
+        updateAndSave(CATEGORY_NOTE, "enableAdvancedEditing", value, () -> NoteTaking.enableAdvancedEditing = value);
     }
 
     public static void setEnableMarkdownRendering(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_NOTE, "enableMarkdownRendering", true);
-        prop.set(value);
-        enableMarkdownRendering = value;
-        config.save();
+        updateAndSave(CATEGORY_NOTE, "enableMarkdownRendering", value, () -> NoteTaking.enableMarkdownRendering = value);
     }
 
     public static void setEnableColorRendering(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_NOTE, "enableColorRendering", true);
-        prop.set(value);
-        enableColorRendering = value;
-        config.save();
+        updateAndSave(CATEGORY_NOTE, "enableColorRendering", value, () -> NoteTaking.enableColorRendering = value);
     }
 
     public static void setEnableAmpersandColorCodes(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_NOTE, "enableAmpersandColorCodes", true);
-        prop.set(value);
-        enableAmpersandColorCodes = value;
-        config.save();
+        updateAndSave(CATEGORY_NOTE, "enableAmpersandColorCodes", value, () -> NoteTaking.enableAmpersandColorCodes = value);
     }
 
     public static void setFixGuiStateLossOnResize(boolean value) {
-        if (config == null) return;
-        Property prop = config.get(CATEGORY_GUI_TWEAKS, "fixGuiStateLossOnResize", true);
-        prop.set(value);
-        fixGuiStateLossOnResize = value;
-        config.save();
+        updateAndSave(CATEGORY_GUI_TWEAKS, "fixGuiStateLossOnResize", value, () -> GuiTweaks.fixGuiStateLossOnResize = value);
     }
-
+    
     public static Configuration getConfig() {
         return config;
+    }
+    
+    // --- 命令更新器注册 ---
+    private static void initializeUpdaters() {
+        settingUpdaters.clear();
+        
+        // 使用 Lambda 表达式直接调用相应的 public setter 方法
+        settingUpdaters.put("alwaysbatchfill", (k, v) -> setAlwaysBatchFill(parseBoolean(v)));
+        settingUpdaters.put("forcedbatchsize", (k, v) -> setForcedBatchSize(parseInt(v)));
+        settingUpdaters.put("enableautosave", (k, v) -> setEnableAutoSave(parseBoolean(v)));
+        settingUpdaters.put("defaultsavename", (k, v) -> setDefaultSaveFileName(v));
+        settingUpdaters.put("enablechatsuggestions", (k, v) -> setEnableChatSuggestions(parseBoolean(v)));
+        settingUpdaters.put("enablecommandhistoryscroll", (k, v) -> setEnableCommandHistoryScroll(parseBoolean(v)));
+        settingUpdaters.put("disabletwitchatkey", (k, v) -> setDisableTwitchAtKey(parseBoolean(v)));
+        settingUpdaters.put("enableautoplaceonjoin", (k, v) -> setEnableAutoPlaceOnJoin(parseBoolean(v)));
+        settingUpdaters.put("enableautosneakatedge", (k, v) -> setEnableAutoSneakAtEdge(parseBoolean(v)));
+        settingUpdaters.put("autosneakforwardoffset", (k, v) -> setAutoSneakForwardOffset(parseDouble(v)));
+        settingUpdaters.put("autosneakverticalcheckdepth", (k, v) -> setAutoSneakVerticalCheckDepth(parseDouble(v)));
+        settingUpdaters.put("enableplayeresp", (k, v) -> setEnablePlayerESP(parseBoolean(v)));
+        settingUpdaters.put("enablebedrockminer", (k, v) -> setEnableBedrockMiner(parseBoolean(v)));
+        settingUpdaters.put("fastpistonbreaking", (k, v) -> setFastPistonBreaking(parseBoolean(v), true));
+        settingUpdaters.put("hidearrowsonplayers", (k, v) -> setHideArrowsOnPlayers(parseBoolean(v)));
+        settingUpdaters.put("enablechattranslation", (k, v) -> setEnableChatTranslation(parseBoolean(v)));
+        settingUpdaters.put("enablesigntranslation", (k, v) -> setEnableSignTranslation(parseBoolean(v)));
+        settingUpdaters.put("enableitemtranslation", (k, v) -> setEnableItemTranslation(parseBoolean(v)));
+        settingUpdaters.put("enableautomatictranslation", (k, v) -> setEnableAutomaticTranslation(parseBoolean(v)));
+        settingUpdaters.put("autoshowcachedtranslation", (k, v) -> setAutoShowCachedTranslation(parseBoolean(v)));
+        settingUpdaters.put("showtranslationonly", (k, v) -> setShowTranslationOnly(parseBoolean(v)));
+        settingUpdaters.put("hidetranslationkeybindtooltip", (k, v) -> setHideTranslationKeybindTooltip(parseBoolean(v)));
+        settingUpdaters.put("niutransapikey", (k, v) -> setNiuTransApiKey(v));
+        settingUpdaters.put("translationsourcelang", (k, v) -> setTranslationSourceLang(v));
+        settingUpdaters.put("translationtargetlang", (k, v) -> setTranslationTargetLang(v));
+        settingUpdaters.put("enablenotefeature", (k, v) -> setEnableNoteFeature(parseBoolean(v)));
+        settingUpdaters.put("enableadvancedediting", (k, v) -> setEnableAdvancedEditing(parseBoolean(v)));
+        settingUpdaters.put("enablemarkdownrendering", (k, v) -> setEnableMarkdownRendering(parseBoolean(v)));
+        settingUpdaters.put("enablecolorrendering", (k, v) -> setEnableColorRendering(parseBoolean(v)));
+        settingUpdaters.put("enableampersandcolorcodes", (k, v) -> setEnableAmpersandColorCodes(parseBoolean(v)));
+        settingUpdaters.put("fixguistatelossonresize", (k, v) -> setFixGuiStateLossOnResize(parseBoolean(v)));
+    }
+    
+    // --- 包装 CommandBase 的解析方法以在 Lambda 中使用 ---
+    private static boolean parseBoolean(String input) {
+        try { return CommandBase.parseBoolean(input); }
+        catch (CommandException e) { throw new RuntimeException(e); }
+    }
+    private static int parseInt(String input) {
+        try { return CommandBase.parseInt(input); }
+        catch (CommandException e) { throw new RuntimeException(e); }
+    }
+    private static double parseDouble(String input) {
+        try { return CommandBase.parseDouble(input); }
+        catch (CommandException e) { throw new RuntimeException(e); }
     }
 }
