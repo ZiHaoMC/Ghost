@@ -31,7 +31,6 @@ public class KeybindHandler {
     public static KeyBinding translateItemKey;
     public static KeyBinding openNoteGui; 
 
-    // 用于在 GuiNote 重建（例如，调整窗口大小）期间暂存笔记内容
     private static String noteContentToRestore = null;
 
     public static void registerKeybinds() {
@@ -76,7 +75,6 @@ public class KeybindHandler {
         
         if (openNoteGui != null && openNoteGui.isPressed()) {
             if (GhostConfig.NoteTaking.enableNoteFeature) {
-                // 仅当当前没有打开任何GUI时才打开笔记界面
                 if (Minecraft.getMinecraft().currentScreen == null) {
                     Minecraft.getMinecraft().displayGuiScreen(new GuiNote());
                 }
@@ -90,38 +88,25 @@ public class KeybindHandler {
         }
     }
 
-    /**
-     * 当任何 GUI 即将打开（或因调整大小而关闭重建）时触发。
-     * 我们用它来“抢救”即将被销毁的 GuiNote 实例中的文本。
-     */
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent event) {
-        // 仅当修复功能在配置中开启时，此逻辑才生效
         if (!GhostConfig.GuiTweaks.fixGuiStateLossOnResize) {
             return;
         }
         GuiScreen currentScreen = Minecraft.getMinecraft().currentScreen;
         if (currentScreen instanceof GuiNote) {
-            // 当笔记界面即将被关闭并重建时，保存其当前内容
             noteContentToRestore = ((GuiNote) currentScreen).getTextContent();
         }
     }
 
-    /**
-     * 当任何 GUI 初始化完成之后触发。
-     * 我们用它来将“抢救”回来的文本恢复到新建的 GuiNote 实例中。
-     */
     @SubscribeEvent
     public void onGuiInitPost(GuiScreenEvent.InitGuiEvent.Post event) {
-        // 仅当修复功能在配置中开启时，此逻辑才生效
         if (!GhostConfig.GuiTweaks.fixGuiStateLossOnResize) {
             return;
         }
         if (event.gui instanceof GuiNote) {
             if (noteContentToRestore != null) {
-                // 将保存的内容恢复到新的 GUI 实例中
                 ((GuiNote) event.gui).setTextContentAndInitialize(noteContentToRestore);
-                // 恢复后清空，避免影响下一次正常的打开
                 noteContentToRestore = null;
             }
         }
@@ -146,12 +131,13 @@ public class KeybindHandler {
     }
     
     private void handleClearAllItemTranslations() {
-        if (ItemTooltipTranslationHandler.translationCache.isEmpty()) {
+        if (ItemTooltipTranslationHandler.translationCache.isEmpty() && ItemTooltipTranslationHandler.hiddenTranslations.isEmpty()) {
             return;
         }
     
         ItemTooltipTranslationHandler.translationCache.clear();
-        ItemTooltipTranslationHandler.temporarilyHiddenItems.clear();
+        ItemTooltipTranslationHandler.pendingTranslations.clear();
+        ItemTooltipTranslationHandler.hiddenTranslations.clear();
     
         ChatComponentText message = new ChatComponentText(LangUtil.translate("ghost.cache.cleared_all"));
         message.getChatStyle().setColor(EnumChatFormatting.YELLOW);
@@ -163,11 +149,20 @@ public class KeybindHandler {
         if (itemName == null || itemName.trim().isEmpty()) {
             return;
         }
-
-        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
-            ItemTooltipTranslationHandler.translationCache.remove(itemName);
-            ItemTooltipTranslationHandler.temporarilyHiddenItems.remove(itemName);
-            
+    
+        boolean changed = false;
+    
+        if (ItemTooltipTranslationHandler.translationCache.remove(itemName) != null) {
+            changed = true;
+        }
+        if (ItemTooltipTranslationHandler.hiddenTranslations.remove(itemName)) {
+            changed = true;
+        }
+        if (ItemTooltipTranslationHandler.pendingTranslations.remove(itemName)) {
+            changed = true;
+        }
+        
+        if (changed) {
             ChatComponentText message = new ChatComponentText(LangUtil.translate("ghost.cache.cleared", itemName));
             message.getChatStyle().setColor(EnumChatFormatting.YELLOW);
             Minecraft.getMinecraft().thePlayer.addChatMessage(message);
@@ -185,10 +180,10 @@ public class KeybindHandler {
         }
 
         if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
-            if (ItemTooltipTranslationHandler.temporarilyHiddenItems.contains(itemName)) {
-                ItemTooltipTranslationHandler.temporarilyHiddenItems.remove(itemName);
+            if (ItemTooltipTranslationHandler.hiddenTranslations.contains(itemName)) {
+                ItemTooltipTranslationHandler.hiddenTranslations.remove(itemName);
             } else {
-                ItemTooltipTranslationHandler.temporarilyHiddenItems.add(itemName);
+                ItemTooltipTranslationHandler.hiddenTranslations.add(itemName);
             }
             return;
         }

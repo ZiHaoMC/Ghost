@@ -394,11 +394,16 @@ log.feature.cache.init=翻译缓存已加载，并已注册保存事件处理器
 log.info.cache.loaded=已加载 %d 条翻译缓存。
 log.info.cache.saving=世界卸载，触发翻译缓存保存...
 log.info.cache.saving.count=正在保存 %d 条翻译缓存...
-log.info.cache.saved=翻译缓存已保存。
+log.info.cache.saved=翻译缓存及隐藏设置已保存。
 log.info.cache.file.notFound=翻译缓存文件不存在，将创建一个新的缓存。
 log.error.cache.loadFailed=加载翻译缓存时出错: %s
 log.info.cache.save.skipped=内存中无翻译缓存，无需保存。
 log.error.cache.saveFailed=保存翻译缓存时出错: %s
+log.info.hidden.loaded=已加载 %d 条隐藏翻译记录。
+log.info.hidden.file.notFound=隐藏翻译记录文件不存在，将创建一个新的记录。
+log.error.hidden.loadFailed=加载隐藏翻译记录时出错: %s
+log.info.hidden.saved=已保存 %d 条隐藏翻译记录。
+log.error.hidden.saveFailed=保存隐藏翻译记录时出错: %s
 
 # --- 任务 ---
 log.info.task.fill.complete=填充任务 #%d 完成

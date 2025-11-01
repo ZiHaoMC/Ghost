@@ -5,17 +5,18 @@ import com.zihaomc.ghost.config.GhostConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.util.MathHelper;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
+
 import java.io.IOException;
 
-import com.zihaomc.ghost.features.note.GuiNoteHelp;
-
-
 /**
- * 游戏内笔记的GUI界面 (重构后)。
- * 这个类现在是协调者，将状态管理、渲染和输入处理委托给专门的辅助类。
+ * 游戏内笔记的GUI界面 (最终优化版)。
+ * - 作为协调者，将状态管理、渲染和输入处理委托给专门的辅助类。
+ * - 实现了类似Minecraft原生体验的可视化滚动条。
+ * - 使用布局常量提高代码的可维护性。
  */
 public class GuiNote extends GuiScreen {
 
@@ -24,17 +25,30 @@ public class GuiNote extends GuiScreen {
     private NoteRenderer renderer;
     private NoteInputHandler inputHandler;
     private NoteHistory history;
-    
+
+    // --- 布局常量 ---
+    private static final int TEXT_AREA_WIDTH = 300;
+    private static final int TEXT_AREA_HEIGHT_MARGIN_TOP = 40;
+    // <<< 布局修复：底部边距应为50，以保证总高度正确 >>>
+    private static final int TEXT_AREA_HEIGHT_MARGIN_BOTTOM = 50; 
+    private static final int TEXT_PADDING = 4;
+    private static final int SCROLLBAR_WIDTH = 6;
+
     // --- GUI 状态 ---
     private int textAreaX, textAreaY, textAreaWidth, textAreaHeight;
     private int scrollOffset = 0;
     private int maxScroll = 0;
     private int cursorBlink;
 
+    // <<< 滚动条交互逻辑重构：新增变量 >>>
+    private boolean isDraggingScrollbar = false;
+    private float initialMouseY = -1; // 记录拖动开始时鼠标的Y坐标
+    private int scrollOffsetAtDragStart = -1; // 记录拖动开始时滚动条的偏移量
+
     // --- 按钮 ---
     private GuiButton markdownToggleButton, colorToggleButton, ampersandToggleButton;
     private GuiButton helpButton, undoButton, redoButton;
-    
+
     // --- 构造函数 ---
     public GuiNote() {
         this.editor = new NoteEditor();
@@ -47,12 +61,14 @@ public class GuiNote extends GuiScreen {
         super.initGui();
         Keyboard.enableRepeatEvents(true);
 
-        this.textAreaX = this.width / 2 - 150;
-        this.textAreaY = 40;
-        this.textAreaWidth = 300;
-        this.textAreaHeight = this.height - 90;
+        // 使用常量进行布局，确保真正居中
+        this.textAreaWidth = TEXT_AREA_WIDTH;
+        this.textAreaX = this.width / 2 - this.textAreaWidth / 2;
+        this.textAreaY = TEXT_AREA_HEIGHT_MARGIN_TOP;
+        this.textAreaHeight = this.height - (TEXT_AREA_HEIGHT_MARGIN_TOP + TEXT_AREA_HEIGHT_MARGIN_BOTTOM);
 
-        this.renderer = new NoteRenderer(this.fontRendererObj, this.textAreaX, this.textAreaWidth - 8);
+        // 初始化渲染器和输入处理器
+        this.renderer = new NoteRenderer(this.fontRendererObj, this.textAreaX, this.textAreaWidth - (TEXT_PADDING * 2) - SCROLLBAR_WIDTH);
         this.inputHandler = new NoteInputHandler(this, this.editor, this.history);
 
         if (this.editor.getTextContent().isEmpty()) {
@@ -68,12 +84,14 @@ public class GuiNote extends GuiScreen {
         
         initButtons();
     }
-    
+
     private void initButtons() {
         this.buttonList.clear();
         this.buttonList.add(new GuiButton(0, this.width / 2 - 100, this.height - 25, LangUtil.translate("ghost.gui.note.save_and_close")));
 
-        int btnWidth = 120, btnHeight = 20, leftX = textAreaX - btnWidth - 5, rightX = textAreaX + textAreaWidth + 5;
+        int btnWidth = 120, btnHeight = 20;
+        int leftX = textAreaX - btnWidth - 5;
+        int rightX = textAreaX + textAreaWidth + 5;
 
         markdownToggleButton = new GuiButton(1, leftX, textAreaY, btnWidth, btnHeight, "");
         colorToggleButton = new GuiButton(2, leftX, textAreaY + btnHeight + 5, btnWidth, btnHeight, "");
@@ -110,6 +128,7 @@ public class GuiNote extends GuiScreen {
         }
     }
 
+    // --- 渲染 ---
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         this.drawDefaultBackground();
@@ -117,15 +136,17 @@ public class GuiNote extends GuiScreen {
         drawRect(textAreaX - 1, textAreaY - 1, textAreaX + textAreaWidth + 1, textAreaY + textAreaHeight + 1, 0xFFC0C0C0);
         drawRect(textAreaX, textAreaY, textAreaX + textAreaWidth, textAreaY + textAreaHeight, 0xFF000000);
         
+        this.maxScroll = Math.max(0, renderer.getRenderedLines().size() * fontRendererObj.FONT_HEIGHT - textAreaHeight + (TEXT_PADDING * 2));
+        
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
         int scaleFactor = new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor();
         GL11.glScissor(textAreaX * scaleFactor, mc.displayHeight - (textAreaY + textAreaHeight) * scaleFactor, textAreaWidth * scaleFactor, textAreaHeight * scaleFactor);
         
-        int yPos = textAreaY + 4 - scrollOffset;
+        int yPos = textAreaY + TEXT_PADDING - scrollOffset;
         for (int i = 0; i < renderer.getRenderedLines().size(); i++) {
             if (yPos + fontRendererObj.FONT_HEIGHT > textAreaY && yPos < textAreaY + textAreaHeight) {
                 String line = renderer.getRenderedLines().get(i);
-                renderer.drawStringAndCachePositions(line, textAreaX + 4, yPos, 0xFFFFFF);
+                renderer.drawStringAndCachePositions(line, textAreaX + TEXT_PADDING, yPos, 0xFFFFFF);
                 if (editor.hasSelection()) {
                     renderer.drawSelection(yPos, editor.getSelectionStart(), editor.getSelectionEnd(), i);
                 }
@@ -138,10 +159,29 @@ public class GuiNote extends GuiScreen {
 
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
         
-        drawCenteredString(fontRendererObj, LangUtil.translate("ghost.gui.note.scroll_hint"), this.width / 2, this.height - 40, 0xA0A0A0);
+        drawScrollbar();
+        
+        drawCenteredString(fontRendererObj, LangUtil.translate("ghost.gui.note.scroll_hint"), this.width / 2, this.height - 35, 0xA0A0A0);
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
     
+    private void drawScrollbar() {
+        if (maxScroll > 0) {
+            int scrollbarX = this.textAreaX + this.textAreaWidth - SCROLLBAR_WIDTH;
+            int scrollbarY = this.textAreaY;
+            int scrollbarHeight = this.textAreaHeight;
+
+            drawRect(scrollbarX, scrollbarY, scrollbarX + (SCROLLBAR_WIDTH - 1), scrollbarY + scrollbarHeight, 0x80000000);
+
+            int handleHeight = Math.max(10, (int) ((float) scrollbarHeight * scrollbarHeight / (float) (maxScroll + scrollbarHeight)));
+            int handleY = scrollbarY + (int) ((float) scrollOffset / (float) maxScroll * (scrollbarHeight - handleHeight));
+            
+            drawRect(scrollbarX, handleY, scrollbarX + (SCROLLBAR_WIDTH - 1), handleY + handleHeight, 0xFF808080);
+            drawRect(scrollbarX, handleY, scrollbarX + (SCROLLBAR_WIDTH - 2), handleY + handleHeight - 1, 0xFFC0C0C0);
+        }
+    }
+
+    // --- 输入处理 ---
     @Override
     public void handleKeyboardInput() throws IOException {
         inputHandler.handleKeyboardInput();
@@ -161,29 +201,77 @@ public class GuiNote extends GuiScreen {
         updateUndoRedoButtonState();
     }
 
+    // <<< 滚动条交互逻辑重构 >>>
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
+        if (mouseButton == 0 && maxScroll > 0) {
+            int scrollbarX = this.textAreaX + this.textAreaWidth - SCROLLBAR_WIDTH;
+            if (mouseX >= scrollbarX && mouseX < scrollbarX + SCROLLBAR_WIDTH && mouseY >= this.textAreaY && mouseY < this.textAreaY + this.textAreaHeight) {
+                int scrollbarHeight = this.textAreaHeight;
+                int handleHeight = Math.max(10, (int) ((float) scrollbarHeight * scrollbarHeight / (float) (maxScroll + scrollbarHeight)));
+                int handleY = this.textAreaY + (int) ((float) scrollOffset / (float) maxScroll * (scrollbarHeight - handleHeight));
+
+                if (mouseY >= handleY && mouseY < handleY + handleHeight) {
+                    // 点击在滑块上，开始拖动
+                    this.isDraggingScrollbar = true;
+                    this.initialMouseY = mouseY;
+                    this.scrollOffsetAtDragStart = this.scrollOffset;
+                } else {
+                    // 点击在轨道空白处，实现翻页
+                    this.scrollOffset += (mouseY < handleY ? -1 : 1) * this.textAreaHeight;
+                    this.scrollOffset = MathHelper.clamp_int(scrollOffset, 0, maxScroll);
+                }
+                return; // 消耗点击事件
+            }
+        }
+        
+        this.isDraggingScrollbar = false;
         super.mouseClicked(mouseX, mouseY, mouseButton);
         inputHandler.mouseClicked(mouseX, mouseY, mouseButton);
     }
 
     @Override
     protected void mouseClickMove(int mouseX, int mouseY, int clickedMouseButton, long timeSinceLastClick) {
+        if (this.isDraggingScrollbar) {
+            float deltaY = mouseY - this.initialMouseY;
+            int scrollbarHeight = this.textAreaHeight;
+            int handleHeight = Math.max(10, (int) ((float) scrollbarHeight * scrollbarHeight / (float) (maxScroll + scrollbarHeight)));
+            float tractableHeight = scrollbarHeight - handleHeight;
+
+            if (tractableHeight > 0) {
+                float scrollRatio = (float) this.maxScroll / tractableHeight;
+                this.scrollOffset = (int) (this.scrollOffsetAtDragStart + (deltaY * scrollRatio));
+                this.scrollOffset = MathHelper.clamp_int(scrollOffset, 0, maxScroll);
+            }
+            return;
+        }
+        
         super.mouseClickMove(mouseX, mouseY, clickedMouseButton, timeSinceLastClick);
         inputHandler.mouseClickMove(mouseX, mouseY);
     }
-
+    
+    @Override
+    protected void mouseReleased(int mouseX, int mouseY, int state) {
+        super.mouseReleased(mouseX, mouseY, state);
+        if (state == 0) {
+            this.isDraggingScrollbar = false;
+            this.initialMouseY = -1;
+            this.scrollOffsetAtDragStart = -1;
+        }
+    }
+    
     @Override
     public void handleMouseInput() throws IOException {
         super.handleMouseInput();
         int dWheel = Mouse.getEventDWheel();
         if (dWheel != 0) {
-            this.maxScroll = Math.max(0, renderer.getRenderedLines().size() * fontRendererObj.FONT_HEIGHT - textAreaHeight + 8);
             int scrollAmount = fontRendererObj.FONT_HEIGHT * 3 * (dWheel < 0 ? 1 : -1);
+            this.maxScroll = Math.max(0, renderer.getRenderedLines().size() * fontRendererObj.FONT_HEIGHT - textAreaHeight + (TEXT_PADDING * 2));
             scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset + scrollAmount));
         }
     }
 
+    // ... (actionPerformed, handleUndo, handleRedo 等方法保持不变) ...
     @Override
     protected void actionPerformed(GuiButton button) throws IOException {
         if (!button.enabled) return;
@@ -221,35 +309,29 @@ public class GuiNote extends GuiScreen {
             updateUndoRedoButtonState();
         }
     }
-    
+
     // --- 辅助方法 ---
     public String getTextContent() { return this.editor.getTextContent(); }
-    public void setTextContentAndInitialize(String newText) {
-        if (newText != null) this.editor.setTextContent(newText);
-    }
+    public void setTextContentAndInitialize(String newText) { if (newText != null) this.editor.setTextContent(newText); }
     public boolean isMouseInTextArea(int mouseX, int mouseY) {
-        return mouseX >= textAreaX && mouseX <= textAreaX + textAreaWidth && mouseY >= textAreaY && mouseY <= textAreaY + textAreaHeight;
+        return mouseX >= textAreaX && mouseX <= textAreaX + textAreaWidth - (SCROLLBAR_WIDTH + 1) && mouseY >= textAreaY && mouseY <= textAreaY + textAreaHeight;
     }
     public int getCharIndexAt(int mouseX, int mouseY) {
-        int relativeY = mouseY - this.textAreaY - 4 + this.scrollOffset;
+        int relativeY = mouseY - this.textAreaY - TEXT_PADDING + this.scrollOffset;
         return renderer.getCharIndexAt(mouseX, mouseY, relativeY);
     }
     public void resetCursorBlink() { this.cursorBlink = 0; }
-    
-    // <<< 新增的公共 getter 方法
-    public Minecraft getMc() {
-        return this.mc;
-    }
+    public Minecraft getMc() { return this.mc; }
     
     private void ensureCursorVisible() {
         int lineIndex = renderer.findLineForPosition(editor.getCursorPosition());
         int cursorY = lineIndex * fontRendererObj.FONT_HEIGHT;
         if (cursorY < scrollOffset) {
             scrollOffset = cursorY;
-        } else if (cursorY + fontRendererObj.FONT_HEIGHT > scrollOffset + textAreaHeight - 8) {
-            scrollOffset = cursorY + fontRendererObj.FONT_HEIGHT - textAreaHeight + 8;
+        } else if (cursorY + fontRendererObj.FONT_HEIGHT > scrollOffset + textAreaHeight - (TEXT_PADDING * 2)) {
+            scrollOffset = cursorY + fontRendererObj.FONT_HEIGHT - textAreaHeight + (TEXT_PADDING * 2);
         }
-        this.maxScroll = Math.max(0, renderer.getRenderedLines().size() * fontRendererObj.FONT_HEIGHT - textAreaHeight + 8);
+        this.maxScroll = Math.max(0, renderer.getRenderedLines().size() * fontRendererObj.FONT_HEIGHT - textAreaHeight + (TEXT_PADDING * 2));
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
     }
     

@@ -32,7 +32,7 @@ public class ItemTooltipTranslationHandler {
     public static Map<String, List<String>> translationCache;
     public static final Set<String> pendingTranslations = Collections.newSetFromMap(new ConcurrentHashMap<>());
     
-    public static final Set<String> temporarilyHiddenItems = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    public static Set<String> hiddenTranslations;
     
     public static String lastHoveredItemName = null;
     public static List<String> lastHoveredItemLore = null;
@@ -41,12 +41,15 @@ public class ItemTooltipTranslationHandler {
     
     public static void loadCacheFromFile() {
         translationCache = TranslationCacheManager.loadCache();
+        hiddenTranslations = TranslationCacheManager.loadHiddenItems();
         LogUtil.info("log.info.cache.loaded", translationCache.size());
+        LogUtil.info("log.info.hidden.loaded", hiddenTranslations.size());
     }
 
     public static void saveCacheToFile() {
         LogUtil.info("log.info.cache.saving.count", translationCache.size());
         TranslationCacheManager.saveCache(translationCache);
+        TranslationCacheManager.saveHiddenItems(hiddenTranslations);
         LogUtil.info("log.info.cache.saved");
     }
 
@@ -100,7 +103,7 @@ public class ItemTooltipTranslationHandler {
             return;
         }
 
-        boolean isHidden = temporarilyHiddenItems.contains(unformattedItemName);
+        boolean isHidden = hiddenTranslations.contains(unformattedItemName);
         boolean shouldBeVisible = GhostConfig.Translation.autoShowCachedTranslation ? !isHidden : isHidden;
 
         if (shouldBeVisible) {
@@ -186,7 +189,6 @@ public class ItemTooltipTranslationHandler {
     public void onGuiClosed(GuiOpenEvent event) {
         if (event.gui == null) {
             resetHoveredItem();
-            temporarilyHiddenItems.clear();
         }
     }
 

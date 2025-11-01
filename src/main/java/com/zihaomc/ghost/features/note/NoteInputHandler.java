@@ -8,6 +8,7 @@ import java.io.IOException;
 
 /**
  * 负责处理笔记GUI中的所有用户输入（键盘和鼠标）。
+ * - 支持 Tab 键缩进。
  */
 public class NoteInputHandler {
     
@@ -56,19 +57,21 @@ public class NoteInputHandler {
                 break;
             case Keyboard.KEY_DELETE:
                 history.saveState(editor.getTextContent(), true);
-                if (editor.hasSelection()) {
-                    editor.deleteSelection();
-                } else {
-                    // 使用新的前进删除方法
-                    editor.deleteCharForwards();
-                }
+                if (editor.hasSelection()) editor.deleteSelection();
+                else editor.deleteCharForwards();
                 break;
             case Keyboard.KEY_LEFT: editor.moveCursorBy(-1, GuiScreen.isShiftKeyDown()); break;
             case Keyboard.KEY_RIGHT: editor.moveCursorBy(1, GuiScreen.isShiftKeyDown()); break;
             case Keyboard.KEY_HOME: editor.setCursorPosition(0, GuiScreen.isShiftKeyDown()); break;
             case Keyboard.KEY_END: editor.setCursorPosition(editor.getTextContent().length(), GuiScreen.isShiftKeyDown()); break;
+            
+            // --- 新增：处理Tab键 ---
+            case Keyboard.KEY_TAB:
+                history.saveState(editor.getTextContent(), false); // Tab 视为一个独立操作
+                editor.insertText("    "); // 插入四个空格
+                break;
+
             default:
-                // 允许输入 § 和 &
                 if (typedChar == '§' || typedChar == '&' || net.minecraft.util.ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
                     history.saveState(editor.getTextContent(), true);
                     editor.insertText(Character.toString(typedChar));
