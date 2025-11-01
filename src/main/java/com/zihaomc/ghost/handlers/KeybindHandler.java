@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.features.notes.GuiNote;
+import com.zihaomc.ghost.features.note.GuiNote;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 import com.zihaomc.ghost.LangUtil;
 import net.minecraft.client.Minecraft;

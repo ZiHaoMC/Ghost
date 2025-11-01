@@ -1,4 +1,4 @@
-package com.zihaomc.ghost.features.notes;
+package com.zihaomc.ghost.features.note;
 
 import com.zihaomc.ghost.LangUtil;
 import net.minecraft.client.gui.GuiButton;
