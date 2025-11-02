@@ -71,7 +71,7 @@ ghost.gui.note.ampersand.prefix=& 颜色代码:
 # ==================================
 # ===      通用命令和错误      ===
 # ==================================
-ghostblock.commands.usage=用法: /cgb <set|fill|load|clear|cancel|resume|undo|help> [参数...]
+ghostblock.commands.usage=用法: /cgb <set|fill|load|clear|cancel|resume|undo|history|help> [参数...]
 ghostblock.commands.error.not_in_world=错误: 您当前不在一个世界中。
 ghostblock.commands.error.invalid_block=错误: 指定的方块无效或不存在。
 ghostblock.commands.error.invalid_batch_size=错误: 无效的批次大小。请输入一个正整数。
@@ -152,7 +152,7 @@ ghostblock.commands.resume.error.already_running=错误: 任务 #%1$d 正在运�
 ghostblock.commands.resume.invalid_type=错误: 此类型的任务 (%1$s) 不支持恢复。
 
 # undo 命令
-ghostblock.commands.undo.usage=用法: /cgb undo
+ghostblock.commands.undo.usage=用法: /cgb undo [编号]
 ghostblock.commands.undo.empty=错误: 没有可以撤销的操作。
 ghostblock.commands.undo.record_created_clear=已为文件删除操作创建撤销记录。
 ghostblock.commands.undo.restoring_user_files=正在恢复用户文件至先前状态...
@@ -169,6 +169,18 @@ ghostblock.commands.undo.restoring_ghost_blocks=正在恢复幽灵方块...
 ghostblock.commands.undo.error.restore_ghost_failed=错误: 恢复幽灵方块 (%1$d, %2$d, %3$d) 失败: %4$s
 ghostblock.commands.undo.auto_file_restored=已将 %1$d 个幽灵方块记录恢复到自动清除文件。
 ghostblock.commands.undo.success_clear=成功撤销清除操作，恢复了 %1$d 个幽灵方块。
+ghostblock.commands.undo.invalid_index=错误: 无效的编号。请输入 1 到 %d 之间的数字。
+
+# history 命令
+ghostblock.commands.history.usage=用法: /cgb history
+ghostblock.commands.history.header=--- 最近的操作历史 (鼠标悬停查看详情) ---
+ghostblock.commands.history.usage_hint=使用 /cgb undo [编号] 来撤销指定的操作。
+ghostblock.commands.history.entry.format=§e[%d] §f%s
+ghostblock.commands.history.entry.type.set=设置
+ghostblock.commands.history.entry.type.fill=填充
+ghostblock.commands.history.entry.type.load=加载
+ghostblock.commands.history.entry.type.clear_block=清除方块
+ghostblock.commands.history.entry.type.clear_file=清除文件
 
 # /cgb help
 ghostblock.commands.cghostblock.help.header=--- GhostBlock 命令帮助 (/cgb) ---
@@ -182,7 +194,8 @@ ghostblock.commands.cghostblock.help.subcommand.load=从文件加载幽灵方块
 ghostblock.commands.cghostblock.help.subcommand.clear=清除幽灵方块 (从文件或当前世界)。
 ghostblock.commands.cghostblock.help.subcommand.cancel=取消正在运行的后台任务 (fill/load/clear)。
 ghostblock.commands.cghostblock.help.subcommand.resume=恢复一个已暂停的任务。
-ghostblock.commands.cghostblock.help.subcommand.undo=撤销上一次的 set/fill/load/clear 操作。
+ghostblock.commands.cghostblock.help.subcommand.undo=撤销上一次或指定的 set/fill/load/clear 操作。
+ghostblock.commands.cghostblock.help.subcommand.history=显示可供撤销的操作历史记录。
 ghostblock.commands.cghostblock.help.aliases=别名
 
 # ==================================

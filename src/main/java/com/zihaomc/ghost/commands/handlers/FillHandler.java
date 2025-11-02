@@ -31,6 +31,9 @@ public class FillHandler implements ICommandHandler {
 
     @Override
     public void processCommand(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
+        // 拼接完整的命令字符串，用于历史记录
+        String fullCommand = "/cgb " + String.join(" ", args);
+        
         if (args.length < 8) {
             throw new WrongUsageException(LangUtil.translate("ghostblock.commands.cghostblock.fill.usage"));
         }
@@ -161,7 +164,8 @@ public class FillHandler implements ICommandHandler {
             fileBackups.put(actualSaveFileName, existingEntries);
         }
         
-        CommandState.undoHistory.push(new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId));
+        // 创建撤销记录时，传入完整的命令字符串
+        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId, fullCommand));
 
         if (taskId != null) {
             FillTask task = new FillTask(world, state, allBlocks, batchSize, saveToFile, saveFileName, sender, taskId, autoEntries);

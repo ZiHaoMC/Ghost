@@ -24,14 +24,17 @@ public class GhostBlockCommand extends CommandBase {
      */
     private final Map<String, ICommandHandler> commandHandlers = new HashMap<>();
 
-    // **** 修正点: 创建一个有序的、用于 Tab 补全的列表 ****
-    // 这个列表定义了子命令的显示顺序，并且排除了不应被用户直接输入的 "confirm_clear"。
+    /**
+     * 一个有序的、用于 Tab 补全的列表。
+     * 这个列表定义了子命令的显示顺序，并且排除了不应被用户直接输入的 "confirm_clear"。
+     */
     private static final List<String> SUB_COMMANDS_FOR_TAB = Arrays.asList(
             "set",
             "fill",
             "load",
             "clear",
             "undo",
+            "history",
             "cancel",
             "resume",
             "help"
@@ -48,6 +51,7 @@ public class GhostBlockCommand extends CommandBase {
         commandHandlers.put("cancel", new CancelHandler());
         commandHandlers.put("resume", new ResumeHandler());
         commandHandlers.put("undo", new UndoHandler());
+        commandHandlers.put("history", new HistoryHandler()); // 注册 history 命令处理器
         commandHandlers.put("help", new HelpHandler());
         // confirm_clear 仍然是一个有效的命令处理器，但不会出现在 Tab 补全中
         commandHandlers.put("confirm_clear", new ConfirmClearHandler());
@@ -96,7 +100,7 @@ public class GhostBlockCommand extends CommandBase {
         if (handler != null) {
             WorldClient world = Minecraft.getMinecraft().theWorld;
             // 检查子命令是否需要一个有效的世界实例
-            boolean worldRequired = !Arrays.asList("help", "cancel", "resume").contains(subCommand);
+            boolean worldRequired = !Arrays.asList("help", "cancel", "resume", "history").contains(subCommand);
             
             if (worldRequired && world == null) {
                 throw new CommandException(LangUtil.translate("ghostblock.commands.error.not_in_world"));

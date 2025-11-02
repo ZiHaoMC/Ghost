@@ -8,7 +8,11 @@ import net.minecraft.command.ICommandSender;
 import net.minecraft.util.BlockPos;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -25,7 +29,8 @@ public class CommandState {
     public static final List<ClearTask> activeClearTasks = Collections.synchronizedList(new ArrayList<>());
 
     // --- 撤销/重做 ---
-    public static final Deque<UndoRecord> undoHistory = new ArrayDeque<>();
+    // 从 Deque 改为 List 以支持按索引撤销
+    public static final List<UndoRecord> undoHistory = new ArrayList<>();
 
     // --- 清除确认 ---
     public static final Map<String, ClearConfirmation> pendingConfirmations = new HashMap<>();
@@ -39,23 +44,25 @@ public class CommandState {
     public static class UndoRecord {
         public enum OperationType {
             SET, // 用于 set, fill, load
-            CLEAR_BLOCK // 用于 clear block, clear file
+            CLEAR_BLOCK, // 用于 clear block, clear file
         }
         public final String undoFileName;
         public final Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups;
         public final OperationType operationType;
-        public final Integer relatedTaskId; // [新增] 关联的任务ID，如果没有则为 null
+        public final Integer relatedTaskId; // 关联的任务ID，如果没有则为 null
+        public final String commandString; // 存储执行的完整命令字符串
 
-        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type, Integer relatedTaskId) {
+        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type, Integer relatedTaskId, String commandString) {
             this.undoFileName = undoFileName;
             this.fileBackups = fileBackups != null ? new HashMap<>(fileBackups) : new HashMap<>();
             this.operationType = type;
             this.relatedTaskId = relatedTaskId;
+            this.commandString = commandString != null ? commandString : "";
         }
         
-        // 保留旧构造函数以兼容（虽然这里都重写了，但保持个好习惯）
-        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type) {
-            this(undoFileName, fileBackups, type, null);
+        // 兼容旧逻辑的构造函数
+        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type, Integer relatedTaskId) {
+            this(undoFileName, fileBackups, type, relatedTaskId, "");
         }
     }
 

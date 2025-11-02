@@ -13,8 +13,10 @@ import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.command.WrongUsageException;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.World;
@@ -22,7 +24,6 @@ import net.minecraft.world.World;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,9 +38,24 @@ public class UndoHandler implements ICommandHandler {
         if (CommandState.undoHistory.isEmpty()) {
             throw new CommandException(LangUtil.translate("ghostblock.commands.undo.empty"));
         }
-        UndoRecord record = CommandState.undoHistory.pop();
 
-        // [新增] 核心逻辑：如果此撤销操作关联了一个仍在运行的任务，强制终止它。
+        int index = 1; // 默认为1，即撤销最近的操作
+        if (args.length > 1) {
+            try {
+                index = Integer.parseInt(args[1]);
+                if (index <= 0 || index > CommandState.undoHistory.size()) {
+                    // 抛出带有有效范围提示的错误
+                    throw new CommandException(LangUtil.translate("ghostblock.commands.undo.invalid_index", CommandState.undoHistory.size()));
+                }
+            } catch (NumberFormatException e) {
+                throw new WrongUsageException(LangUtil.translate("ghostblock.commands.undo.usage.extended"));
+            }
+        }
+
+        // 从历史列表中移除指定索引的记录 (用户输入1，对应列表索引0)
+        UndoRecord record = CommandState.undoHistory.remove(index - 1);
+
+        // 核心逻辑：如果此撤销操作关联了一个仍在运行的任务，强制终止它。
         if (record.relatedTaskId != null) {
             cancelRelatedTask(record.relatedTaskId);
         }
@@ -56,10 +72,18 @@ public class UndoHandler implements ICommandHandler {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
+        // 为 undo 命令的第二个参数提供历史记录编号的 Tab 补全
+        if (args.length == 2) {
+            List<String> suggestions = new ArrayList<>();
+            for (int i = 1; i <= CommandState.undoHistory.size(); i++) {
+                suggestions.add(String.valueOf(i));
+            }
+            return CommandBase.getListOfStringsMatchingLastWord(args, suggestions);
+        }
         return Collections.emptyList();
     }
     
-    // --- 辅助方法 ---
+    // --- 辅助方法 (这部分无需修改) ---
 
     /**
      * 强制终止与撤销操作关联的任务。

@@ -28,6 +28,9 @@ public class LoadHandler implements ICommandHandler {
 
     @Override
     public void processCommand(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
+        // 拼接完整的命令字符串，用于历史记录
+        String fullCommand = "/cgb " + String.join(" ", args);
+        
         List<String> fileNames = new ArrayList<>();
         int loadBatchSize = 100;
         boolean useBatch = false;
@@ -101,7 +104,8 @@ public class LoadHandler implements ICommandHandler {
         String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
         GhostBlockData.saveData(world, autoSaveEntries, undoFileName, true);
         
-        CommandState.undoHistory.push(new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.SET, taskId));
+        // 创建撤销记录时，传入完整的命令字符串
+        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.SET, taskId, fullCommand));
 
         if (taskId != null) {
             int actualBatchSize = useBatch ? loadBatchSize : 100;

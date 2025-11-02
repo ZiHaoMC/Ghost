@@ -132,6 +132,9 @@ public class ClearHandler implements ICommandHandler {
     }
 
     private void handleClearBlock(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
+        // 拼接完整的命令字符串，用于历史记录
+        String fullCommand = "/cgb " + String.join(" ", args);
+        
         boolean batchMode = false;
         int batchSize = 100;
         boolean confirmed = false;
@@ -170,10 +173,11 @@ public class ClearHandler implements ICommandHandler {
         if (!confirmed) {
             sendConfirmationMessage(sender, batchMode, batchSize);
         } else {
-            // [新增] 预先生成 TaskId
+            // 预先生成 TaskId
             Integer taskId = batchMode ? CommandState.taskIdCounter.incrementAndGet() : null;
             
-            createClearUndoRecord(world, entries, taskId); // [修改] 传入 taskId
+            // 传入 taskId 和命令字符串
+            createClearUndoRecord(world, entries, taskId, fullCommand);
 
             if (taskId != null) {
                 CommandState.activeClearTasks.add(new ClearTask(world, entries, batchSize, sender, taskId, autoFile));
@@ -213,13 +217,13 @@ public class ClearHandler implements ICommandHandler {
         }
     }
     
-    // [修改] 接收 taskId 参数
-    private void createClearUndoRecord(WorldClient world, List<GhostBlockEntry> clearedEntries, Integer taskId) {
+    // 接收 taskId 和 commandString 参数
+    private void createClearUndoRecord(WorldClient world, List<GhostBlockEntry> clearedEntries, Integer taskId, String commandString) {
         String baseId = GhostBlockData.getWorldBaseIdentifier(world);
         String undoFileName = "undo_clear_block_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis();
         GhostBlockData.saveData(world, clearedEntries, undoFileName, true);
-        // [修改] 传入 taskId 到 UndoRecord
-        CommandState.undoHistory.push(new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.CLEAR_BLOCK, taskId));
+        // 传入 taskId 和 commandString 到 UndoRecord
+        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.CLEAR_BLOCK, taskId, commandString));
         LogUtil.info("log.info.undo.created.clearBlock", undoFileName);
     }
 

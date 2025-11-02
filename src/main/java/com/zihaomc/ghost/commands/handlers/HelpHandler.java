@@ -2,15 +2,13 @@ package com.zihaomc.ghost.commands.handlers;
 
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.commands.GhostBlockCommand;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
 import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.IChatComponent;
-import net.minecraft.util.BlockPos;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +43,7 @@ public class HelpHandler implements ICommandHandler {
 
         sender.addChatMessage(new ChatComponentText(hl + LangUtil.translate("ghostblock.commands.cghostblock.help.header")));
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.cghostblock.help.description")));
-        sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.cghostblock.help.usage.main") + ": " + us + "/" + commandName + " <set|fill|load|clear|cancel|resume|undo|help> [参数...]"));
+        sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.cghostblock.help.usage.main") + ": " + us + "/" + commandName + " <set|fill|load|clear|...|help> [参数...]"));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.cghostblock.help.subcommands.header")));
         sender.addChatMessage(formatHelpLine(sc + "help", tx + LangUtil.translate("ghostblock.commands.cghostblock.help.subcommand.help")));
@@ -56,6 +54,8 @@ public class HelpHandler implements ICommandHandler {
         sender.addChatMessage(formatHelpLine(sc + "cancel", tx + LangUtil.translate("ghostblock.commands.cghostblock.help.subcommand.cancel") + us + " " + LangUtil.translate("ghostblock.commands.cancel.usage")));
         sender.addChatMessage(formatHelpLine(sc + "resume", tx + LangUtil.translate("ghostblock.commands.cghostblock.help.subcommand.resume") + us + " " + LangUtil.translate("ghostblock.commands.resume.usage")));
         sender.addChatMessage(formatHelpLine(sc + "undo", tx + LangUtil.translate("ghostblock.commands.cghostblock.help.subcommand.undo") + us + " " + LangUtil.translate("ghostblock.commands.undo.usage")));
+        sender.addChatMessage(formatHelpLine(sc + "history", tx + LangUtil.translate("ghostblock.commands.cghostblock.help.subcommand.history") + us + " " + LangUtil.translate("ghostblock.commands.history.usage")));
+
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.cghostblock.help.aliases") + ": " + hl + commandAliases));
     }
