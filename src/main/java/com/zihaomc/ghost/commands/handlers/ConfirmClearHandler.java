@@ -58,6 +58,9 @@ public class ConfirmClearHandler implements ICommandHandler {
         // 拼接一个描述性的命令字符串
         String descriptiveCommand = "/cgb clear file " + String.join(" ", commandBaseFileNames);
 
+        // 创建详细描述字符串, 格式: "filename1, filename2"
+        String details = String.join(", ", commandBaseFileNames);
+
         // 备份要删除的文件内容 (用于 undo)
         Map<String, List<GhostBlockEntry>> fileBackups = new HashMap<>();
         for (String baseFileName : commandBaseFileNames) {
@@ -68,8 +71,7 @@ public class ConfirmClearHandler implements ICommandHandler {
         // 创建撤销记录
         String baseId = GhostBlockData.getWorldBaseIdentifier(world);
         String undoFileName = "undo_clear_file_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis();
-        // 创建撤销记录时，传入描述性的命令字符串
-        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.CLEAR_BLOCK, null, descriptiveCommand));
+        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.CLEAR_FILE, null, descriptiveCommand, details));
         sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY,"ghostblock.commands.undo.record_created_clear"));
 
         // 执行实际删除

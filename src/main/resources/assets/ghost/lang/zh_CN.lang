@@ -176,11 +176,13 @@ ghostblock.commands.history.usage=用法: /cgb history
 ghostblock.commands.history.header=--- 最近的操作历史 (鼠标悬停查看详情) ---
 ghostblock.commands.history.usage_hint=使用 /cgb undo [编号] 来撤销指定的操作。
 ghostblock.commands.history.entry.format=§e[%d] §f%s
-ghostblock.commands.history.entry.type.set=设置
-ghostblock.commands.history.entry.type.fill=填充
-ghostblock.commands.history.entry.type.load=加载
-ghostblock.commands.history.entry.type.clear_block=清除方块
-ghostblock.commands.history.entry.type.clear_file=清除文件
+# 新增的详细描述格式
+ghostblock.commands.history.entry.desc.set=设置方块 §b%s §f于 §a%s
+ghostblock.commands.history.entry.desc.fill=填充 §e%s §f个 §b%s §f方块
+ghostblock.commands.history.entry.desc.load=从文件 §a%s §f加载了 §e%s §f个方块
+ghostblock.commands.history.entry.desc.clear_block=清除了 §e%s §f个幽灵方块
+ghostblock.commands.history.entry.desc.clear_file=清除了文件: §a%s
+ghostblock.displayname.default_file_simple=默认文件
 
 # /cgb help
 ghostblock.commands.cghostblock.help.header=--- GhostBlock 命令帮助 (/cgb) ---

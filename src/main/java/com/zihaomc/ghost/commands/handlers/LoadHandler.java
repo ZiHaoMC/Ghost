@@ -104,8 +104,14 @@ public class LoadHandler implements ICommandHandler {
         String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
         GhostBlockData.saveData(world, autoSaveEntries, undoFileName, true);
         
-        // 创建撤销记录时，传入完整的命令字符串
-        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.SET, taskId, fullCommand));
+        // 创建详细描述字符串, 格式: "count filenames"
+        String fileDescription = fileNames.contains(null) ? 
+            LangUtil.translate("ghostblock.displayname.default_file_simple") : 
+            String.join(", ", fileNames);
+        String details = String.format("%d %s", entries.size(), fileDescription);
+
+        // 创建撤销记录时，使用新的 OperationType 和 details
+        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.LOAD, taskId, fullCommand, details));
 
         if (taskId != null) {
             int actualBatchSize = useBatch ? loadBatchSize : 100;

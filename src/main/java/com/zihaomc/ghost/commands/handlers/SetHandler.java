@@ -96,8 +96,12 @@ public class SetHandler implements ICommandHandler {
             fileBackups.put(actualSaveFileName, existingEntries);
         }
 
-        // 创建撤销记录时，传入完整的命令字符串
-        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId, fullCommand));
+        // 创建详细描述字符串, 格式: "x,y,z block_id"
+        String details = String.format("%d,%d,%d %s", pos.getX(), pos.getY(), pos.getZ(), args[4]);
+        
+        // 创建撤销记录时，使用新的 OperationType 和 details
+        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId, fullCommand, details));
+
 
         if (taskId == null) {
             // 直接放置

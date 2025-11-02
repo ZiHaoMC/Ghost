@@ -40,29 +40,33 @@ public class CommandState {
 
     /**
      * 代表一次可撤销的操作记录。
+     * (重构以支持更详细的描述)
      */
     public static class UndoRecord {
         public enum OperationType {
-            SET, // 用于 set, fill, load
-            CLEAR_BLOCK, // 用于 clear block, clear file
+            SET,
+            FILL,
+            LOAD,
+            CLEAR_BLOCK,
+            CLEAR_FILE
         }
+
         public final String undoFileName;
         public final Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups;
         public final OperationType operationType;
-        public final Integer relatedTaskId; // 关联的任务ID，如果没有则为 null
-        public final String commandString; // 存储执行的完整命令字符串
+        public final Integer relatedTaskId;
+        public final String commandString;
+        
+        // 用于生成详细描述的附加信息
+        public final String details;
 
-        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type, Integer relatedTaskId, String commandString) {
+        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type, Integer relatedTaskId, String commandString, String details) {
             this.undoFileName = undoFileName;
             this.fileBackups = fileBackups != null ? new HashMap<>(fileBackups) : new HashMap<>();
             this.operationType = type;
             this.relatedTaskId = relatedTaskId;
             this.commandString = commandString != null ? commandString : "";
-        }
-        
-        // 兼容旧逻辑的构造函数
-        public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type, Integer relatedTaskId) {
-            this(undoFileName, fileBackups, type, relatedTaskId, "");
+            this.details = details != null ? details : "";
         }
     }
 

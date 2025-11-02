@@ -175,9 +175,12 @@ public class ClearHandler implements ICommandHandler {
         } else {
             // 预先生成 TaskId
             Integer taskId = batchMode ? CommandState.taskIdCounter.incrementAndGet() : null;
+
+            // 创建详细描述字符串, 格式: "count"
+            String details = String.valueOf(entries.size());
             
-            // 传入 taskId 和命令字符串
-            createClearUndoRecord(world, entries, taskId, fullCommand);
+            // 传入 taskId、命令字符串和 details
+            createClearUndoRecord(world, entries, taskId, fullCommand, details);
 
             if (taskId != null) {
                 CommandState.activeClearTasks.add(new ClearTask(world, entries, batchSize, sender, taskId, autoFile));
@@ -217,13 +220,13 @@ public class ClearHandler implements ICommandHandler {
         }
     }
     
-    // 接收 taskId 和 commandString 参数
-    private void createClearUndoRecord(WorldClient world, List<GhostBlockEntry> clearedEntries, Integer taskId, String commandString) {
+    // 接收 taskId、commandString 和 details 参数
+    private void createClearUndoRecord(WorldClient world, List<GhostBlockEntry> clearedEntries, Integer taskId, String commandString, String details) {
         String baseId = GhostBlockData.getWorldBaseIdentifier(world);
         String undoFileName = "undo_clear_block_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis();
         GhostBlockData.saveData(world, clearedEntries, undoFileName, true);
-        // 传入 taskId 和 commandString 到 UndoRecord
-        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.CLEAR_BLOCK, taskId, commandString));
+        // 传入所有参数到 UndoRecord
+        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.CLEAR_BLOCK, taskId, commandString, details));
         LogUtil.info("log.info.undo.created.clearBlock", undoFileName);
     }
 

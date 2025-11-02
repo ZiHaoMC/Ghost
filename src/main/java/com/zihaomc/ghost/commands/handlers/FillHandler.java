@@ -164,8 +164,12 @@ public class FillHandler implements ICommandHandler {
             fileBackups.put(actualSaveFileName, existingEntries);
         }
         
-        // 创建撤销记录时，传入完整的命令字符串
-        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId, fullCommand));
+        // 创建详细描述字符串, 格式: "count block_id"
+        String details = String.format("%d %s", allBlocks.size(), args[7]);
+
+        // 创建撤销记录时，使用新的 OperationType 和 details
+        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.FILL, taskId, fullCommand, details));
+
 
         if (taskId != null) {
             FillTask task = new FillTask(world, state, allBlocks, batchSize, saveToFile, saveFileName, sender, taskId, autoEntries);

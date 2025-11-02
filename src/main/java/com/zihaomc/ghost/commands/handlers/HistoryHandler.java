@@ -30,46 +30,51 @@ public class HistoryHandler implements ICommandHandler {
         }
 
         sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GOLD, "ghostblock.commands.history.header"));
-        // 限制最多显示最近的10条历史记录，防止刷屏
         int limit = Math.min(10, CommandState.undoHistory.size());
 
         for (int i = 0; i < limit; i++) {
             UndoRecord record = CommandState.undoHistory.get(i);
-            String typeDescription;
-            String cmd = record.commandString.toLowerCase();
+            String description;
 
-            // 根据记录的命令字符串来确定更具体的操作类型描述
-            if (cmd.startsWith("/cgb fill")) {
-                typeDescription = LangUtil.translate("ghostblock.commands.history.entry.type.fill");
-            } else if (cmd.startsWith("/cgb set")) {
-                typeDescription = LangUtil.translate("ghostblock.commands.history.entry.type.set");
-            } else if (cmd.startsWith("/cgb load")) {
-                typeDescription = LangUtil.translate("ghostblock.commands.history.entry.type.load");
-            } else if (cmd.startsWith("/cgb clear block")) {
-                typeDescription = LangUtil.translate("ghostblock.commands.history.entry.type.clear_block");
-            } else if (cmd.contains("clear") && cmd.contains("file")) { // 涵盖 confirm_clear
-                typeDescription = LangUtil.translate("ghostblock.commands.history.entry.type.clear_file");
-            } else { // 作为备用
-                switch (record.operationType) {
-                    case SET: typeDescription = "Set/Fill/Load"; break;
-                    case CLEAR_BLOCK: typeDescription = "Clear"; break;
-                    default: typeDescription = "Unknown"; break;
-                }
+            // 根据操作类型和附加信息生成具体的描述文本
+            switch (record.operationType) {
+                case SET:
+                    // record.details 此时应为 "x,y,z block_id"
+                    String[] setDetails = record.details.split(" ");
+                    description = LangUtil.translate("ghostblock.commands.history.entry.desc.set", setDetails[0], setDetails[1]);
+                    break;
+                case FILL:
+                    // record.details 此时应为 "count block_id"
+                    String[] fillDetails = record.details.split(" ");
+                    description = LangUtil.translate("ghostblock.commands.history.entry.desc.fill", fillDetails[0], fillDetails[1]);
+                    break;
+                case LOAD:
+                    // record.details 此时应为 "count filenames"
+                    String[] loadDetails = record.details.split(" ", 2);
+                    description = LangUtil.translate("ghostblock.commands.history.entry.desc.load", loadDetails[0], loadDetails[1]);
+                    break;
+                case CLEAR_BLOCK:
+                    // record.details 此时应为 "count"
+                    description = LangUtil.translate("ghostblock.commands.history.entry.desc.clear_block", record.details);
+                    break;
+                case CLEAR_FILE:
+                    // record.details 此时应为 "filenames"
+                    description = LangUtil.translate("ghostblock.commands.history.entry.desc.clear_file", record.details);
+                    break;
+                default:
+                    description = "Unknown Operation";
+                    break;
             }
 
             // 创建可交互的聊天组件
             ChatComponentText lineComponent = new ChatComponentText(
-                LangUtil.translate("ghostblock.commands.history.entry.format", i + 1, typeDescription)
+                LangUtil.translate("ghostblock.commands.history.entry.format", i + 1, description)
             );
             
-            // 创建鼠标悬停时显示的文本
+            // 悬停事件保持不变
             ChatComponentText hoverText = new ChatComponentText(record.commandString);
             hoverText.getChatStyle().setColor(EnumChatFormatting.GRAY);
-            
-            // 创建悬停事件
             HoverEvent hoverEvent = new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverText);
-            
-            // 将悬停事件应用到聊天行
             lineComponent.setChatStyle(new ChatStyle().setChatHoverEvent(hoverEvent));
 
             sender.addChatMessage(lineComponent);
@@ -84,7 +89,6 @@ public class HistoryHandler implements ICommandHandler {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        // history 命令本身不需要参数补全
         return Collections.emptyList();
     }
 }
