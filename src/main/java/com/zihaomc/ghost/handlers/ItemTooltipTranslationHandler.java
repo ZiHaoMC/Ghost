@@ -3,6 +3,7 @@ package com.zihaomc.ghost.handlers;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.TranslationCacheManager;
 import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.utils.ColorFormatting;
 import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 import net.minecraft.util.EnumChatFormatting;
@@ -21,24 +22,28 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/**
- * 处理物品提示框（Tooltip）的翻译功能。
- * 1. 记录当前鼠标悬停的物品名称和描述。
- * 2. 在提示框中显示已缓存的完整翻译结果或“翻译中”的状态。
- * 3. 实际的翻译请求由 KeybindHandler 中的快捷键触发。
- */
 public class ItemTooltipTranslationHandler {
 
     public static Map<String, List<String>> translationCache;
     public static final Set<String> pendingTranslations = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    
     public static Set<String> hiddenTranslations;
-    
+
+    /** 存储当前悬停物品的原始带格式名称 */
+    public static String lastHoveredItemOriginalName = null;
+    /** 存储当前悬停物品的原始带格式 Lore */
+    public static List<String> lastHoveredItemOriginalLore = null;
+
+    /** 存储当前悬停物品去除了格式的纯文本名称 */
     public static String lastHoveredItemName = null;
+    /** 存储当前悬停物品去除了格式的纯文本 Lore */
     public static List<String> lastHoveredItemLore = null;
 
+    /** 用于剥离颜色代码的正则表达式 */
     private static final Pattern STRIP_COLOR_PATTERN = Pattern.compile("(?i)§[0-9A-FK-OR]");
-    
+
+    /**
+     * 从文件加载翻译缓存和隐藏列表。
+     */
     public static void loadCacheFromFile() {
         translationCache = TranslationCacheManager.loadCache();
         hiddenTranslations = TranslationCacheManager.loadHiddenItems();
@@ -46,6 +51,9 @@ public class ItemTooltipTranslationHandler {
         LogUtil.info("log.info.hidden.loaded", hiddenTranslations.size());
     }
 
+    /**
+     * 将翻译缓存和隐藏列表保存到文件。
+     */
     public static void saveCacheToFile() {
         LogUtil.info("log.info.cache.saving.count", translationCache.size());
         TranslationCacheManager.saveCache(translationCache);
@@ -53,6 +61,9 @@ public class ItemTooltipTranslationHandler {
         LogUtil.info("log.info.cache.saved");
     }
 
+    /**
+     * 核心事件：处理物品 Tooltip 的显示。
+     */
     @SubscribeEvent
     public void onItemTooltip(ItemTooltipEvent event) {
         if ((!GhostConfig.Translation.enableItemTranslation && !GhostConfig.Translation.enableAutomaticTranslation) || event.itemStack == null || event.toolTip.isEmpty()) {
@@ -60,40 +71,52 @@ public class ItemTooltipTranslationHandler {
             return;
         }
 
-        String unformattedItemName = STRIP_COLOR_PATTERN.matcher(event.toolTip.get(0)).replaceAll("");
+        // 步骤 1: 存储原始的、带格式的文本
+        lastHoveredItemOriginalName = event.toolTip.get(0);
+        
+        // 步骤 2: 存储去除格式后的纯文本，用作缓存的 Key 和翻译请求的内容
+        String unformattedItemName = STRIP_COLOR_PATTERN.matcher(lastHoveredItemOriginalName).replaceAll("");
         if (unformattedItemName.trim().isEmpty()) {
             resetHoveredItem();
             return;
         }
         lastHoveredItemName = unformattedItemName;
         
+        // 同样处理 Lore 部分
         if (event.toolTip.size() > 1) {
-            lastHoveredItemLore = event.toolTip.subList(1, event.toolTip.size()).stream()
+            lastHoveredItemOriginalLore = new ArrayList<>(event.toolTip.subList(1, event.toolTip.size()));
+            lastHoveredItemLore = lastHoveredItemOriginalLore.stream()
                 .map(line -> STRIP_COLOR_PATTERN.matcher(line).replaceAll(""))
                 .collect(Collectors.toList());
         } else {
+            lastHoveredItemOriginalLore = new ArrayList<>();
             lastHoveredItemLore = new ArrayList<>();
         }
 
         String keyName = Keyboard.getKeyName(KeybindHandler.translateItemKey.getKeyCode());
 
+        // 如果物品正在翻译中，显示提示
         if (pendingTranslations.contains(unformattedItemName)) {
             event.toolTip.add(EnumChatFormatting.GRAY + LangUtil.translate("ghost.tooltip.translating"));
             return;
         }
         
+        // 如果缓存中没有此物品
         if (!translationCache.containsKey(unformattedItemName)) {
             if (GhostConfig.Translation.enableAutomaticTranslation) {
-                // 自动触发翻译
-                triggerAutomaticTranslation(unformattedItemName, lastHoveredItemLore);
+                // 自动翻译模式下，触发翻译流程
+                new KeybindHandler().handleToggleOrTranslatePress();
                 event.toolTip.add(EnumChatFormatting.GRAY + LangUtil.translate("ghost.tooltip.translating"));
             } else if (!GhostConfig.Translation.hideTranslationKeybindTooltip) {
+                // 手动模式下，显示翻译提示
                 event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.translate", keyName));
             }
             return;
         }
 
+        // 如果缓存中存在此物品，获取翻译结果
         List<String> cachedLines = translationCache.get(unformattedItemName);
+        // 检查是否是错误信息
         if (cachedLines != null && !cachedLines.isEmpty() && cachedLines.get(0).startsWith(EnumChatFormatting.RED.toString())) {
             event.toolTip.add("");
             event.toolTip.add(cachedLines.get(0));
@@ -103,88 +126,52 @@ public class ItemTooltipTranslationHandler {
             return;
         }
 
+        // 决定是否应该显示翻译
         boolean isHidden = hiddenTranslations.contains(unformattedItemName);
         boolean shouldBeVisible = GhostConfig.Translation.autoShowCachedTranslation ? !isHidden : isHidden;
 
         if (shouldBeVisible) {
             if (GhostConfig.Translation.showTranslationOnly) {
+                // 仅显示翻译模式
                 event.toolTip.clear();
-
                 if (cachedLines != null && !cachedLines.isEmpty()) {
-                    event.toolTip.add(event.itemStack.getRarity().rarityColor + cachedLines.get(0));
-
-                    if (cachedLines.size() > 1) {
-                        for (int i = 1; i < cachedLines.size(); i++) {
-                            event.toolTip.add(EnumChatFormatting.AQUA + cachedLines.get(i));
-                        }
-                    }
+                    // 直接添加已经格式化好的翻译文本
+                    event.toolTip.addAll(cachedLines);
                 }
                 event.toolTip.add("");
                 if (!GhostConfig.Translation.hideTranslationKeybindTooltip) {
                     event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
                 }
             } else {
+                // 在原文下方附加翻译
                 displayTranslation(event, cachedLines, keyName);
             }
         } else {
+            // 如果翻译被隐藏，显示“显示翻译”的提示
             if (!GhostConfig.Translation.hideTranslationKeybindTooltip) {
                 event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.showAndClear", keyName, keyName, keyName));
             }
         }
     }
 
-    private void triggerAutomaticTranslation(String itemName, List<String> itemLore) {
-        if (pendingTranslations.contains(itemName)) {
-            return;
-        }
-        
-        StringBuilder fullTextBuilder = new StringBuilder(itemName);
-        for (String line : itemLore) {
-            fullTextBuilder.append("\n").append(line);
-        }
-        String textToTranslate = fullTextBuilder.toString();
-
-        if (textToTranslate.trim().isEmpty()) {
-            return;
-        }
-        
-        pendingTranslations.add(itemName);
-
-        new Thread(() -> {
-            try {
-                String result = NiuTransUtil.translate(textToTranslate);
-                List<String> translatedLines;
-                
-                if (result == null || result.trim().isEmpty()) {
-                    translatedLines = Collections.singletonList(EnumChatFormatting.RED + LangUtil.translate("ghost.error.translation.network"));
-                } else if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
-                    String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
-                    translatedLines = Collections.singletonList(EnumChatFormatting.RED + errorContent);
-                } else {
-                    translatedLines = Arrays.asList(result.split("\n"));
-                }
-                
-                translationCache.put(itemName, translatedLines);
-
-            } finally {
-                pendingTranslations.remove(itemName);
-            }
-        }).start();
-    }
-
+    /**
+     * 在 Tooltip 的末尾附加翻译内容。
+     */
     private void displayTranslation(ItemTooltipEvent event, List<String> translatedLines, String keyName) {
         event.toolTip.add("");
         event.toolTip.add(EnumChatFormatting.GOLD + LangUtil.translate("ghost.tooltip.header"));
         if (translatedLines != null) {
-            for (String line : translatedLines) {
-                event.toolTip.add(EnumChatFormatting.AQUA + line);
-            }
+            // 直接添加已经格式化好的翻译文本
+            event.toolTip.addAll(translatedLines);
         }
         if (!GhostConfig.Translation.hideTranslationKeybindTooltip) {
             event.toolTip.add(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.tooltip.hideAndClear", keyName, keyName, keyName));
         }
     }
     
+    /**
+     * 当 GUI 关闭时，重置悬停物品信息。
+     */
     @SubscribeEvent
     public void onGuiClosed(GuiOpenEvent event) {
         if (event.gui == null) {
@@ -192,8 +179,13 @@ public class ItemTooltipTranslationHandler {
         }
     }
 
+    /**
+     * 清理所有与当前悬停物品相关的信息。
+     */
     private void resetHoveredItem() {
         lastHoveredItemName = null;
         lastHoveredItemLore = null;
+        lastHoveredItemOriginalName = null;
+        lastHoveredItemOriginalLore = null;
     }
 }

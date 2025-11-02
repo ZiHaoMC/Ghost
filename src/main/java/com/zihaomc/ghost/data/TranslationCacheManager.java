@@ -77,9 +77,7 @@ public class TranslationCacheManager {
             Type type = new TypeToken<Set<String>>(){}.getType();
             Set<String> loadedSet = GSON.fromJson(reader, type);
             if (loadedSet != null) {
-                // **** 修正点 ****
                 // 创建一个由 ConcurrentHashMap 支持的新 Set，然后将加载的数据添加进去。
-                // 这是创建线程安全的 Set 的正确方式。
                 Set<String> concurrentSet = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
                 concurrentSet.addAll(loadedSet);
                 return concurrentSet;

@@ -2,6 +2,7 @@ package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.features.note.GuiNote;
+import com.zihaomc.ghost.utils.ColorFormatting;
 import com.zihaomc.ghost.utils.NiuTransUtil;
 import com.zihaomc.ghost.LangUtil;
 import net.minecraft.client.Minecraft;
@@ -19,6 +20,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.lwjgl.input.Keyboard;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -169,65 +171,97 @@ public class KeybindHandler {
         }
     }
     
-    private void handleToggleOrTranslatePress() {
-        if (!GhostConfig.Translation.enableItemTranslation) {
+    /**
+     * 这个方法现在是所有翻译请求的统一入口，无论是手动按键还是自动翻译。
+     */
+    public void handleToggleOrTranslatePress() {
+        if (!GhostConfig.Translation.enableItemTranslation && !GhostConfig.Translation.enableAutomaticTranslation) {
             return;
         }
         
-        String itemName = ItemTooltipTranslationHandler.lastHoveredItemName;
-        if (itemName == null || itemName.trim().isEmpty()) {
+        // 获取原始带格式的名称和纯文本名称
+        String originalFormattedName = ItemTooltipTranslationHandler.lastHoveredItemOriginalName;
+        String unformattedName = ItemTooltipTranslationHandler.lastHoveredItemName;
+
+        if (unformattedName == null || unformattedName.trim().isEmpty()) {
             return;
         }
 
-        if (ItemTooltipTranslationHandler.translationCache.containsKey(itemName)) {
-            if (ItemTooltipTranslationHandler.hiddenTranslations.contains(itemName)) {
-                ItemTooltipTranslationHandler.hiddenTranslations.remove(itemName);
+        // 如果已有翻译，则切换显示/隐藏状态
+        if (ItemTooltipTranslationHandler.translationCache.containsKey(unformattedName)) {
+            if (ItemTooltipTranslationHandler.hiddenTranslations.contains(unformattedName)) {
+                ItemTooltipTranslationHandler.hiddenTranslations.remove(unformattedName);
             } else {
-                ItemTooltipTranslationHandler.hiddenTranslations.add(itemName);
+                ItemTooltipTranslationHandler.hiddenTranslations.add(unformattedName);
             }
             return;
         }
 
-        if (ItemTooltipTranslationHandler.pendingTranslations.contains(itemName)) {
+        // 如果正在翻译中，则忽略
+        if (ItemTooltipTranslationHandler.pendingTranslations.contains(unformattedName)) {
             return;
         }
 
-        List<String> itemLore = ItemTooltipTranslationHandler.lastHoveredItemLore;
-        if (itemLore == null) return;
+        // 获取 Lore 文本
+        List<String> unformattedLore = ItemTooltipTranslationHandler.lastHoveredItemLore;
+        List<String> originalFormattedLore = ItemTooltipTranslationHandler.lastHoveredItemOriginalLore;
+        if (unformattedLore == null || originalFormattedLore == null) return;
         
-        StringBuilder fullTextBuilder = new StringBuilder(itemName);
-        for (String line : itemLore) {
-            fullTextBuilder.append("\n").append(line);
+        // 构造用于 API 请求的纯文本
+        StringBuilder plainTextBuilder = new StringBuilder(unformattedName);
+        for (String line : unformattedLore) {
+            plainTextBuilder.append("\n").append(line);
         }
-        String textToTranslate = fullTextBuilder.toString();
+        String textToTranslate = plainTextBuilder.toString();
         
         if (textToTranslate.trim().isEmpty()) {
             return;
         }
         
-        ItemTooltipTranslationHandler.pendingTranslations.add(itemName);
-        ChatComponentText requestMessage = new ChatComponentText(LangUtil.translate("ghost.tooltip.requestSent", itemName));
+        ItemTooltipTranslationHandler.pendingTranslations.add(unformattedName);
+        ChatComponentText requestMessage = new ChatComponentText(LangUtil.translate("ghost.tooltip.requestSent", unformattedName));
         requestMessage.getChatStyle().setColor(EnumChatFormatting.DARK_GRAY);
         Minecraft.getMinecraft().thePlayer.addChatMessage(requestMessage);
 
+        // 在新线程中执行网络请求
         new Thread(() -> {
             try {
-                String result = NiuTransUtil.translate(textToTranslate);
-                List<String> translatedLines;
+                String translationResult = NiuTransUtil.translate(textToTranslate);
+                List<String> finalFormattedLines = new ArrayList<>();
                 
-                if (result == null || result.trim().isEmpty()) {
-                    translatedLines = Collections.singletonList(EnumChatFormatting.RED + LangUtil.translate("ghost.error.translation.network"));
-                } else if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
-                    String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
-                    translatedLines = Collections.singletonList(EnumChatFormatting.RED + errorContent);
+                if (translationResult == null || translationResult.trim().isEmpty()) {
+                    finalFormattedLines.add(EnumChatFormatting.RED + LangUtil.translate("ghost.error.translation.network"));
+                } else if (translationResult.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                    String errorContent = translationResult.substring(NiuTransUtil.ERROR_PREFIX.length());
+                    finalFormattedLines.add(EnumChatFormatting.RED + errorContent);
                 } else {
-                    translatedLines = Arrays.asList(result.split("\n"));
+                    // 翻译成功，开始重新应用颜色格式
+                    String[] translatedParts = translationResult.split("\n");
+                    
+                    // 1. 重新格式化物品名称
+                    String reformattedName = ColorFormatting.reapply(originalFormattedName, translatedParts[0]);
+                    finalFormattedLines.add(reformattedName);
+                    
+                    // 2. 重新格式化 Lore 的每一行
+                    int loreLinesToProcess = Math.min(originalFormattedLore.size(), translatedParts.length - 1);
+                    for (int i = 0; i < loreLinesToProcess; i++) {
+                        String originalLoreLine = originalFormattedLore.get(i);
+                        String translatedLoreLine = translatedParts[i + 1];
+                        finalFormattedLines.add(ColorFormatting.reapply(originalLoreLine, translatedLoreLine));
+                    }
+                     // 如果翻译结果的行数比原文多，直接添加剩余行（无格式）
+                    if (translatedParts.length - 1 > loreLinesToProcess) {
+                        for (int i = loreLinesToProcess + 1; i < translatedParts.length; i++) {
+                            finalFormattedLines.add(translatedParts[i]);
+                        }
+                    }
                 }
                 
-                ItemTooltipTranslationHandler.translationCache.put(itemName, translatedLines);
+                // 将最终处理好的、带格式的翻译结果存入缓存
+                ItemTooltipTranslationHandler.translationCache.put(unformattedName, finalFormattedLines);
 
             } finally {
-                ItemTooltipTranslationHandler.pendingTranslations.remove(itemName);
+                ItemTooltipTranslationHandler.pendingTranslations.remove(unformattedName);
             }
         }).start();
     }
