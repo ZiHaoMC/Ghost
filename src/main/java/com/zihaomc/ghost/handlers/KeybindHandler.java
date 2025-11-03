@@ -1,6 +1,7 @@
 package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.features.automine.AutoMineHandler;
 import com.zihaomc.ghost.features.note.GuiNote;
 import com.zihaomc.ghost.utils.ColorFormatting;
 import com.zihaomc.ghost.utils.NiuTransUtil;
@@ -31,7 +32,8 @@ public class KeybindHandler {
     public static KeyBinding togglePlayerESP;
     public static KeyBinding toggleBedrockMiner;
     public static KeyBinding translateItemKey;
-    public static KeyBinding openNoteGui; 
+    public static KeyBinding openNoteGui;
+    public static KeyBinding toggleAutoMine; // 用于切换自动挖掘功能的按键
 
     private static String noteContentToRestore = null;
 
@@ -42,13 +44,17 @@ public class KeybindHandler {
         togglePlayerESP = new KeyBinding("key.ghost.togglePlayerESP", Keyboard.KEY_NONE, category);
         toggleBedrockMiner = new KeyBinding("key.ghost.toggleBedrockMiner", Keyboard.KEY_NONE, category);
         translateItemKey = new KeyBinding("key.ghost.translateItem", Keyboard.KEY_T, category);
-        openNoteGui = new KeyBinding("key.ghost.openNote", Keyboard.KEY_N, category); 
+        openNoteGui = new KeyBinding("key.ghost.openNote", Keyboard.KEY_N, category);
+        // 初始化 AutoMine 的按键绑定
+        toggleAutoMine = new KeyBinding("key.ghost.toggleAutoMine", Keyboard.KEY_NONE, category);
 
         ClientRegistry.registerKeyBinding(toggleAutoSneak);
         ClientRegistry.registerKeyBinding(togglePlayerESP);
         ClientRegistry.registerKeyBinding(toggleBedrockMiner);
         ClientRegistry.registerKeyBinding(translateItemKey);
-        ClientRegistry.registerKeyBinding(openNoteGui); 
+        ClientRegistry.registerKeyBinding(openNoteGui);
+        // 注册 AutoMine 的按键绑定
+        ClientRegistry.registerKeyBinding(toggleAutoMine);
     }
 
     @SubscribeEvent
@@ -80,6 +86,14 @@ public class KeybindHandler {
                 if (Minecraft.getMinecraft().currentScreen == null) {
                     Minecraft.getMinecraft().displayGuiScreen(new GuiNote());
                 }
+            }
+        }
+
+        // 处理 AutoMine 的按键事件
+        if (toggleAutoMine != null && toggleAutoMine.isPressed()) {
+            // 确保不在任何GUI界面中
+            if (Minecraft.getMinecraft().currentScreen == null) {
+                AutoMineHandler.toggle();
             }
         }
 

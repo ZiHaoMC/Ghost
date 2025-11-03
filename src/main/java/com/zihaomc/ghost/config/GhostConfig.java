@@ -36,6 +36,7 @@ public class GhostConfig {
     public static final String CATEGORY_TRANSLATION = "translation_api";
     public static final String CATEGORY_NOTE = "note_taking";
     public static final String CATEGORY_GUI_TWEAKS = "gui_tweaks";
+    public static final String CATEGORY_AUTO_MINE = "auto_mine_feature";
 
     // --- 用于命令的统一配置更新器 ---
     public static final Map<String, BiConsumer<String, String>> settingUpdaters = new HashMap<>();
@@ -79,7 +80,6 @@ public class GhostConfig {
         public static Set<Block> blockWhitelist = new HashSet<>();
         public static Set<Block> dependBlockWhitelist = new HashSet<>();
         
-        // Getter 方法
         public static int getPingSpikeThreshold() { return pingSpikeThreshold; }
         public static boolean isHeadlessPistonMode() { return headlessPistonMode; }
         public static Set<Block> getDependBlockWhitelist() { return dependBlockWhitelist; }
@@ -116,6 +116,15 @@ public class GhostConfig {
     public static class GuiTweaks {
         public static boolean fixGuiStateLossOnResize;
     }
+    
+    public static class AutoMine {
+        public static double rotationSpeed;
+        public static double maxReachDistance;
+        public static boolean serverRotation;
+        public static boolean instantRotation;
+        public static boolean sneakOnMine;
+        public static boolean randomMovements;
+    }
 
     // --- 核心方法 ---
     public static void init(File configFile) {
@@ -143,6 +152,7 @@ public class GhostConfig {
         loadTranslationSettings();
         loadNoteTakingSettings();
         loadGuiTweaksSettings();
+        loadAutoMineSettings();
 
         if (config.hasChanged()) {
             config.save();
@@ -226,6 +236,15 @@ public class GhostConfig {
         GuiTweaks.fixGuiStateLossOnResize = loadBoolean(CATEGORY_GUI_TWEAKS, "fixGuiStateLossOnResize", true, "ghost.config.comment.fixGuiStateLossOnResize");
     }
 
+    private static void loadAutoMineSettings() {
+        AutoMine.rotationSpeed = loadDouble(CATEGORY_AUTO_MINE, "rotationSpeed", 20.0, 1.0, 180.0, "ghost.config.comment.autoMineRotationSpeed");
+        AutoMine.maxReachDistance = loadDouble(CATEGORY_AUTO_MINE, "maxReachDistance", 4.5, 1.0, 6.0, "ghost.config.comment.autoMineMaxReach");
+        AutoMine.instantRotation = loadBoolean(CATEGORY_AUTO_MINE, "instantRotation", true, "ghost.config.comment.autoMineInstantRotation");
+        AutoMine.serverRotation = loadBoolean(CATEGORY_AUTO_MINE, "serverRotation", false, "ghost.config.comment.autoMineServerRotation");
+        AutoMine.sneakOnMine = loadBoolean(CATEGORY_AUTO_MINE, "sneakOnMine", false, "ghost.config.comment.autoMineSneak");
+        AutoMine.randomMovements = loadBoolean(CATEGORY_AUTO_MINE, "randomMovements", false, "ghost.config.comment.autoMineRandomMove");
+    }
+
     // --- 加载辅助方法 ---
     private static boolean loadBoolean(String category, String key, boolean defaultValue, String commentKey) {
         return config.getBoolean(key, category, defaultValue, LangUtil.translate(commentKey));
@@ -248,7 +267,6 @@ public class GhostConfig {
     }
     
     // --- 恢复的 Setter 方法 ---
-
     private static void updateAndSave(String category, String key, Object value, Runnable fieldUpdater) {
         if (config == null) return;
         Property prop = config.get(category, key, "");
@@ -341,7 +359,7 @@ public class GhostConfig {
 
     public static void setEnableBedrockMiner(boolean value) {
         if (value) {
-            setFastPistonBreaking(true, false); // 先设置依赖，但不立刻保存
+            setFastPistonBreaking(true, false);
         }
         updateAndSave(CATEGORY_BEDROCK_MINER, "enableBedrockMiner", value, () -> BedrockMiner.enableBedrockMiner = value);
     }
@@ -396,6 +414,32 @@ public class GhostConfig {
         updateAndSave(CATEGORY_GUI_TWEAKS, "fixGuiStateLossOnResize", value, () -> GuiTweaks.fixGuiStateLossOnResize = value);
     }
     
+    public static void setAutoMineRotationSpeed(double value) {
+        if (value < 1.0 || value > 180.0) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "rotationSpeed", value, () -> AutoMine.rotationSpeed = value);
+    }
+    
+    public static void setAutoMineMaxReachDistance(double value) {
+        if (value < 1.0 || value > 6.0) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "maxReachDistance", value, () -> AutoMine.maxReachDistance = value);
+    }
+
+    public static void setAutoMineServerRotation(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "serverRotation", value, () -> AutoMine.serverRotation = value);
+    }
+
+    public static void setAutoMineInstantRotation(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "instantRotation", value, () -> AutoMine.instantRotation = value);
+    }
+
+    public static void setAutoMineSneak(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "sneakOnMine", value, () -> AutoMine.sneakOnMine = value);
+    }
+
+    public static void setAutoMineRandomMove(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "randomMovements", value, () -> AutoMine.randomMovements = value);
+    }
+    
     public static Configuration getConfig() {
         return config;
     }
@@ -404,7 +448,6 @@ public class GhostConfig {
     private static void initializeUpdaters() {
         settingUpdaters.clear();
         
-        // 使用 Lambda 表达式直接调用相应的 public setter 方法
         settingUpdaters.put("alwaysbatchfill", (k, v) -> setAlwaysBatchFill(parseBoolean(v)));
         settingUpdaters.put("forcedbatchsize", (k, v) -> setForcedBatchSize(parseInt(v)));
         settingUpdaters.put("enableautosave", (k, v) -> setEnableAutoSave(parseBoolean(v)));
@@ -436,6 +479,13 @@ public class GhostConfig {
         settingUpdaters.put("enablecolorrendering", (k, v) -> setEnableColorRendering(parseBoolean(v)));
         settingUpdaters.put("enableampersandcolorcodes", (k, v) -> setEnableAmpersandColorCodes(parseBoolean(v)));
         settingUpdaters.put("fixguistatelossonresize", (k, v) -> setFixGuiStateLossOnResize(parseBoolean(v)));
+
+        settingUpdaters.put("autominerotationspeed", (k, v) -> setAutoMineRotationSpeed(parseDouble(v)));
+        settingUpdaters.put("automaxreachdistance", (k, v) -> setAutoMineMaxReachDistance(parseDouble(v)));
+        settingUpdaters.put("automineserverrotation", (k, v) -> setAutoMineServerRotation(parseBoolean(v)));
+        settingUpdaters.put("automineinstantrotation", (k, v) -> setAutoMineInstantRotation(parseBoolean(v)));
+        settingUpdaters.put("autominesneak", (k, v) -> setAutoMineSneak(parseBoolean(v)));
+        settingUpdaters.put("autominerandommove", (k, v) -> setAutoMineRandomMove(parseBoolean(v)));
     }
     
     // --- 包装 CommandBase 的解析方法以在 Lambda 中使用 ---

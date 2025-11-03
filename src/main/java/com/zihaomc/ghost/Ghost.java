@@ -1,11 +1,14 @@
 package com.zihaomc.ghost;
 
+import com.zihaomc.ghost.commands.AutoMineCommand;
 import com.zihaomc.ghost.commands.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.features.automine.AutoMineHandler;
 import com.zihaomc.ghost.handlers.*;
 import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
+import com.zihaomc.ghost.features.automine.AutoMineTargetManager;
 import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
 import com.zihaomc.ghost.features.gameplay.FastPistonBreakingHandler;
 import com.zihaomc.ghost.features.visual.PlayerArrowRendererHandler;
@@ -93,9 +96,12 @@ public class Ghost {
 
             MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
             LogUtil.debug("log.handler.registered.itemTooltip");
+
+            // 注册 AutoMine 功能的核心事件处理器
+            MinecraftForge.EVENT_BUS.register(new AutoMineHandler());
+            LogUtil.debug("log.handler.registered.autoMine");
             
-            // **** 修改点 ****
-            // 注册新的 GhostBlock 事件处理器，它现在负责处理所有与 /cgb 相关的事件
+            // 注册 GhostBlock 命令的事件处理器
             MinecraftForge.EVENT_BUS.register(new GhostBlockEventHandler());
             LogUtil.debug("log.handler.registered.ghostBlockCommand");
         }
@@ -111,20 +117,29 @@ public class Ghost {
         LogUtil.info("log.lifecycle.init", NAME);
 
         proxy.init(event);
+        
+        // 加载持久化的数据
+        ItemTooltipTranslationHandler.loadCacheFromFile();
+        AutoMineTargetManager.loadTargets(); // 在游戏启动时加载AutoMine坐标
 
         if (event.getSide() == Side.CLIENT) {
             LogUtil.debug("log.command.registering.client");
             
-            // **** 修改点 ****
-            // 注册重构后的 GhostBlockCommand 实例
+            // 注册 /cgb 命令
             ClientCommandHandler.instance.registerCommand(new GhostBlockCommand());
             LogUtil.debug("log.command.registered.cgb");
             
-            // 注册其他命令保持不变
+            // 注册 /gconfig 命令
             ClientCommandHandler.instance.registerCommand(new GhostConfigCommand());
             LogUtil.debug("log.command.registered.ghostConfig");
+
+            // 注册 /gtranslate 命令
             ClientCommandHandler.instance.registerCommand(new TranslateCommand());
             LogUtil.debug("log.command.registered.gtranslate");
+
+            // 注册新增的 /automine 命令
+            ClientCommandHandler.instance.registerCommand(new AutoMineCommand());
+            LogUtil.debug("log.command.registered.autoMine");
 
         } else {
             LogUtil.debug("log.command.skipping.server");

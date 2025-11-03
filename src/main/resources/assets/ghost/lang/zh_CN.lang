@@ -9,6 +9,7 @@ key.ghost.togglePlayerESP=切换 玩家透视 (ESP)
 key.ghost.toggleBedrockMiner=切换 破基岩模式
 key.ghost.translateItem=翻译物品
 key.ghost.openNote=打开笔记
+key.ghost.toggleAutoMine=切换 自动挖掘
 
 # ==================================
 # ===         通用文本           ===
@@ -19,6 +20,21 @@ ghost.generic.toggle.feedback=%s 已 %s
 ghost.generic.prefix.default=[Ghost] 
 ghost.generic.prefix.translation=[翻译]
 commands.generic.player.unsupported=该命令只能由玩家执行。
+
+# ==================================
+# ===         自动挖掘          ===
+# ==================================
+ghost.automine.command.usage=用法: /automine <add|remove|list|clear|toggle>
+ghost.automine.command.usage.add=用法: /automine add <x> <y> <z>
+ghost.automine.command.usage.remove=用法: /automine remove <编号>
+ghost.automine.command.add.success=已添加挖掘点: (%d, %d, %d)
+ghost.automine.command.remove.success=已移除挖掘点: (%d, %d, %d)
+ghost.automine.command.remove.error=错误: 无效的编号。请输入 1 到 %d 之间的数字。
+ghost.automine.command.list.header=自动挖掘目标列表
+ghost.automine.command.list.empty=列表为空。
+ghost.automine.command.clear.success=自动挖掘列表已清空。
+ghost.automine.error.no_targets=错误: 自动挖掘列表为空，无法启动。
+ghost.automine.status.waiting=当前没有可挖掘的目标，正在等待...
 
 # ==================================
 # ===        翻译功能          ===
@@ -176,7 +192,6 @@ ghostblock.commands.history.usage=用法: /cgb history
 ghostblock.commands.history.header=--- 最近的操作历史 (鼠标悬停查看详情) ---
 ghostblock.commands.history.usage_hint=使用 /cgb undo [编号] 来撤销指定的操作。
 ghostblock.commands.history.entry.format=§e[%d] §f%s
-# 新增的详细描述格式
 ghostblock.commands.history.entry.desc.set=设置方块 §b%s §f于 §a%s
 ghostblock.commands.history.entry.desc.fill=填充 §e%s §f个 §b%s §f方块
 ghostblock.commands.history.entry.desc.load=从文件 §a%s §f加载了 §e%s §f个方块
@@ -187,7 +202,7 @@ ghostblock.displayname.default_file_simple=默认文件
 # /cgb help
 ghostblock.commands.cghostblock.help.header=--- GhostBlock 命令帮助 (/cgb) ---
 ghostblock.commands.cghostblock.help.description=管理客户端幽灵方块。
-ghostblock.commands.cghostblock.help.usage.main=主要用法
+ghostblock.commands.cghostblock.help.usage.main=主要用法: /cgb <set|fill|load|clear|...|help> [参数...]
 ghostblock.commands.cghostblock.help.subcommands.header=可用子命令:
 ghostblock.commands.cghostblock.help.subcommand.help=显示此帮助信息。
 ghostblock.commands.cghostblock.help.subcommand.set=在指定位置设置一个幽灵方块。
@@ -228,7 +243,7 @@ ghost.config.comment.enableItemTranslation=启用后，将鼠标悬停在物品�
 ghost.config.comment.enableAutomaticTranslation=若开启，将自动翻译所有支持的内容（聊天、物品），无需手动操作。
 ghost.config.comment.autoShowCachedTranslation=启用后，对于已缓存的翻译，将自动显示而无需按T键。
 ghost.config.comment.showTranslationOnly=启用后，物品提示框将只显示翻译后的文本，替换原文。
-ghost.config.comment.hideTranslationKeybindTooltip=隐藏物品提示框中的按键提示 (例如“按 T 键翻译”)。
+ghost.config.comment.hideTranslationKeybindTooltip=隐藏物品提示框中的翻译按键提示 (例如“按 T 键翻译”)。
 ghost.config.comment.pingSpike=额外等待的 ticks, 用于弥补高延迟. [默认: 2]
 ghost.config.comment.headlessPiston=是否启用无头活塞模式 (更高效). [默认: true]
 ghost.config.comment.blink=在执行任务时是否启用Blink (数据包暂存), 强烈建议开启. [默认: true]
@@ -241,6 +256,12 @@ ghost.config.comment.enableMarkdownRendering=启用笔记界面的Markdown格式
 ghost.config.comment.enableColorRendering=启用笔记界面的颜色代码渲染 (例如 §b蓝色)。
 ghost.config.comment.enableAmpersandColorCodes=启用笔记界面的 '&' 颜色代码。启用后，可以使用 '&c' 代替 '§c' 来设置颜色。
 ghost.config.comment.fixGuiStateLossOnResize=修复因全屏切换或窗口大小调整导致的输入框文本丢失问题。[默认: true]
+ghost.config.comment.autoMineRotationSpeed=自动挖掘时，视角转换的平滑速度 (度/tick)。值越大，转得越快。(仅在 'instantRotation' 为 false 时生效)
+ghost.config.comment.autoMineMaxReach=自动挖掘时，能够识别并挖掘方块的最大距离（方块）。
+ghost.config.comment.autoMineServerRotation=(未来功能) 是否使用服务端数据包进行视角旋转 (可能绕过某些反作弊)。
+ghost.config.comment.autoMineInstantRotation=是否瞬间旋转到目标，而不是平滑过渡。这能解决转头慢的问题。
+ghost.config.comment.autoMineSneak=(未来功能) 是否在挖掘时保持潜行状态。
+ghost.config.comment.autoMineRandomMove=(未来功能) 是否在挖掘时进行轻微的随机移动，以模拟玩家行为。
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -305,6 +326,12 @@ ghost.commands.gconfig.help.setting.fixGuiStateLossOnResize=修复GUI因窗口�
 ghostblock.commands.gconfig.help.setting.niuTransApiKey=设置小牛翻译的API Key。
 ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的源语言。
 ghostblock.commands.gconfig.help.setting.translationTargetLang=设置翻译的目标语言。
+ghost.commands.gconfig.help.setting.autoMineRotationSpeed=自动挖掘时的平滑旋转速度 (度/tick)。
+ghost.commands.gconfig.help.setting.autoMineMaxReach=自动挖掘的最大有效距离。
+ghost.commands.gconfig.help.setting.autoMineServerRotation=(未来功能) 启用服务端视角旋转。
+ghost.commands.gconfig.help.setting.autoMineInstantRotation=启用瞬间视角旋转以加快瞄准速度。
+ghost.commands.gconfig.help.setting.autoMineSneak=(未来功能) 挖掘时自动潜行。
+ghost.commands.gconfig.help.setting.autoMineRandomMove=(未来功能) 挖掘时随机移动。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
@@ -320,6 +347,7 @@ ghostblock.commands.gconfig.help.example.fastPistonBreaking=/gconfig fastPistonB
 ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers=/gconfig hideArrowsOnPlayers true
 ghostblock.commands.gconfig.help.example.niuTransApiKey=/gconfig niuTransApiKey your_api_key_here
 ghostblock.commands.gconfig.help.example.translationTargetLang=/gconfig translationTargetLang en
+ghostblock.commands.gconfig.help.example.autoMineRotationSpeed=/gconfig autoMineRotationSpeed 30.0
 ghostblock.commands.gconfig.help.aliases=别名
 
 # ==================================
@@ -339,6 +367,7 @@ ghostblock.commands.suggest.hovertext=点击重新输入: %s
 ghost.keybind.toggle.autosneak=自动边缘下蹲
 ghost.keybind.toggle.playeresp=玩家透视 (ESP)
 ghost.keybind.toggle.bedrockminer=破基岩模式
+ghost.keybind.toggle.automine=自动挖掘
 
 # 帮助界面
 ghost.gui.note.help.done=完成
@@ -387,6 +416,7 @@ log.handler.registered.signTranslation=告示牌翻译事件处理器 (SignTrans
 log.handler.registered.guiStateSave=GUI状态保存事件处理器 (GuiStateSaveHandler) 已在 PreInit 中注册。
 log.handler.registered.itemTooltip=物品提示框翻译事件处理器 (ItemTooltipTranslationHandler) 已在 PreInit 中注册。
 log.handler.registered.ghostBlockCommand=GhostBlockCommand 事件处理器已注册。
+log.handler.registered.autoMine=自动挖掘事件处理器 (AutoMineHandler) 已注册。
 
 # --- 命令注册 ---
 log.command.registering.eventListener=注册 GhostBlockCommand 事件监听...
@@ -394,6 +424,7 @@ log.command.registering.client=正在注册客户端命令...
 log.command.registered.ghostConfig=GhostConfigCommand (/gconfig) 已注册。
 log.command.registered.cgb=/cgb 命令实例已注册。
 log.command.registered.gtranslate=TranslateCommand (/gtranslate) 已注册。
+log.command.registered.autoMine=AutoMineCommand (/automine) 已注册。
 log.command.skipping.server=在服务端跳过客户端命令注册。
 log.command.handler.initialized=CommandEventHandler 已初始化 (处理Tick事件)。
 log.info.command.parse.success=方块解析成功: %s (ID=%d), meta=%d

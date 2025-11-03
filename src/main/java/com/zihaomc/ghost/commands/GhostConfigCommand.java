@@ -20,6 +20,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * 处理 /gconfig 命令，用于在游戏中动态修改 Mod 的配置。
+ */
 public class GhostConfigCommand extends CommandBase {
 
     @Override
@@ -39,16 +42,23 @@ public class GhostConfigCommand extends CommandBase {
 
     @Override
     public int getRequiredPermissionLevel() {
-        return 0;
+        return 0; // 客户端命令，无需权限
     }
 
     @Override
     public boolean canCommandSenderUseCommand(ICommandSender sender) {
-        return true;
+        return true; // 对所有客户端玩家可用
     }
 
+    /**
+     * 命令处理的核心逻辑。
+     * 根据参数分发到不同的处理方法，如显示设置、显示帮助或修改设置。
+     * @param sender 命令发送者
+     * @param args 命令参数
+     */
     @Override
     public void processCommand(ICommandSender sender, String[] args) throws CommandException {
+        // 如果没有参数，则显示当前所有设置
         if (args.length == 0) {
             displayCurrentSettings(sender);
             return;
@@ -56,37 +66,44 @@ public class GhostConfigCommand extends CommandBase {
 
         String command = args[0].toLowerCase();
         
+        // 处理 /gconfig help
         if ("help".equalsIgnoreCase(command)) {
             displayHelp(sender);
             return;
         }
 
+        // 处理 /gconfig toggleSuggest (快捷开关)
         if ("togglesuggest".equalsIgnoreCase(command)) {
             toggleChatSuggestions(sender);
             return;
         }
 
+        // --- 修改配置项的逻辑 ---
         String settingName = args[0];
         String settingKey = settingName.toLowerCase();
 
+        // 检查配置项是否存在于 GhostConfig 中定义的更新器映射中
         if (GhostConfig.settingUpdaters.containsKey(settingKey)) {
+            // 特殊处理：如果只输入了 API Key 的名称，则清空它
             if (settingKey.equals("niutransapikey") && args.length == 1) {
                 GhostConfig.setNiuTransApiKey("");
                 sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.gconfig.success.key_cleared"));
                 return;
             }
-
+            
+            // 修改配置项至少需要提供一个值
             if (args.length < 2) {
                 throw new WrongUsageException(getCommandUsage(sender));
             }
             
+            // 拼接值，以支持带空格的字符串值
             String valueStr = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
             try {
-                // 执行更新
+                // 从映射中获取并执行对应的 Lambda 更新器
                 GhostConfig.settingUpdaters.get(settingKey).accept(settingName, valueStr);
                 
-                // 特殊消息反馈
+                // 为特定配置项提供特殊的反馈消息
                 if (settingKey.equals("niutransapikey")) {
                     sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.gconfig.success.key_set"));
                 } else if (settingKey.equals("enablebedrockminer") && "true".equalsIgnoreCase(valueStr)) {
@@ -96,18 +113,21 @@ public class GhostConfigCommand extends CommandBase {
                     sendSuccessMessage(sender, settingName, valueStr);
                 }
             } catch (RuntimeException e) {
-                // 从 Lambda 表达式中捕获包装的 CommandException 并重新抛出
+                // 捕获并处理在 Lambda 中发生的解析异常
                 if (e.getCause() instanceof CommandException) {
                     throw (CommandException) e.getCause();
                 }
-                // 捕获其他运行时异常，例如 NumberFormatException
                 throw new CommandException("commands.generic.exception");
             }
         } else {
+            // 如果配置项不存在
             throw new CommandException(LangUtil.translate("ghostblock.commands.gconfig.error.invalid_setting.all_options", settingName));
         }
     }
 
+    /**
+     * 快捷切换聊天建议功能的开关。
+     */
     private void toggleChatSuggestions(ICommandSender sender) {
         boolean newState = !GhostConfig.ChatFeatures.enableChatSuggestions;
         GhostConfig.setEnableChatSuggestions(newState);
@@ -118,6 +138,9 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(feedback);
     }
     
+    /**
+     * 在聊天框中显示所有当前的配置项及其值。
+     */
     private void displayCurrentSettings(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.current_settings.header")
                 .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.AQUA)));
@@ -171,16 +194,27 @@ public class GhostConfigCommand extends CommandBase {
 
         sender.addChatMessage(formatSettingLine("fixGuiStateLossOnResize", GhostConfig.GuiTweaks.fixGuiStateLossOnResize));
 
+        sender.addChatMessage(formatSettingLine("autoMineRotationSpeed", String.format("%.1f", GhostConfig.AutoMine.rotationSpeed)));
+        sender.addChatMessage(formatSettingLine("autoMineMaxReachDistance", String.format("%.1f", GhostConfig.AutoMine.maxReachDistance)));
+        sender.addChatMessage(formatSettingLine("autoMineInstantRotation", GhostConfig.AutoMine.instantRotation));
+        sender.addChatMessage(formatSettingLine("autoMineServerRotation", GhostConfig.AutoMine.serverRotation));
+        sender.addChatMessage(formatSettingLine("autoMineSneak", GhostConfig.AutoMine.sneakOnMine));
+        sender.addChatMessage(formatSettingLine("autoMineRandomMove", GhostConfig.AutoMine.randomMovements));
+
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
                 .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.DARK_AQUA)));
     }
 
+    /**
+     * 格式化单行配置项的显示。
+     * @param name 配置项名称
+     * @param value 配置项的值
+     * @return 格式化后的聊天组件
+     */
     private ChatComponentText formatSettingLine(String name, Object value) {
         String valueStr = String.valueOf(value);
-        String nameStr = name;
-
-        ChatComponentText line = new ChatComponentText("  " + nameStr + ": ");
+        ChatComponentText line = new ChatComponentText("  " + name + ": ");
         line.getChatStyle().setColor(EnumChatFormatting.GRAY);
         ChatComponentText valueComp = new ChatComponentText(valueStr);
         valueComp.getChatStyle().setColor(EnumChatFormatting.YELLOW);
@@ -188,11 +222,17 @@ public class GhostConfigCommand extends CommandBase {
         return line;
     }
 
+    /**
+     * 发送一个标准的成功消息。
+     */
     private void sendSuccessMessage(ICommandSender sender, String setting, Object value) {
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.success", setting, value)
                 .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.GREEN)));
     }
 
+    /**
+     * 显示详细的帮助信息，包括所有可用配置项和示例。
+     */
     private void displayHelp(ICommandSender sender) {
         EnumChatFormatting hl = EnumChatFormatting.GOLD;
         EnumChatFormatting tx = EnumChatFormatting.GRAY;
@@ -243,6 +283,13 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
         sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
         sender.addChatMessage(new ChatComponentText(op + "  translationTargetLang " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationTargetLang")));
+        
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineRotationSpeed " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "1.0-180.0") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRotationSpeed")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineMaxReachDistance " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "1.0-6.0") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineMaxReach")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineInstantRotation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineInstantRotation")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineServerRotation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineServerRotation")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineSneak " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineSneak")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMove " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMove")));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.examples.header")));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableAutoSave true"));
@@ -268,6 +315,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig fixGuiStateLossOnResize false"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig niuTransApiKey your_api_key_here"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig translationTargetLang en"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineRotationSpeed 30.0"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineInstantRotation false"));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.aliases") + ": " + hl + String.join(", ", getCommandAliases())));
     }
@@ -292,10 +341,8 @@ public class GhostConfigCommand extends CommandBase {
                     return CommandBase.getListOfStringsMatchingLastWord(args, "auto", "zh", "en", "ja", "ko", "fr", "ru", "de");
                 case "translationtargetlang":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "zh", "en", "ja", "ko", "fr", "ru", "de");
-
                 case "forcedbatchsize":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "100", "500", "1000");
-
                 case "defaultsavename":
                     List<String> nameSuggestions = new ArrayList<>();
                     nameSuggestions.add("default");
@@ -308,24 +355,37 @@ public class GhostConfigCommand extends CommandBase {
                             }
                             nameSuggestions.add(worldId);
                         }
-                    } catch (Exception e) { /*忽略*/ }
+                    } catch (Exception ignored) {}
                     nameSuggestions = nameSuggestions.stream().distinct().sorted().collect(Collectors.toList());
                     return CommandBase.getListOfStringsMatchingLastWord(args, nameSuggestions);
-
                 case "autosneakforwardoffset":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "0.25", "0.35", "0.5", "0.75", "1.0");
                 case "autosneakverticalcheckdepth":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "0.5", "1.0", "1.5", "2.0", "2.5", "3.0");
+                case "autominerotationspeed":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "10.0", "20.0", "30.0", "45.0", "90.0");
+                case "automaxreachdistance":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "4.0", "4.5", "5.0", "5.5", "6.0");
             }
         }
         return Collections.emptyList();
     }
     
-    // --- 类型检查辅助方法 ---
+    /**
+     * 辅助方法，用于判断一个设置项是否是布尔类型，以便提供正确的 tab 补全。
+     * 修复：不再使用宽泛的 startsWith("auto")，而是使用精确匹配来避免误判。
+     * @param key 设置项的名称 (小写)
+     * @return 如果是布尔类型则为 true
+     */
     private boolean isBooleanCommand(String key) {
+        // 使用精确的key来判断，避免误判
         return key.startsWith("enable") || key.startsWith("always") || key.startsWith("disable") ||
-               key.startsWith("auto") || key.startsWith("show") || key.startsWith("hide") ||
+               key.startsWith("show") || key.startsWith("hide") ||
+               // auto开头的布尔值需要单独列出
+               key.equals("autoShowCachedTranslation") || 
                key.equals("headlesspistonmode") || key.equals("blinkduringtaskstick") ||
-               key.equals("fastpistonbreaking") || key.equals("fixguistatelossonresize");
+               key.equals("fastpistonbreaking") || key.equals("fixguistatelossonresize") ||
+               key.equals("automineserverrotation") || key.equals("automineinstantrotation") ||
+               key.equals("autominesneak") || key.equals("autominerandommove");
     }
 }
