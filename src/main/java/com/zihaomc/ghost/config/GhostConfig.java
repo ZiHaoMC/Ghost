@@ -125,6 +125,7 @@ public class GhostConfig {
         public static boolean instantRotation;
         public static boolean sneakOnMine;
         public static boolean randomMovements;
+        public static int mineTimeoutSeconds;
     }
 
     // --- 核心方法 ---
@@ -245,6 +246,7 @@ public class GhostConfig {
         AutoMine.serverRotation = loadBoolean(CATEGORY_AUTO_MINE, "serverRotation", false, "ghost.config.comment.autoMineServerRotation");
         AutoMine.sneakOnMine = loadBoolean(CATEGORY_AUTO_MINE, "sneakOnMine", false, "ghost.config.comment.autoMineSneak");
         AutoMine.randomMovements = loadBoolean(CATEGORY_AUTO_MINE, "randomMovements", false, "ghost.config.comment.autoMineRandomMove");
+        AutoMine.mineTimeoutSeconds = loadInt(CATEGORY_AUTO_MINE, "mineTimeoutSeconds", 7, 2, 30, "ghost.config.comment.autoMineTimeout");
     }
 
     // --- 加载辅助方法 ---
@@ -446,6 +448,11 @@ public class GhostConfig {
     public static void setAutoMineRandomMove(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "randomMovements", value, () -> AutoMine.randomMovements = value);
     }
+
+    public static void setAutoMineTimeout(int value) {
+        if (value < 2 || value > 30) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "mineTimeoutSeconds", value, () -> AutoMine.mineTimeoutSeconds = value);
+    }
     
     public static Configuration getConfig() {
         return config;
@@ -494,6 +501,7 @@ public class GhostConfig {
         settingUpdaters.put("automineinstantrotation", (k, v) -> setAutoMineInstantRotation(parseBoolean(v)));
         settingUpdaters.put("autominesneak", (k, v) -> setAutoMineSneak(parseBoolean(v)));
         settingUpdaters.put("autominerandommove", (k, v) -> setAutoMineRandomMove(parseBoolean(v)));
+        settingUpdaters.put("autominetimeout", (k, v) -> setAutoMineTimeout(parseInt(v)));
     }
     
     // --- 解析辅助方法 ---

@@ -11,7 +11,9 @@ import net.minecraft.util.ResourceLocation;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -21,13 +23,13 @@ public class AutoMineTargetManager {
 
     private static final String CONFIG_DIR = "config/Ghost/";
     private static final String TARGETS_COORD_FILE_NAME = "automine_targets.json";
-    private static final String TARGET_BLOCK_FILE_NAME = "automine_block.txt";
+    private static final String TARGET_BLOCKS_FILE_NAME = "automine_blocks.json"; // 修改为存储多个方块
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     /** 内存中的坐标目标列表 */
     public static final List<BlockPos> targetBlocks = new ArrayList<>();
-    /** 内存中的方块类型目标 */
-    public static Block targetBlockType = null;
+    /** 内存中的方块类型目标集合 */
+    public static final Set<Block> targetBlockTypes = new HashSet<>();
 
     /** 用于Gson序列化的简单坐标对象 */
     private static class AutoMineTargetEntry {
@@ -45,10 +47,10 @@ public class AutoMineTargetManager {
         return new File(configDir, TARGETS_COORD_FILE_NAME);
     }
     
-    private static File getBlockFile() {
+    private static File getBlocksFile() {
         File configDir = new File(CONFIG_DIR);
         if (!configDir.exists()) configDir.mkdirs();
-        return new File(configDir, TARGET_BLOCK_FILE_NAME);
+        return new File(configDir, TARGET_BLOCKS_FILE_NAME);
     }
 
     /**
@@ -56,7 +58,7 @@ public class AutoMineTargetManager {
      */
     public static void loadTargets() {
         loadCoordinates();
-        loadBlockType();
+        loadBlockTypes();
     }
 
     private static void loadCoordinates() {
@@ -79,19 +81,28 @@ public class AutoMineTargetManager {
         }
     }
     
-    private static void loadBlockType() {
-        File blockFile = getBlockFile();
-        if (!blockFile.exists()) return;
+    private static void loadBlockTypes() {
+        File blocksFile = getBlocksFile();
+        if (!blocksFile.exists()) return;
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(blockFile))) {
-            String blockId = reader.readLine();
-            if (blockId != null && !blockId.trim().isEmpty()) {
-                targetBlockType = Block.blockRegistry.getObject(new ResourceLocation(blockId.trim()));
-                if (targetBlockType != null) {
-                    LogUtil.info("log.automine.block.loaded", blockId);
+        try (Reader reader = new FileReader(blocksFile)) {
+            // 类型令牌用于正确反序列化 Set<String>
+            Type type = new TypeToken<Set<String>>(){}.getType();
+            Set<String> loadedBlockIds = GSON.fromJson(reader, type);
+
+            if (loadedBlockIds != null) {
+                targetBlockTypes.clear();
+                for (String blockId : loadedBlockIds) {
+                    Block block = Block.blockRegistry.getObject(new ResourceLocation(blockId));
+                    if (block != null) {
+                        targetBlockTypes.add(block);
+                    } else {
+                        LogUtil.warn("log.automine.block.id.invalid", blockId);
+                    }
                 }
+                LogUtil.info("log.automine.blocks.loaded", targetBlockTypes.size());
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             LogUtil.error("log.automine.targets.load_failed", e.getMessage());
         }
     }
@@ -117,17 +128,21 @@ public class AutoMineTargetManager {
     }
 
     /**
-     * 保存方块类型到文件。
+     * 保存方块类型集合到文件。
      */
-    public static void saveBlockType() {
-        File blockFile = getBlockFile();
-        if (targetBlockType == null) {
-            if (blockFile.exists()) blockFile.delete();
+    public static void saveBlockTypes() {
+        File blocksFile = getBlocksFile();
+        if (targetBlockTypes.isEmpty()) {
+            if (blocksFile.exists()) blocksFile.delete();
             return;
         }
 
-        try (Writer writer = new FileWriter(blockFile)) {
-            writer.write(targetBlockType.getRegistryName().toString());
+        Set<String> blockIdsToSave = targetBlockTypes.stream()
+                .map(block -> block.getRegistryName().toString())
+                .collect(Collectors.toSet());
+
+        try (Writer writer = new FileWriter(blocksFile)) {
+            GSON.toJson(blockIdsToSave, writer);
         } catch (IOException e) {
             LogUtil.error("log.automine.targets.save_failed", e.getMessage());
         }

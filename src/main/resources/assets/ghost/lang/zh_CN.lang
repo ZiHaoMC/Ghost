@@ -24,27 +24,38 @@ commands.generic.player.unsupported=该命令只能由玩家执行。
 # ==================================
 # ===         自动挖掘          ===
 # ==================================
-ghost.automine.command.usage=用法: /automine <add|remove|list|clear|toggle>
-ghost.automine.command.usage.add=用法: /automine add <coord|block> [参数...]
+ghost.automine.command.usage=用法: /automine <add|remove|list|clear|toggle> [参数...]
+ghost.automine.command.usage.add=用法: /automine add <coord|block> <参数...>
 ghost.automine.command.usage.add.coord=用法: /automine add coord <x> <y> <z>
 ghost.automine.command.usage.add.block=用法: /automine add block <方块ID>
-ghost.automine.command.usage.remove=用法: /automine remove <coord|block> [参数...]
+ghost.automine.command.usage.remove=用法: /automine remove <coord|block> <参数...>
 ghost.automine.command.usage.remove.coord=用法: /automine remove coord <编号>
+ghost.automine.command.usage.remove.block=用法: /automine remove block <方块ID>
+ghost.automine.command.usage.clear=用法: /automine clear <coords|blocks|blacklist>
 ghost.automine.command.add.coord.success=已添加挖掘坐标: (%d, %d, %d)
-ghost.automine.command.add.block.success=已设置自动挖掘目标为: %s
+ghost.automine.command.add.block.success=已添加挖掘目标方块: %s
+ghost.automine.command.add.block.already_exists=警告: %s 已经是挖掘目标了。
 ghost.automine.command.remove.coord.success=已移除挖掘坐标: (%d, %d, %d)
 ghost.automine.command.remove.coord.error=错误: 无效的编号。请输入 1 到 %d 之间的数字。
-ghost.automine.command.remove.block.success=已清除方块挖掘目标。
+ghost.automine.command.remove.block.success=已移除挖掘目标方块: %s
+ghost.automine.command.remove.block.not_found=错误: %s 不在挖掘目标列表中。
 ghost.automine.command.list.header_main=自动挖掘目标列表
 ghost.automine.command.list.header_coords=坐标目标:
-ghost.automine.command.list.header_block=方块目标:
+ghost.automine.command.list.header_blocks=方块目标:
 ghost.automine.command.list.empty_coords=坐标列表为空。
-ghost.automine.command.list.empty_block=未设置目标方块。
+ghost.automine.command.list.empty_blocks=未设置目标方块。
 ghost.automine.command.list.block_entry=%s (%s)
 ghost.automine.command.list.none=未设置任何挖掘目标。
-ghost.automine.command.clear.success=自动挖掘坐标列表已清空。
+ghost.automine.command.clear.coords.success=自动挖掘坐标列表已清空。
+ghost.automine.command.clear.blocks.success=自动挖掘方块列表已清空。
+ghost.automine.command.clear.blacklist.success=已清空自动挖掘的临时黑名单。
 ghost.automine.error.no_targets_set=错误: 未设置任何挖掘目标 (坐标或方块类型)，无法启动。
+ghost.automine.error.no_targets_left=错误: 没有剩余的挖掘目标了，自动挖掘已停止。
+ghost.automine.error.unmineable_block_blacklisted=警告: 方块 %s (%d, %d, %d) 无法被破坏，已列入黑名单。
+ghost.automine.error.mining_timeout_blacklisted=警告: 挖掘方块 %s (%d, %d, %d) 超时，已列入黑名单。
 ghost.automine.status.waiting=当前没有可挖掘的目标，正在等待...
+ghost.automine.status.target_changed=警告: 目标方块 (%d, %d, %d) 已变为 %s，不再是目标，正在寻找新目标。
+ghost.automine.status.target_blacklisted=警告: 目标方块 (%d, %d, %d) 暂时无法挖掘，已跳过。
 
 # ==================================
 # ===        翻译功能          ===
@@ -269,6 +280,7 @@ ghost.config.comment.fixGuiStateLossOnResize=修复因全屏切换或窗口大�
 ghost.config.comment.autoMineRotationSpeed=自动挖掘时，视角转换的平滑速度 (度/tick)。值越大，转得越快。(仅在 'instantRotation' 为 false 时生效)
 ghost.config.comment.autoMineMaxReach=自动挖掘时，能够识别并挖掘方块的最大距离（方块）。
 ghost.config.comment.autoMineSearchRadius=自动挖掘 '方块类型' 模式下的搜索半径。
+ghost.config.comment.autoMineTimeout=自动挖掘超时时间(秒)。如果挖掘一个方块超过这个时间，它将被暂时列入黑名单。
 ghost.config.comment.autoMineServerRotation=(未来功能) 是否使用服务端数据包进行视角旋转 (可能绕过某些反作弊)。
 ghost.config.comment.autoMineInstantRotation=是否瞬间旋转到目标，而不是平滑过渡。关闭此项以使用更像玩家的平滑旋转。
 ghost.config.comment.autoMineSneak=(未来功能) 是否在挖掘时保持潜行状态。
@@ -317,6 +329,7 @@ ghostblock.commands.gconfig.help.type.integer_range=(整数 %1$s)
 ghostblock.commands.gconfig.help.type.text=(文本)
 ghost.commands.gconfig.help.setting.autoMineMaxReach=自动挖掘的最大有效距离。
 ghost.commands.gconfig.help.setting.autoMineSearchRadius=自动挖掘“方块类型”模式下的搜索半径。
+ghost.commands.gconfig.help.setting.autoMineTimeout=设置挖掘超时时间(秒)。
 ghost.commands.gconfig.help.setting.autoMineServerRotation=(未来功能) 启用服务端视角旋转。
 ghost.commands.gconfig.help.setting.disableTwitchAtKey=禁用在聊天框中按下@键弹出Twitch直播窗口。
 ghost.commands.gconfig.help.setting.enableChatTranslation=启用聊天消息翻译按钮。
@@ -365,6 +378,7 @@ ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers=/gconfig hideArrows
 ghostblock.commands.gconfig.help.example.niuTransApiKey=/gconfig niuTransApiKey your_api_key_here
 ghostblock.commands.gconfig.help.example.translationTargetLang=/gconfig translationTargetLang en
 ghostblock.commands.gconfig.help.example.autoMineRotationSpeed=/gconfig autoMineRotationSpeed 30.0
+ghostblock.commands.gconfig.help.example.autoMineTimeout=/gconfig autoMineTimeout 10
 ghostblock.commands.gconfig.help.aliases=别名
 
 # ==================================
@@ -693,6 +707,7 @@ log.info.undo.autoClearFile.updated=已从自动清除文件 '%s' 中更新/移�
 log.error.restoreBlocks.failed=恢复方块 %s 失败: %s
 log.info.tasks.cancelled.count=取消了 %d 个活动/暂停任务。
 log.automine.targets.loaded=已加载 %d 个 AutoMine 坐标目标。
-log.automine.block.loaded=已加载 AutoMine 方块目标: %s
+log.automine.blocks.loaded=已加载 %d 个 AutoMine 方块目标。
+log.automine.block.id.invalid=警告: 自动挖掘方块目标中存在无效的方块ID: %s。已跳过。
 log.automine.targets.load_failed=加载 AutoMine 目标时出错: %s
 log.automine.targets.save_failed=保存 AutoMine 目标时出错: %s
