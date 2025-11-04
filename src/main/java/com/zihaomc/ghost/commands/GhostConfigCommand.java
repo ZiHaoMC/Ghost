@@ -196,6 +196,7 @@ public class GhostConfigCommand extends CommandBase {
 
         sender.addChatMessage(formatSettingLine("autoMineRotationSpeed", String.format("%.1f", GhostConfig.AutoMine.rotationSpeed)));
         sender.addChatMessage(formatSettingLine("autoMineMaxReachDistance", String.format("%.1f", GhostConfig.AutoMine.maxReachDistance)));
+        sender.addChatMessage(formatSettingLine("autoMineSearchRadius", GhostConfig.AutoMine.searchRadius));
         sender.addChatMessage(formatSettingLine("autoMineInstantRotation", GhostConfig.AutoMine.instantRotation));
         sender.addChatMessage(formatSettingLine("autoMineServerRotation", GhostConfig.AutoMine.serverRotation));
         sender.addChatMessage(formatSettingLine("autoMineSneak", GhostConfig.AutoMine.sneakOnMine));
@@ -286,6 +287,7 @@ public class GhostConfigCommand extends CommandBase {
         
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRotationSpeed " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "1.0-180.0") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRotationSpeed")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineMaxReachDistance " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.double_range", "1.0-6.0") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineMaxReach")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineSearchRadius " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "3-15") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineSearchRadius")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineInstantRotation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineInstantRotation")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineServerRotation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineServerRotation")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineSneak " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineSneak")));
@@ -321,6 +323,9 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.aliases") + ": " + hl + String.join(", ", getCommandAliases())));
     }
 
+    /**
+     * 提供命令的 Tab 自动补全功能。
+     */
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
@@ -365,7 +370,9 @@ public class GhostConfigCommand extends CommandBase {
                 case "autominerotationspeed":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "10.0", "20.0", "30.0", "45.0", "90.0");
                 case "automaxreachdistance":
-                    return CommandBase.getListOfStringsMatchingLastWord(args, "4.0", "4.5", "5.0", "5.5", "6.0");
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "3.0", "4.0", "4.5", "5.0", "6.0");
+                case "autominerearchradius":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "5", "7", "10", "15");
             }
         }
         return Collections.emptyList();
@@ -373,7 +380,6 @@ public class GhostConfigCommand extends CommandBase {
     
     /**
      * 辅助方法，用于判断一个设置项是否是布尔类型，以便提供正确的 tab 补全。
-     * 修复：不再使用宽泛的 startsWith("auto")，而是使用精确匹配来避免误判。
      * @param key 设置项的名称 (小写)
      * @return 如果是布尔类型则为 true
      */

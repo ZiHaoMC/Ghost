@@ -120,6 +120,7 @@ public class GhostConfig {
     public static class AutoMine {
         public static double rotationSpeed;
         public static double maxReachDistance;
+        public static int searchRadius;
         public static boolean serverRotation;
         public static boolean instantRotation;
         public static boolean sneakOnMine;
@@ -238,8 +239,9 @@ public class GhostConfig {
 
     private static void loadAutoMineSettings() {
         AutoMine.rotationSpeed = loadDouble(CATEGORY_AUTO_MINE, "rotationSpeed", 20.0, 1.0, 180.0, "ghost.config.comment.autoMineRotationSpeed");
-        AutoMine.maxReachDistance = loadDouble(CATEGORY_AUTO_MINE, "maxReachDistance", 4.5, 1.0, 6.0, "ghost.config.comment.autoMineMaxReach");
-        AutoMine.instantRotation = loadBoolean(CATEGORY_AUTO_MINE, "instantRotation", true, "ghost.config.comment.autoMineInstantRotation");
+        AutoMine.maxReachDistance = loadDouble(CATEGORY_AUTO_MINE, "maxReachDistance", 3.0, 1.0, 6.0, "ghost.config.comment.autoMineMaxReach");
+        AutoMine.searchRadius = loadInt(CATEGORY_AUTO_MINE, "searchRadius", 7, 3, 15, "ghost.config.comment.autoMineSearchRadius");
+        AutoMine.instantRotation = loadBoolean(CATEGORY_AUTO_MINE, "instantRotation", false, "ghost.config.comment.autoMineInstantRotation");
         AutoMine.serverRotation = loadBoolean(CATEGORY_AUTO_MINE, "serverRotation", false, "ghost.config.comment.autoMineServerRotation");
         AutoMine.sneakOnMine = loadBoolean(CATEGORY_AUTO_MINE, "sneakOnMine", false, "ghost.config.comment.autoMineSneak");
         AutoMine.randomMovements = loadBoolean(CATEGORY_AUTO_MINE, "randomMovements", false, "ghost.config.comment.autoMineRandomMove");
@@ -266,7 +268,7 @@ public class GhostConfig {
         return config.getStringList(key, category, defaultValue, LangUtil.translate(commentKey));
     }
     
-    // --- 恢复的 Setter 方法 ---
+    // --- Setter 方法 (用于命令修改配置) ---
     private static void updateAndSave(String category, String key, Object value, Runnable fieldUpdater) {
         if (config == null) return;
         Property prop = config.get(category, key, "");
@@ -423,6 +425,11 @@ public class GhostConfig {
         if (value < 1.0 || value > 6.0) return;
         updateAndSave(CATEGORY_AUTO_MINE, "maxReachDistance", value, () -> AutoMine.maxReachDistance = value);
     }
+    
+    public static void setAutoMineSearchRadius(int value) {
+        if (value < 3 || value > 15) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "searchRadius", value, () -> AutoMine.searchRadius = value);
+    }
 
     public static void setAutoMineServerRotation(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "serverRotation", value, () -> AutoMine.serverRotation = value);
@@ -482,13 +489,14 @@ public class GhostConfig {
 
         settingUpdaters.put("autominerotationspeed", (k, v) -> setAutoMineRotationSpeed(parseDouble(v)));
         settingUpdaters.put("automaxreachdistance", (k, v) -> setAutoMineMaxReachDistance(parseDouble(v)));
+        settingUpdaters.put("autominerearchradius", (k, v) -> setAutoMineSearchRadius(parseInt(v)));
         settingUpdaters.put("automineserverrotation", (k, v) -> setAutoMineServerRotation(parseBoolean(v)));
         settingUpdaters.put("automineinstantrotation", (k, v) -> setAutoMineInstantRotation(parseBoolean(v)));
         settingUpdaters.put("autominesneak", (k, v) -> setAutoMineSneak(parseBoolean(v)));
         settingUpdaters.put("autominerandommove", (k, v) -> setAutoMineRandomMove(parseBoolean(v)));
     }
     
-    // --- 包装 CommandBase 的解析方法以在 Lambda 中使用 ---
+    // --- 解析辅助方法 ---
     private static boolean parseBoolean(String input) {
         try { return CommandBase.parseBoolean(input); }
         catch (CommandException e) { throw new RuntimeException(e); }
