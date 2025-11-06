@@ -6,16 +6,22 @@ import com.zihaomc.ghost.utils.RotationUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.MathHelper;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -37,9 +43,8 @@ public class AutoMineHandler {
     private int waitTicks = 0;
 
     // --- 智能黑名单和超时相关成员变量 ---
-    // 黑名单现在存储导致黑名单的方块类型，而不是过期时间
     private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
-    private Long miningStartTime = null; // 记录开始挖掘当前方块的时间
+    private Long miningStartTime = null; 
 
     public static void toggle() {
         if (!isActive && AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
@@ -67,10 +72,7 @@ public class AutoMineHandler {
         isActive = false;
         unmineableBlacklist.clear();
     }
-
-    /**
-     * 公开的静态方法，用于从外部（如命令）清空黑名单。
-     */
+    
     public static void clearBlacklist() {
         unmineableBlacklist.clear();
     }
@@ -130,8 +132,7 @@ public class AutoMineHandler {
                 boolean shouldSwitchTarget = false;
                 if (blockAtTarget == Blocks.air) {
                     shouldSwitchTarget = true;
-                } else if (isTargetValid(currentTarget)) { // isTargetValid 现在会处理黑名单逻辑
-                    // 挖掘超时检查
+                } else if (isTargetValid(currentTarget)) { 
                     long mineTimeoutMs = GhostConfig.AutoMine.mineTimeoutSeconds * 1000L;
                     if (miningStartTime == null) {
                         miningStartTime = System.currentTimeMillis();
@@ -141,17 +142,14 @@ public class AutoMineHandler {
                         shouldSwitchTarget = true;
                     }
                 } else {
-                    // 如果 isTargetValid 返回 false，说明方块要么不可见，要么在黑名单中，要么不可破坏等
                     shouldSwitchTarget = true;
                 }
                 
-                // 如果需要切换目标
                 if (shouldSwitchTarget) {
                     currentState = State.SWITCHING_TARGET;
                     return;
                 }
 
-                // 如果目标依然有效，继续挖掘
                 Vec3 bestPointToLookAt = RotationUtil.getClosestVisiblePoint(currentTarget);
                 if (bestPointToLookAt == null) {
                     currentState = State.SWITCHING_TARGET;
@@ -180,65 +178,80 @@ public class AutoMineHandler {
         }
     }
     
+    /**
+     * 重写后的寻找最佳目标的方法，使用评分系统。
+     * @return 最优的目标方块位置，如果没有则返回 null。
+     */
     private BlockPos findBestTarget() {
-        BlockPos coordinateTarget = findNextCoordinate();
-        if (coordinateTarget != null) {
-            return coordinateTarget;
-        }
-        return findClosestBlock();
-    }
+        Set<BlockPos> candidates = new HashSet<>();
 
-    private BlockPos findNextCoordinate() {
-        if (AutoMineTargetManager.targetBlocks.isEmpty()) {
-            return null;
-        }
-
-        int listSize = AutoMineTargetManager.targetBlocks.size();
-        int currentIndex = (currentTarget != null) ? AutoMineTargetManager.targetBlocks.indexOf(currentTarget) : -1;
-        int startIndex = (currentIndex + 1) % listSize;
-
-        for (int i = 0; i < listSize; i++) {
-            int indexToCheck = (startIndex + i) % listSize;
-            BlockPos pos = AutoMineTargetManager.targetBlocks.get(indexToCheck);
+        // 1. 从坐标列表中收集候选者
+        for (BlockPos pos : AutoMineTargetManager.targetBlocks) {
             if (isTargetValid(pos)) {
-                return pos;
+                candidates.add(pos);
             }
         }
-        return null;
-    }
 
-    private BlockPos findClosestBlock() {
-        if (AutoMineTargetManager.targetBlockTypes.isEmpty()) return null;
-
-        int radius = GhostConfig.AutoMine.searchRadius;
-        BlockPos playerPos = mc.thePlayer.getPosition();
-        BlockPos closestBlock = null;
-        double closestDistSq = Double.MAX_VALUE;
-
-        for (BlockPos pos : BlockPos.getAllInBox(playerPos.add(-radius, -radius, -radius), playerPos.add(radius, radius, radius))) {
-            if (AutoMineTargetManager.targetBlockTypes.contains(mc.theWorld.getBlockState(pos).getBlock())) {
-                if (isTargetValid(pos)) {
-                    double distSq = mc.thePlayer.getDistanceSq(pos);
-                    if (distSq < closestDistSq) {
-                        closestDistSq = distSq;
-                        closestBlock = pos;
+        // 2. 从方块类型列表中收集候选者
+        if (!AutoMineTargetManager.targetBlockTypes.isEmpty()) {
+            int radius = GhostConfig.AutoMine.searchRadius;
+            BlockPos playerPos = mc.thePlayer.getPosition();
+            for (BlockPos pos : BlockPos.getAllInBox(playerPos.add(-radius, -radius, -radius), playerPos.add(radius, radius, radius))) {
+                if (AutoMineTargetManager.targetBlockTypes.contains(mc.theWorld.getBlockState(pos).getBlock())) {
+                    if (isTargetValid(pos)) {
+                        candidates.add(pos);
                     }
                 }
             }
         }
-        return closestBlock;
+
+        if (candidates.isEmpty()) {
+            return null;
+        }
+
+        // 3. 遍历所有候选者，根据评分选出最佳目标
+        BlockPos bestPos = null;
+        double minScore = Double.MAX_VALUE;
+
+        for (BlockPos candidate : candidates) {
+            double angleDiff = getAngleDifferenceToBlock(candidate);
+            double distanceSq = mc.thePlayer.getDistanceSq(candidate);
+            
+            // 评分公式：角度差的权重远高于距离，这样会优先选择准星附近的方块
+            double score = angleDiff * 10.0 + distanceSq;
+
+            if (score < minScore) {
+                minScore = score;
+                bestPos = candidate;
+            }
+        }
+
+        return bestPos;
+    }
+
+    /**
+     * 计算玩家当前视角与目标方块中心视角之间的角度差的平方和。
+     * @param pos 目标方块位置
+     * @return 角度差的平方和，作为一个评分依据
+     */
+    private double getAngleDifferenceToBlock(BlockPos pos) {
+        Vec3 targetVec = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
+        float[] rotations = RotationUtil.getRotations(targetVec);
+        
+        EntityPlayerSP player = mc.thePlayer;
+        float yawDiff = Math.abs(MathHelper.wrapAngleTo180_float(player.rotationYaw - rotations[0]));
+        float pitchDiff = Math.abs(MathHelper.wrapAngleTo180_float(player.rotationPitch - rotations[1]));
+        
+        return yawDiff * yawDiff + pitchDiff * pitchDiff;
     }
 
     private boolean isTargetValid(BlockPos pos) {
-        // --- 智能黑名单检查 ---
         if (unmineableBlacklist.containsKey(pos)) {
             Block blacklistedBlock = unmineableBlacklist.get(pos);
             Block currentBlock = mc.theWorld.getBlockState(pos).getBlock();
-            // 如果当前方块不再是当初被拉黑的那个方块，就把它从黑名单中移除
             if (currentBlock != blacklistedBlock) {
                 unmineableBlacklist.remove(pos);
             } else {
-                // 否则，它仍然是那个不可挖掘的方块，所以这个目标无效
                 return false;
             }
         }
@@ -246,30 +259,25 @@ public class AutoMineHandler {
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();
 
-        // 检查方块是否是空气
         if (block == Blocks.air) {
             return false;
         }
         
-        // 检查方块是否不可破坏 (硬度 < 0)
         if (block.getBlockHardness(mc.theWorld, pos) < 0) {
-            unmineableBlacklist.put(pos, block); // 如果发现不可破坏，立即加入黑名单
+            unmineableBlacklist.put(pos, block);
             return false;
         }
         
-        // (方块模式下) 检查方块是否还是我们想要挖掘的类型
         if (!AutoMineTargetManager.targetBlocks.contains(pos) && !AutoMineTargetManager.targetBlockTypes.contains(block)) {
             return false;
         }
 
-        // 检查距离
         double reach = GhostConfig.AutoMine.maxReachDistance;
         Vec3 blockCenter = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         if (mc.thePlayer.getPositionEyes(1.0f).squareDistanceTo(blockCenter) > reach * reach) {
             return false;
         }
 
-        // 检查是否可见
         return RotationUtil.getClosestVisiblePoint(pos) != null;
     }
 }
