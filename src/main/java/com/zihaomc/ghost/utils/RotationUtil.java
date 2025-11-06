@@ -1,5 +1,6 @@
 package com.zihaomc.ghost.utils;
 
+import com.zihaomc.ghost.config.GhostConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumFacing;
@@ -40,13 +41,27 @@ public class RotationUtil {
 
     /**
      * 计算朝向目标视角平滑移动一步后的新视角。
+     * @param speed 基础旋转速度 (度/tick)
+     * @return float 数组, [0] = newYaw, [1] = newPitch
      */
     public static float[] getSmoothRotations(float currentYaw, float currentPitch, float targetYaw, float targetPitch, float speed) {
+        float finalSpeed = speed;
+
+        // 如果开启了随机速度，则计算一个波动的速度
+        if (GhostConfig.AutoMine.enableRandomRotationSpeed) {
+            double variability = GhostConfig.AutoMine.rotationSpeedVariability;
+            // 计算一个在 [-variability, +variability] 范围内的随机偏移量
+            double randomOffset = (Math.random() - 0.5) * 2.0 * variability;
+            finalSpeed += randomOffset;
+            // 确保速度不会低于一个最小值，防止旋转过慢或停止
+            finalSpeed = Math.max(1.0f, finalSpeed);
+        }
+
         float yawDifference = MathHelper.wrapAngleTo180_float(targetYaw - currentYaw);
         float pitchDifference = MathHelper.wrapAngleTo180_float(targetPitch - currentPitch);
 
-        float yawStep = MathHelper.clamp_float(yawDifference, -speed, speed);
-        float pitchStep = MathHelper.clamp_float(pitchDifference, -speed, speed);
+        float yawStep = MathHelper.clamp_float(yawDifference, -finalSpeed, finalSpeed);
+        float pitchStep = MathHelper.clamp_float(pitchDifference, -finalSpeed, finalSpeed);
 
         float newYaw = currentYaw + yawStep;
         float newPitch = currentPitch + pitchStep;

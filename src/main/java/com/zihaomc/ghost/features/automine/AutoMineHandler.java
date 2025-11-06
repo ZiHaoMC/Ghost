@@ -246,12 +246,15 @@ public class AutoMineHandler {
     }
 
     private boolean isTargetValid(BlockPos pos) {
+        // --- 智能黑名单检查 ---
         if (unmineableBlacklist.containsKey(pos)) {
             Block blacklistedBlock = unmineableBlacklist.get(pos);
             Block currentBlock = mc.theWorld.getBlockState(pos).getBlock();
+            // 如果当前方块不再是当初被拉黑的那个方块，就把它从黑名单中移除
             if (currentBlock != blacklistedBlock) {
                 unmineableBlacklist.remove(pos);
             } else {
+                // 否则，它仍然是那个不可挖掘的方块，所以这个目标无效
                 return false;
             }
         }
@@ -259,25 +262,39 @@ public class AutoMineHandler {
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();
 
+        // 检查方块是否是空气
         if (block == Blocks.air) {
             return false;
         }
         
+        // 检查是否要防止向下挖掘
+        if (GhostConfig.AutoMine.preventDiggingDown) {
+            int playerFootY = MathHelper.floor_double(mc.thePlayer.posY);
+            // 不挖掘低于玩家脚底的方块
+            if (pos.getY() < playerFootY) {
+                return false;
+            }
+        }
+
+        // 检查方块是否不可破坏 (硬度 < 0)
         if (block.getBlockHardness(mc.theWorld, pos) < 0) {
-            unmineableBlacklist.put(pos, block);
+            unmineableBlacklist.put(pos, block); // 如果发现不可破坏，立即加入黑名单
             return false;
         }
         
+        // (方块模式下) 检查方块是否还是我们想要挖掘的类型
         if (!AutoMineTargetManager.targetBlocks.contains(pos) && !AutoMineTargetManager.targetBlockTypes.contains(block)) {
             return false;
         }
 
+        // 检查距离
         double reach = GhostConfig.AutoMine.maxReachDistance;
         Vec3 blockCenter = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         if (mc.thePlayer.getPositionEyes(1.0f).squareDistanceTo(blockCenter) > reach * reach) {
             return false;
         }
 
+        // 检查是否可见
         return RotationUtil.getClosestVisiblePoint(pos) != null;
     }
 }

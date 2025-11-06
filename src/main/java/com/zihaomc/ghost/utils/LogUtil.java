@@ -60,6 +60,15 @@ public class LogUtil {
         }
     }
 
+    /**
+     * 用于直接打印原始调试字符串，不经过翻译。
+     * @param message 要打印的原始消息。
+     */
+    public static void debugRaw(String message) {
+        // TODO: 未来可以添加一个配置项来完全禁用 DEBUG 日志
+        Ghost.logger.info("[AutoMine-Debug] " + message);
+    }
+
     public static void info(String key, Object... args) {
         log("INFO", key, args);
     }

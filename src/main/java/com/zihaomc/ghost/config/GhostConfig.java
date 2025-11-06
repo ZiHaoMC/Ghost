@@ -126,6 +126,9 @@ public class GhostConfig {
         public static boolean sneakOnMine;
         public static boolean randomMovements;
         public static int mineTimeoutSeconds;
+        public static boolean enableRandomRotationSpeed;
+        public static double rotationSpeedVariability;
+        public static boolean preventDiggingDown;
     }
 
     // --- 核心方法 ---
@@ -239,14 +242,17 @@ public class GhostConfig {
     }
 
     private static void loadAutoMineSettings() {
-        AutoMine.rotationSpeed = loadDouble(CATEGORY_AUTO_MINE, "rotationSpeed", 20.0, 1.0, 180.0, "ghost.config.comment.autoMineRotationSpeed");
-        AutoMine.maxReachDistance = loadDouble(CATEGORY_AUTO_MINE, "maxReachDistance", 3.0, 1.0, 6.0, "ghost.config.comment.autoMineMaxReach");
+        AutoMine.rotationSpeed = loadDouble(CATEGORY_AUTO_MINE, "rotationSpeed", 10.0, 1.0, 180.0, "ghost.config.comment.autoMineRotationSpeed");
+        AutoMine.maxReachDistance = loadDouble(CATEGORY_AUTO_MINE, "maxReachDistance", 4.5, 1.0, 6.0, "ghost.config.comment.autoMineMaxReach");
         AutoMine.searchRadius = loadInt(CATEGORY_AUTO_MINE, "searchRadius", 7, 3, 15, "ghost.config.comment.autoMineSearchRadius");
+        AutoMine.mineTimeoutSeconds = loadInt(CATEGORY_AUTO_MINE, "mineTimeoutSeconds", 7, 2, 30, "ghost.config.comment.autoMineTimeout");
         AutoMine.instantRotation = loadBoolean(CATEGORY_AUTO_MINE, "instantRotation", false, "ghost.config.comment.autoMineInstantRotation");
         AutoMine.serverRotation = loadBoolean(CATEGORY_AUTO_MINE, "serverRotation", false, "ghost.config.comment.autoMineServerRotation");
         AutoMine.sneakOnMine = loadBoolean(CATEGORY_AUTO_MINE, "sneakOnMine", false, "ghost.config.comment.autoMineSneak");
         AutoMine.randomMovements = loadBoolean(CATEGORY_AUTO_MINE, "randomMovements", false, "ghost.config.comment.autoMineRandomMove");
-        AutoMine.mineTimeoutSeconds = loadInt(CATEGORY_AUTO_MINE, "mineTimeoutSeconds", 7, 2, 30, "ghost.config.comment.autoMineTimeout");
+        AutoMine.enableRandomRotationSpeed = loadBoolean(CATEGORY_AUTO_MINE, "enableRandomRotationSpeed", true, "ghost.config.comment.autoMineEnableRandomSpeed");
+        AutoMine.rotationSpeedVariability = loadDouble(CATEGORY_AUTO_MINE, "rotationSpeedVariability", 5.0, 0.0, 20.0, "ghost.config.comment.autoMineSpeedVariability");
+        AutoMine.preventDiggingDown = loadBoolean(CATEGORY_AUTO_MINE, "preventDiggingDown", false, "ghost.config.comment.autoMinePreventDiggingDown");
     }
 
     // --- 加载辅助方法 ---
@@ -453,6 +459,19 @@ public class GhostConfig {
         if (value < 2 || value > 30) return;
         updateAndSave(CATEGORY_AUTO_MINE, "mineTimeoutSeconds", value, () -> AutoMine.mineTimeoutSeconds = value);
     }
+
+    public static void setAutoMineEnableRandomSpeed(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "enableRandomRotationSpeed", value, () -> AutoMine.enableRandomRotationSpeed = value);
+    }
+
+    public static void setAutoMineSpeedVariability(double value) {
+        if (value < 0.0 || value > 20.0) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "rotationSpeedVariability", value, () -> AutoMine.rotationSpeedVariability = value);
+    }
+
+    public static void setAutoMinePreventDiggingDown(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "preventDiggingDown", value, () -> AutoMine.preventDiggingDown = value);
+    }
     
     public static Configuration getConfig() {
         return config;
@@ -502,6 +521,9 @@ public class GhostConfig {
         settingUpdaters.put("autominesneak", (k, v) -> setAutoMineSneak(parseBoolean(v)));
         settingUpdaters.put("autominerandommove", (k, v) -> setAutoMineRandomMove(parseBoolean(v)));
         settingUpdaters.put("autominetimeout", (k, v) -> setAutoMineTimeout(parseInt(v)));
+        settingUpdaters.put("automineenablerandomspeed", (k, v) -> setAutoMineEnableRandomSpeed(parseBoolean(v)));
+        settingUpdaters.put("autominespeedvariability", (k, v) -> setAutoMineSpeedVariability(parseDouble(v)));
+        settingUpdaters.put("autominepreventdiggingdown", (k, v) -> setAutoMinePreventDiggingDown(parseBoolean(v)));
     }
     
     // --- 解析辅助方法 ---
