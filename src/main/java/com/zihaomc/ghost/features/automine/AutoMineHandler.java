@@ -42,9 +42,11 @@ public class AutoMineHandler {
     private static State currentState = State.IDLE;
     private int waitTicks = 0;
 
-    // --- 智能黑名单和超时相关成员变量 ---
     private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
     private Long miningStartTime = null; 
+    
+    // 用于跟踪潜行键是否由本模块控制
+    private static boolean modIsControllingSneak = false;
 
     public static void toggle() {
         if (!isActive && AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
@@ -66,6 +68,11 @@ public class AutoMineHandler {
     private static void reset() {
         if (mc.gameSettings.keyBindAttack.isKeyDown()) {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
+        }
+        // 如果是本模块在控制潜行，则在关闭时松开按键
+        if (modIsControllingSneak) {
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
+            modIsControllingSneak = false;
         }
         currentState = State.IDLE;
         currentTarget = null;
@@ -90,7 +97,29 @@ public class AutoMineHandler {
             return;
         }
 
-        if (!isActive) return;
+        if (!isActive) {
+            // 安全检查：如果模块已关闭但潜行键仍被我们控制，则释放它
+            if (modIsControllingSneak) {
+                KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
+                modIsControllingSneak = false;
+            }
+            return;
+        }
+
+        // --- 自动潜行逻辑 ---
+        if (GhostConfig.AutoMine.sneakOnMine) {
+            // 如果配置要求潜行，且潜行键当前没有按下，则按下它
+            if (!mc.gameSettings.keyBindSneak.isKeyDown()) {
+                KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), true);
+            }
+            modIsControllingSneak = true; // 标记我们正在控制
+        } else {
+            // 如果配置不要求潜行，但之前是我们在控制，则松开它
+            if (modIsControllingSneak) {
+                KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
+                modIsControllingSneak = false;
+            }
+        }
 
         boolean hasTargets = !AutoMineTargetManager.targetBlocks.isEmpty() || !AutoMineTargetManager.targetBlockTypes.isEmpty();
         if (!hasTargets) {
@@ -178,21 +207,15 @@ public class AutoMineHandler {
         }
     }
     
-    /**
-     * 重写后的寻找最佳目标的方法，使用评分系统。
-     * @return 最优的目标方块位置，如果没有则返回 null。
-     */
     private BlockPos findBestTarget() {
         Set<BlockPos> candidates = new HashSet<>();
 
-        // 1. 从坐标列表中收集候选者
         for (BlockPos pos : AutoMineTargetManager.targetBlocks) {
             if (isTargetValid(pos)) {
                 candidates.add(pos);
             }
         }
 
-        // 2. 从方块类型列表中收集候选者
         if (!AutoMineTargetManager.targetBlockTypes.isEmpty()) {
             int radius = GhostConfig.AutoMine.searchRadius;
             BlockPos playerPos = mc.thePlayer.getPosition();
@@ -209,7 +232,6 @@ public class AutoMineHandler {
             return null;
         }
 
-        // 3. 遍历所有候选者，根据评分选出最佳目标
         BlockPos bestPos = null;
         double minScore = Double.MAX_VALUE;
 
@@ -217,7 +239,6 @@ public class AutoMineHandler {
             double angleDiff = getAngleDifferenceToBlock(candidate);
             double distanceSq = mc.thePlayer.getDistanceSq(candidate);
             
-            // 评分公式：角度差的权重远高于距离，这样会优先选择准星附近的方块
             double score = angleDiff * 10.0 + distanceSq;
 
             if (score < minScore) {
@@ -229,11 +250,6 @@ public class AutoMineHandler {
         return bestPos;
     }
 
-    /**
-     * 计算玩家当前视角与目标方块中心视角之间的角度差的平方和。
-     * @param pos 目标方块位置
-     * @return 角度差的平方和，作为一个评分依据
-     */
     private double getAngleDifferenceToBlock(BlockPos pos) {
         Vec3 targetVec = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         float[] rotations = RotationUtil.getRotations(targetVec);
@@ -246,15 +262,12 @@ public class AutoMineHandler {
     }
 
     private boolean isTargetValid(BlockPos pos) {
-        // --- 智能黑名单检查 ---
         if (unmineableBlacklist.containsKey(pos)) {
             Block blacklistedBlock = unmineableBlacklist.get(pos);
             Block currentBlock = mc.theWorld.getBlockState(pos).getBlock();
-            // 如果当前方块不再是当初被拉黑的那个方块，就把它从黑名单中移除
             if (currentBlock != blacklistedBlock) {
                 unmineableBlacklist.remove(pos);
             } else {
-                // 否则，它仍然是那个不可挖掘的方块，所以这个目标无效
                 return false;
             }
         }
@@ -262,39 +275,32 @@ public class AutoMineHandler {
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();
 
-        // 检查方块是否是空气
         if (block == Blocks.air) {
             return false;
         }
         
-        // 检查是否要防止向下挖掘
         if (GhostConfig.AutoMine.preventDiggingDown) {
             int playerFootY = MathHelper.floor_double(mc.thePlayer.posY);
-            // 不挖掘低于玩家脚底的方块
             if (pos.getY() < playerFootY) {
                 return false;
             }
         }
 
-        // 检查方块是否不可破坏 (硬度 < 0)
         if (block.getBlockHardness(mc.theWorld, pos) < 0) {
-            unmineableBlacklist.put(pos, block); // 如果发现不可破坏，立即加入黑名单
+            unmineableBlacklist.put(pos, block); 
             return false;
         }
         
-        // (方块模式下) 检查方块是否还是我们想要挖掘的类型
         if (!AutoMineTargetManager.targetBlocks.contains(pos) && !AutoMineTargetManager.targetBlockTypes.contains(block)) {
             return false;
         }
 
-        // 检查距离
         double reach = GhostConfig.AutoMine.maxReachDistance;
         Vec3 blockCenter = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         if (mc.thePlayer.getPositionEyes(1.0f).squareDistanceTo(blockCenter) > reach * reach) {
             return false;
         }
 
-        // 检查是否可见
         return RotationUtil.getClosestVisiblePoint(pos) != null;
     }
 }
