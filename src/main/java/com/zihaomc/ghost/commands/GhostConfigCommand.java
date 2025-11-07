@@ -204,7 +204,10 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoMineInstantRotation", GhostConfig.AutoMine.instantRotation));
         sender.addChatMessage(formatSettingLine("autoMineServerRotation", GhostConfig.AutoMine.serverRotation));
         sender.addChatMessage(formatSettingLine("autoMineSneak", GhostConfig.AutoMine.sneakOnMine));
-        sender.addChatMessage(formatSettingLine("autoMineRandomMove", GhostConfig.AutoMine.randomMovements));
+        sender.addChatMessage(formatSettingLine("autoMineEnableRandomMove", GhostConfig.AutoMine.enableRandomMovements));
+        sender.addChatMessage(formatSettingLine("autoMineRandomMoveInterval", GhostConfig.AutoMine.randomMoveInterval));
+        sender.addChatMessage(formatSettingLine("autoMineRandomMoveDuration", GhostConfig.AutoMine.randomMoveDuration));
+        sender.addChatMessage(formatSettingLine("autoMineRandomMoveIntervalVariability", GhostConfig.AutoMine.randomMoveIntervalVariability));
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
@@ -299,7 +302,11 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  autoMineInstantRotation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineInstantRotation")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineServerRotation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineServerRotation")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineSneak " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineSneak")));
-        sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMove " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMove")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineEnableRandomMove " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineEnableRandomMove")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveInterval " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "10-400") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveInterval")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveDuration " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-20") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveDuration")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveIntervalVariability " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "0-1000") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability")));
+
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.examples.header")));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableAutoSave true"));
@@ -325,10 +332,11 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig fixGuiStateLossOnResize false"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig niuTransApiKey your_api_key_here"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig translationTargetLang en"));
-        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineRotationSpeed 30.0"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineRotationSpeed 10.0"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineTimeout 10"));
-        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineSpeedVariability 7.5"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineSpeedVariability 5.0"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMinePreventDiggingDown false"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineRandomMoveInterval 200"));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.aliases") + ": " + hl + String.join(", ", getCommandAliases())));
     }
@@ -387,6 +395,12 @@ public class GhostConfigCommand extends CommandBase {
                     return CommandBase.getListOfStringsMatchingLastWord(args, "5", "7", "10", "15");
                 case "autominetimeout":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "5", "7", "10", "15");
+                case "autominerandommoveinterval":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "20", "100", "200", "300");
+                case "autominerandommoveduration":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "2", "5", "10", "20");
+                case "autominerandommoveintervalvariability":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "10", "20", "50", "100");
             }
         }
         return Collections.emptyList();
@@ -406,7 +420,7 @@ public class GhostConfigCommand extends CommandBase {
                key.equals("headlesspistonmode") || key.equals("blinkduringtaskstick") ||
                key.equals("fastpistonbreaking") || key.equals("fixguistatelossonresize") ||
                key.equals("automineserverrotation") || key.equals("automineinstantrotation") ||
-               key.equals("autominesneak") || key.equals("autominerandommove") ||
+               key.equals("autominesneak") || key.equals("automineenablerandommove") ||
                key.equals("automineenablerandomspeed") || key.equals("autominepreventdiggingdown");
     }
 }

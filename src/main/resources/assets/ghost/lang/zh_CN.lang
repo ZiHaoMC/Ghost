@@ -201,11 +201,11 @@ ghostblock.commands.undo.error_block_lookup=错误: 无法找到方块ID '%1$s' 
 ghostblock.commands.undo.success_set=成功撤销操作，恢复了 %1$d 个原始方块。
 ghostblock.commands.undo.success_clear_file=成功撤销文件删除操作。
 ghostblock.commands.undo.warning.no_files_to_restore=撤销记录有效，但没有文件需要恢复。
-ghostblock.commands.undo.error.data_file_empty_ghost=警告: 撤销数据文件为空或未找到，无法恢复幽灵方块。
-ghostblock.commands.undo.restoring_ghost_blocks=正在恢复幽灵方块...
-ghostblock.commands.undo.error.restore_ghost_failed=错误: 恢复幽灵方块 (%1$d, %2$d, %3$d) 失败: %4$s
-ghostblock.commands.undo.auto_file_restored=已将 %1$d 个幽灵方块记录恢复到自动清除文件。
-ghostblock.commands.undo.success_clear=成功撤销清除操作，恢复了 %1$d 个幽灵方块。
+ghost.commands.undo.error.data_file_empty_ghost=警告: 撤销数据文件为空或未找到，无法恢复幽灵方块。
+ghost.commands.undo.restoring_ghost_blocks=正在恢复幽灵方块...
+ghost.commands.undo.error.restore_ghost_failed=错误: 恢复幽灵方块 (%1$d, %2$d, %3$d) 失败: %4$s
+ghost.commands.undo.auto_file_restored=已将 %1$d 个幽灵方块记录恢复到自动清除文件。
+ghost.commands.undo.success_clear=成功撤销清除操作，恢复了 %1$d 个幽灵方块。
 ghostblock.commands.undo.invalid_index=错误: 无效的编号。请输入 1 到 %d 之间的数字。
 
 # history 命令
@@ -284,10 +284,13 @@ ghost.config.comment.autoMineTimeout=自动挖掘超时时间(秒)。如果挖�
 ghost.config.comment.autoMineServerRotation=是否使用服务端数据包进行视角旋转 (可能绕过某些反作弊)。
 ghost.config.comment.autoMineInstantRotation=是否瞬间旋转到目标，而不是平滑过渡。关闭此项以使用更像玩家的平滑旋转。
 ghost.config.comment.autoMineSneak=是否在挖掘时保持潜行状态。
-ghost.config.comment.autoMineRandomMove=(未来功能) 是否在挖掘时进行轻微的随机移动，以模拟玩家行为。
+ghost.config.comment.autoMineEnableRandomMove=是否在挖掘时进行轻微的随机移动，以模拟玩家行为。
 ghost.config.comment.autoMineEnableRandomSpeed=是否启用随机旋转速度，使视角移动更像人类。
 ghost.config.comment.autoMineSpeedVariability=随机旋转速度的波动范围 (度/tick)。实际速度将在 [speed - variability, speed + variability] 之间波动。
 ghost.config.comment.autoMinePreventDiggingDown=防止自动挖掘玩家脚下及更下方的方块，避免挖坑困住自己。
+ghost.config.comment.autoMineRandomMoveInterval=随机移动的平均间隔时间 (tick, 20 ticks = 1秒)。
+ghost.config.comment.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
+ghost.config.comment.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。最终间隔将在 [interval - variability, interval + variability] 之间。
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -321,10 +324,10 @@ ghostblock.commands.gconfig.help.usage.set=设置指定的配置选项的值。
 ghostblock.commands.gconfig.help.usage.help=显示此帮助信息。
 ghostblock.commands.gconfig.help.usage.toggle=快速切换聊天建议功能的开关。
 ghostblock.commands.gconfig.help.available_settings=可用设置:
-ghostblock.commands.gconfig.help.type.boolean=(true/false)
-ghostblock.commands.gconfig.help.type.positive_integer=(正整数)
-ghostblock.commands.gconfig.help.type.text=(文本)
-ghostblock.commands.gconfig.help.type.double_range=(小数 %1$s)
+ghost.commands.gconfig.help.type.boolean=(true/false)
+ghost.commands.gconfig.help.type.positive_integer=(正整数)
+ghost.commands.gconfig.help.type.text=(文本)
+ghost.commands.gconfig.help.type.double_range=(小数 %1$s)
 ghost.commands.gconfig.help.type.integer_range=(整数 %1$s)
 ghostblock.commands.gconfig.help.setting.enableChatSuggestions=启用聊天命令建议按钮。
 ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll=启用Shift+滚轮/方向键切换命令历史。
@@ -363,7 +366,10 @@ ghost.commands.gconfig.help.setting.autoMinePreventDiggingDown=防止自动挖�
 ghost.commands.gconfig.help.setting.autoMineServerRotation=是否使用服务端视角旋转。
 ghost.commands.gconfig.help.setting.autoMineInstantRotation=启用瞬间视角旋转以加快瞄准速度。
 ghost.commands.gconfig.help.setting.autoMineSneak=挖掘时自动潜行。
-ghost.commands.gconfig.help.setting.autoMineRandomMove=(未来功能) 挖掘时随机移动。
+ghost.commands.gconfig.help.setting.autoMineEnableRandomMove=启用挖掘时的随机移动。
+ghost.commands.gconfig.help.setting.autoMineRandomMoveInterval=随机移动的平均间隔时间 (tick)。
+ghost.commands.gconfig.help.setting.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
+ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
@@ -383,6 +389,7 @@ ghostblock.commands.gconfig.help.example.autoMineRotationSpeed=/gconfig autoMine
 ghostblock.commands.gconfig.help.example.autoMineTimeout=/gconfig autoMineTimeout 10
 ghostblock.commands.gconfig.help.example.autoMineSpeedVariability=/gconfig autoMineSpeedVariability 5.0
 ghostblock.commands.gconfig.help.example.autoMinePreventDiggingDown=/gconfig autoMinePreventDiggingDown false
+ghostblock.commands.gconfig.help.example.autoMineRandomMoveInterval=/gconfig autoMineRandomMoveInterval 200
 ghostblock.commands.gconfig.help.aliases=别名
 
 # ==================================

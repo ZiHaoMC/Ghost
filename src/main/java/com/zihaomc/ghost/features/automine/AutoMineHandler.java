@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * "Auto Mine" 功能的核心处理器，支持坐标和方块类型两种模式。
@@ -45,8 +46,13 @@ public class AutoMineHandler {
     private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
     private Long miningStartTime = null; 
     
-    // 用于跟踪潜行键是否由本模块控制
     private static boolean modIsControllingSneak = false;
+
+    // --- 随机移动相关状态 ---
+    private static int randomMoveTicks = 0;
+    private static int currentMoveDuration = 0;
+    private static KeyBinding currentMoveKey = null;
+
 
     public static void toggle() {
         if (!isActive && AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
@@ -69,11 +75,18 @@ public class AutoMineHandler {
         if (mc.gameSettings.keyBindAttack.isKeyDown()) {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
         }
-        // 如果是本模块在控制潜行，则在关闭时松开按键
         if (modIsControllingSneak) {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
             modIsControllingSneak = false;
         }
+        // 确保在关闭时释放所有移动键
+        if (currentMoveKey != null) {
+            KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), false);
+            currentMoveKey = null;
+        }
+        randomMoveTicks = 0;
+        currentMoveDuration = 0;
+
         currentState = State.IDLE;
         currentTarget = null;
         isActive = false;
@@ -96,9 +109,10 @@ public class AutoMineHandler {
             }
             return;
         }
+        
+        handleMovementKeys();
 
         if (!isActive) {
-            // 安全检查：如果模块已关闭但潜行键仍被我们控制，则释放它
             if (modIsControllingSneak) {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
                 modIsControllingSneak = false;
@@ -106,15 +120,12 @@ public class AutoMineHandler {
             return;
         }
 
-        // --- 自动潜行逻辑 ---
         if (GhostConfig.AutoMine.sneakOnMine) {
-            // 如果配置要求潜行，且潜行键当前没有按下，则按下它
             if (!mc.gameSettings.keyBindSneak.isKeyDown()) {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), true);
             }
-            modIsControllingSneak = true; // 标记我们正在控制
+            modIsControllingSneak = true; 
         } else {
-            // 如果配置不要求潜行，但之前是我们在控制，则松开它
             if (modIsControllingSneak) {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
                 modIsControllingSneak = false;
@@ -204,6 +215,47 @@ public class AutoMineHandler {
                     KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
                 }
                 break;
+        }
+    }
+    
+    private void handleMovementKeys() {
+        if (!isActive || !GhostConfig.AutoMine.enableRandomMovements) {
+            // 如果功能关闭，确保释放按键并重置计时器
+            if (currentMoveKey != null) {
+                KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), false);
+                currentMoveKey = null;
+            }
+            randomMoveTicks = 0;
+            currentMoveDuration = 0;
+            return;
+        }
+    
+        if (currentMoveDuration > 0) {
+            currentMoveDuration--;
+        } else {
+            // 释放之前的按键
+            if (currentMoveKey != null) {
+                KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), false);
+                currentMoveKey = null;
+            }
+    
+            if (randomMoveTicks > 0) {
+                randomMoveTicks--;
+            } else {
+                // 开始新的随机移动
+                int variability = GhostConfig.AutoMine.randomMoveIntervalVariability;
+                int baseInterval = GhostConfig.AutoMine.randomMoveInterval;
+                
+                // 计算随机间隔，并确保它不会小于一个最小值（例如10 ticks），防止负数或零
+                randomMoveTicks = baseInterval + ThreadLocalRandom.current().nextInt(-variability, variability + 1);
+                randomMoveTicks = Math.max(10, randomMoveTicks);
+
+                currentMoveDuration = GhostConfig.AutoMine.randomMoveDuration;
+    
+                KeyBinding[] moveKeys = {mc.gameSettings.keyBindForward, mc.gameSettings.keyBindBack, mc.gameSettings.keyBindLeft, mc.gameSettings.keyBindRight};
+                currentMoveKey = moveKeys[ThreadLocalRandom.current().nextInt(moveKeys.length)];
+                KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), true);
+            }
         }
     }
     

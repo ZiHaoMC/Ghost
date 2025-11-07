@@ -124,11 +124,14 @@ public class GhostConfig {
         public static boolean serverRotation;
         public static boolean instantRotation;
         public static boolean sneakOnMine;
-        public static boolean randomMovements;
+        public static boolean enableRandomMovements;
         public static int mineTimeoutSeconds;
         public static boolean enableRandomRotationSpeed;
         public static double rotationSpeedVariability;
         public static boolean preventDiggingDown;
+        public static int randomMoveInterval;
+        public static int randomMoveDuration;
+        public static int randomMoveIntervalVariability;
     }
 
     // --- 核心方法 ---
@@ -249,10 +252,13 @@ public class GhostConfig {
         AutoMine.instantRotation = loadBoolean(CATEGORY_AUTO_MINE, "instantRotation", false, "ghost.config.comment.autoMineInstantRotation");
         AutoMine.serverRotation = loadBoolean(CATEGORY_AUTO_MINE, "serverRotation", false, "ghost.config.comment.autoMineServerRotation");
         AutoMine.sneakOnMine = loadBoolean(CATEGORY_AUTO_MINE, "sneakOnMine", false, "ghost.config.comment.autoMineSneak");
-        AutoMine.randomMovements = loadBoolean(CATEGORY_AUTO_MINE, "randomMovements", false, "ghost.config.comment.autoMineRandomMove");
+        AutoMine.enableRandomMovements = loadBoolean(CATEGORY_AUTO_MINE, "enableRandomMovements", false, "ghost.config.comment.autoMineEnableRandomMove");
         AutoMine.enableRandomRotationSpeed = loadBoolean(CATEGORY_AUTO_MINE, "enableRandomRotationSpeed", true, "ghost.config.comment.autoMineEnableRandomSpeed");
         AutoMine.rotationSpeedVariability = loadDouble(CATEGORY_AUTO_MINE, "rotationSpeedVariability", 5.0, 0.0, 20.0, "ghost.config.comment.autoMineSpeedVariability");
         AutoMine.preventDiggingDown = loadBoolean(CATEGORY_AUTO_MINE, "preventDiggingDown", false, "ghost.config.comment.autoMinePreventDiggingDown");
+        AutoMine.randomMoveInterval = loadInt(CATEGORY_AUTO_MINE, "randomMoveInterval", 200, 10, 400, "ghost.config.comment.autoMineRandomMoveInterval");
+        AutoMine.randomMoveDuration = loadInt(CATEGORY_AUTO_MINE, "randomMoveDuration", 10, 1, 20, "ghost.config.comment.autoMineRandomMoveDuration");
+        AutoMine.randomMoveIntervalVariability = loadInt(CATEGORY_AUTO_MINE, "randomMoveIntervalVariability", 100, 0, 1000, "ghost.config.comment.autoMineRandomMoveIntervalVariability");
     }
 
     // --- 加载辅助方法 ---
@@ -451,8 +457,8 @@ public class GhostConfig {
         updateAndSave(CATEGORY_AUTO_MINE, "sneakOnMine", value, () -> AutoMine.sneakOnMine = value);
     }
 
-    public static void setAutoMineRandomMove(boolean value) {
-        updateAndSave(CATEGORY_AUTO_MINE, "randomMovements", value, () -> AutoMine.randomMovements = value);
+    public static void setAutoMineEnableRandomMove(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "enableRandomMovements", value, () -> AutoMine.enableRandomMovements = value);
     }
 
     public static void setAutoMineTimeout(int value) {
@@ -471,6 +477,21 @@ public class GhostConfig {
 
     public static void setAutoMinePreventDiggingDown(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "preventDiggingDown", value, () -> AutoMine.preventDiggingDown = value);
+    }
+
+    public static void setAutoMineRandomMoveInterval(int value) {
+        if (value < 10 || value > 400) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "randomMoveInterval", value, () -> AutoMine.randomMoveInterval = value);
+    }
+
+    public static void setAutoMineRandomMoveDuration(int value) {
+        if (value < 1 || value > 20) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "randomMoveDuration", value, () -> AutoMine.randomMoveDuration = value);
+    }
+
+    public static void setAutoMineRandomMoveIntervalVariability(int value) {
+        if (value < 0 || value > 1000) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "randomMoveIntervalVariability", value, () -> AutoMine.randomMoveIntervalVariability = value);
     }
     
     public static Configuration getConfig() {
@@ -519,11 +540,14 @@ public class GhostConfig {
         settingUpdaters.put("automineserverrotation", (k, v) -> setAutoMineServerRotation(parseBoolean(v)));
         settingUpdaters.put("automineinstantrotation", (k, v) -> setAutoMineInstantRotation(parseBoolean(v)));
         settingUpdaters.put("autominesneak", (k, v) -> setAutoMineSneak(parseBoolean(v)));
-        settingUpdaters.put("autominerandommove", (k, v) -> setAutoMineRandomMove(parseBoolean(v)));
+        settingUpdaters.put("automineenablerandommove", (k, v) -> setAutoMineEnableRandomMove(parseBoolean(v)));
         settingUpdaters.put("autominetimeout", (k, v) -> setAutoMineTimeout(parseInt(v)));
         settingUpdaters.put("automineenablerandomspeed", (k, v) -> setAutoMineEnableRandomSpeed(parseBoolean(v)));
         settingUpdaters.put("autominespeedvariability", (k, v) -> setAutoMineSpeedVariability(parseDouble(v)));
         settingUpdaters.put("autominepreventdiggingdown", (k, v) -> setAutoMinePreventDiggingDown(parseBoolean(v)));
+        settingUpdaters.put("autominerandommoveinterval", (k, v) -> setAutoMineRandomMoveInterval(parseInt(v)));
+        settingUpdaters.put("autominerandommoveduration", (k, v) -> setAutoMineRandomMoveDuration(parseInt(v)));
+        settingUpdaters.put("autominerandommoveintervalvariability", (k, v) -> setAutoMineRandomMoveIntervalVariability(parseInt(v)));
     }
     
     // --- 解析辅助方法 ---
