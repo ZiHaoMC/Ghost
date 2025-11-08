@@ -132,6 +132,7 @@ public class GhostConfig {
         public static int randomMoveInterval;
         public static int randomMoveDuration;
         public static int randomMoveIntervalVariability;
+        public static boolean enableVeinMining;
     }
 
     // --- 核心方法 ---
@@ -259,6 +260,7 @@ public class GhostConfig {
         AutoMine.randomMoveInterval = loadInt(CATEGORY_AUTO_MINE, "randomMoveInterval", 200, 10, 400, "ghost.config.comment.autoMineRandomMoveInterval");
         AutoMine.randomMoveDuration = loadInt(CATEGORY_AUTO_MINE, "randomMoveDuration", 10, 1, 20, "ghost.config.comment.autoMineRandomMoveDuration");
         AutoMine.randomMoveIntervalVariability = loadInt(CATEGORY_AUTO_MINE, "randomMoveIntervalVariability", 100, 0, 1000, "ghost.config.comment.autoMineRandomMoveIntervalVariability");
+        AutoMine.enableVeinMining = loadBoolean(CATEGORY_AUTO_MINE, "enableVeinMining", true, "ghost.config.comment.autoMineEnableVeinMining");
     }
 
     // --- 加载辅助方法 ---
@@ -493,6 +495,10 @@ public class GhostConfig {
         if (value < 0 || value > 1000) return;
         updateAndSave(CATEGORY_AUTO_MINE, "randomMoveIntervalVariability", value, () -> AutoMine.randomMoveIntervalVariability = value);
     }
+
+    public static void setAutoMineEnableVeinMining(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "enableVeinMining", value, () -> AutoMine.enableVeinMining = value);
+    }
     
     public static Configuration getConfig() {
         return config;
@@ -548,6 +554,7 @@ public class GhostConfig {
         settingUpdaters.put("autominerandommoveinterval", (k, v) -> setAutoMineRandomMoveInterval(parseInt(v)));
         settingUpdaters.put("autominerandommoveduration", (k, v) -> setAutoMineRandomMoveDuration(parseInt(v)));
         settingUpdaters.put("autominerandommoveintervalvariability", (k, v) -> setAutoMineRandomMoveIntervalVariability(parseInt(v)));
+        settingUpdaters.put("automineenableveinmining", (k, v) -> setAutoMineEnableVeinMining(parseBoolean(v)));
     }
     
     // --- 解析辅助方法 ---

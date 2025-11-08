@@ -12,6 +12,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.Vec3;
@@ -48,11 +49,11 @@ public class AutoMineHandler {
     
     private static boolean modIsControllingSneak = false;
 
-    // --- 随机移动相关状态 ---
     private static int randomMoveTicks = 0;
     private static int currentMoveDuration = 0;
     private static KeyBinding currentMoveKey = null;
 
+    private static Block lastMinedType = null;
 
     public static void toggle() {
         if (!isActive && AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
@@ -79,7 +80,6 @@ public class AutoMineHandler {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
             modIsControllingSneak = false;
         }
-        // 确保在关闭时释放所有移动键
         if (currentMoveKey != null) {
             KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), false);
             currentMoveKey = null;
@@ -91,6 +91,7 @@ public class AutoMineHandler {
         currentTarget = null;
         isActive = false;
         unmineableBlacklist.clear();
+        lastMinedType = null;
     }
     
     public static void clearBlacklist() {
@@ -143,7 +144,16 @@ public class AutoMineHandler {
             case SWITCHING_TARGET:
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
                 miningStartTime = null; 
-                currentTarget = findBestTarget();
+                
+                // 连锁挖掘逻辑: 优先检查上一个目标周围
+                BlockPos veinTarget = findVeinMineTarget();
+                if (veinTarget != null) {
+                    currentTarget = veinTarget;
+                } else {
+                    // 如果没有连锁目标，则执行全局扫描
+                    currentTarget = findBestTarget();
+                }
+
                 if (currentTarget != null) {
                     currentState = State.MINING;
                 } else {
@@ -168,6 +178,7 @@ public class AutoMineHandler {
                 
                 IBlockState targetBlockState = mc.theWorld.getBlockState(currentTarget);
                 Block blockAtTarget = targetBlockState.getBlock();
+                lastMinedType = blockAtTarget;
 
                 boolean shouldSwitchTarget = false;
                 if (blockAtTarget == Blocks.air) {
@@ -220,7 +231,6 @@ public class AutoMineHandler {
     
     private void handleMovementKeys() {
         if (!isActive || !GhostConfig.AutoMine.enableRandomMovements) {
-            // 如果功能关闭，确保释放按键并重置计时器
             if (currentMoveKey != null) {
                 KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), false);
                 currentMoveKey = null;
@@ -233,7 +243,6 @@ public class AutoMineHandler {
         if (currentMoveDuration > 0) {
             currentMoveDuration--;
         } else {
-            // 释放之前的按键
             if (currentMoveKey != null) {
                 KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), false);
                 currentMoveKey = null;
@@ -242,11 +251,9 @@ public class AutoMineHandler {
             if (randomMoveTicks > 0) {
                 randomMoveTicks--;
             } else {
-                // 开始新的随机移动
                 int variability = GhostConfig.AutoMine.randomMoveIntervalVariability;
                 int baseInterval = GhostConfig.AutoMine.randomMoveInterval;
                 
-                // 计算随机间隔，并确保它不会小于一个最小值（例如10 ticks），防止负数或零
                 randomMoveTicks = baseInterval + ThreadLocalRandom.current().nextInt(-variability, variability + 1);
                 randomMoveTicks = Math.max(10, randomMoveTicks);
 
@@ -259,6 +266,43 @@ public class AutoMineHandler {
         }
     }
     
+    /**
+     * 如果连锁挖掘开启，寻找上一个目标方块周围的同类方块。
+     * @return 找到的连锁挖掘目标，如果没有则返回 null。
+     */
+    private BlockPos findVeinMineTarget() {
+        // 检查是否满足连锁挖掘的前提条件
+        if (!GhostConfig.AutoMine.enableVeinMining || currentTarget == null || lastMinedType == null || lastMinedType == Blocks.air || AutoMineTargetManager.targetBlocks.contains(currentTarget)) {
+            return null;
+        }
+    
+        // 此方法在方块被挖掉后调用，所以上一个目标位置现在应该是空气
+        if (mc.theWorld.getBlockState(currentTarget).getBlock() == Blocks.air) {
+            BlockPos lastPos = currentTarget;
+            BlockPos bestNeighbor = null;
+            double minScore = Double.MAX_VALUE;
+    
+            // 遍历所有相邻的方块
+            for (EnumFacing facing : EnumFacing.values()) {
+                BlockPos neighborPos = lastPos.offset(facing);
+                Block neighborBlock = mc.theWorld.getBlockState(neighborPos).getBlock();
+    
+                // 检查邻近方块是否与上一个被挖掉的方块类型相同，并且是一个有效的目标
+                if (neighborBlock == lastMinedType && isTargetValid(neighborPos)) {
+                    double score = getAngleDifferenceToBlock(neighborPos); // 根据需要转动的角度评分
+                    if (score < minScore) {
+                        minScore = score;
+                        bestNeighbor = neighborPos;
+                    }
+                }
+            }
+            return bestNeighbor; // 如果没找到，这里会返回 null
+        }
+        
+        // 如果上一个目标位置的方块不是空气，说明状态异常，不进行连锁挖掘
+        return null;
+    }
+
     private BlockPos findBestTarget() {
         Set<BlockPos> candidates = new HashSet<>();
 

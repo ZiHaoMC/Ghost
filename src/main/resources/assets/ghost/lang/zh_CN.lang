@@ -288,6 +288,7 @@ ghost.config.comment.autoMineEnableRandomMove=是否在挖掘时进行轻微的�
 ghost.config.comment.autoMineEnableRandomSpeed=是否启用随机旋转速度，使视角移动更像人类。
 ghost.config.comment.autoMineSpeedVariability=随机旋转速度的波动范围 (度/tick)。实际速度将在 [speed - variability, speed + variability] 之间波动。
 ghost.config.comment.autoMinePreventDiggingDown=防止自动挖掘玩家脚下及更下方的方块，避免挖坑困住自己。
+ghost.config.comment.autoMineEnableVeinMining=启用连锁挖矿。当挖掉一个目标方块后，优先挖掘其周围的同类方块。
 ghost.config.comment.autoMineRandomMoveInterval=随机移动的平均间隔时间 (tick, 20 ticks = 1秒)。
 ghost.config.comment.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
 ghost.config.comment.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。最终间隔将在 [interval - variability, interval + variability] 之间。
@@ -363,6 +364,7 @@ ghost.commands.gconfig.help.setting.autoMineMaxReach=自动挖掘的最大有效
 ghost.commands.gconfig.help.setting.autoMineSearchRadius=自动挖掘“方块类型”模式下的搜索半径。
 ghost.commands.gconfig.help.setting.autoMineTimeout=设置挖掘超时时间(秒)。
 ghost.commands.gconfig.help.setting.autoMinePreventDiggingDown=防止自动挖掘玩家脚下及更下方的方块。
+ghost.commands.gconfig.help.setting.autoMineEnableVeinMining=启用连锁挖矿。
 ghost.commands.gconfig.help.setting.autoMineServerRotation=是否使用服务端视角旋转。
 ghost.commands.gconfig.help.setting.autoMineInstantRotation=启用瞬间视角旋转以加快瞄准速度。
 ghost.commands.gconfig.help.setting.autoMineSneak=挖掘时自动潜行。

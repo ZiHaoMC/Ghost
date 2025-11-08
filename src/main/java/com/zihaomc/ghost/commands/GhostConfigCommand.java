@@ -201,6 +201,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoMineSearchRadius", GhostConfig.AutoMine.searchRadius));
         sender.addChatMessage(formatSettingLine("autoMineTimeout", GhostConfig.AutoMine.mineTimeoutSeconds));
         sender.addChatMessage(formatSettingLine("autoMinePreventDiggingDown", GhostConfig.AutoMine.preventDiggingDown));
+        sender.addChatMessage(formatSettingLine("autoMineEnableVeinMining", GhostConfig.AutoMine.enableVeinMining));
         sender.addChatMessage(formatSettingLine("autoMineInstantRotation", GhostConfig.AutoMine.instantRotation));
         sender.addChatMessage(formatSettingLine("autoMineServerRotation", GhostConfig.AutoMine.serverRotation));
         sender.addChatMessage(formatSettingLine("autoMineSneak", GhostConfig.AutoMine.sneakOnMine));
@@ -299,6 +300,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  autoMineSearchRadius " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "3-15") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineSearchRadius")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineTimeout " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "2-30") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineTimeout")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMinePreventDiggingDown " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMinePreventDiggingDown")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineEnableVeinMining " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineEnableVeinMining")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineInstantRotation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineInstantRotation")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineServerRotation " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineServerRotation")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineSneak " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineSneak")));
@@ -421,6 +423,7 @@ public class GhostConfigCommand extends CommandBase {
                key.equals("fastpistonbreaking") || key.equals("fixguistatelossonresize") ||
                key.equals("automineserverrotation") || key.equals("automineinstantrotation") ||
                key.equals("autominesneak") || key.equals("automineenablerandommove") ||
-               key.equals("automineenablerandomspeed") || key.equals("autominepreventdiggingdown");
+               key.equals("automineenablerandomspeed") || key.equals("autominepreventdiggingdown") ||
+               key.equals("automineenableveinmining");
     }
 }
