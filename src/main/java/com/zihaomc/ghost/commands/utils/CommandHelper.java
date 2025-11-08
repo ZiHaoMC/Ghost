@@ -63,7 +63,7 @@ public class CommandHelper {
     }
 
     /**
-     * [重构] 解析方块状态字符串 (例如 "minecraft:stone:1" 或 "log")。
+     * [重构] 解析方块状态字符串 (例如 "minecraft:stone:1" 或 "wool:11")。
      * @param sender 命令发送者，用于 getBlockByText
      * @param input  输入字符串
      * @return BlockStateProxy 实例
@@ -73,19 +73,17 @@ public class CommandHelper {
         String blockIdString = input;
         int meta = 0;
 
-        // 查找最后一个冒号，以正确处理 "modid:block:meta" 格式
-        int lastColon = input.lastIndexOf(':');
-        if (lastColon != -1) {
-            String potentialMeta = input.substring(lastColon + 1);
+        // 查找最后一个冒号
+        int lastColonIndex = input.lastIndexOf(':');
+        if (lastColonIndex > 0) { // 确保冒号不是第一个字符
+            String potentialMeta = input.substring(lastColonIndex + 1);
             try {
-                // 尝试将冒号后的部分解析为数字
+                // 如果冒号后面的部分是数字，则我们认为它是 metadata
                 int parsedMeta = Integer.parseInt(potentialMeta);
-                // 如果成功，则前面的部分是方块ID
-                blockIdString = input.substring(0, lastColon);
                 meta = parsedMeta;
+                blockIdString = input.substring(0, lastColonIndex); // 更新 blockIdString 为冒号前面的部分
             } catch (NumberFormatException e) {
-                // 如果失败，说明整个字符串都是方块ID (例如 "minecraft:log")
-                blockIdString = input;
+                // 如果不是数字，说明冒号是方块名称的一部分（例如 "minecraft:log"），所以 blockIdString 保持为完整输入
             }
         }
 
@@ -100,7 +98,7 @@ public class CommandHelper {
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block_id", blockIdString));
         }
 
-        // 验证 metadata 是否有效
+        // 验证 metadata 是否对找到的方块有效
         try {
             block.getStateFromMeta(meta);
         } catch (IllegalArgumentException e) {

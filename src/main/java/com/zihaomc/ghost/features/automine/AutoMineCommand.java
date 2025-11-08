@@ -8,16 +8,21 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
+import net.minecraft.event.HoverEvent;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -85,6 +90,7 @@ public class AutoMineCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.none")));
         }
 
+        // --- 坐标目标 ---
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.automine.command.list.header_coords")));
         if (hasCoords) {
             for (int i = 0; i < AutoMineTargetManager.targetBlocks.size(); i++) {
@@ -96,18 +102,44 @@ public class AutoMineCommand extends CommandBase {
         }
         sender.addChatMessage(new ChatComponentText(" "));
 
+        // --- 方块类型目标 (整合显示) ---
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.automine.command.list.header_blocks")));
         if (hasBlocks) {
-            for (AutoMineTargetManager.BlockData blockData : AutoMineTargetManager.targetBlockTypes) {
-                String name = blockData.block.getLocalizedName();
-                String id = blockData.toString();
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.WHITE + "- " + LangUtil.translate("ghost.automine.command.list.block_entry", name, id)));
+            Set<AutoMineTargetManager.BlockData> remainingTargets = new HashSet<>(AutoMineTargetManager.targetBlockTypes);
+            List<ChatComponentText> groupComponents = new ArrayList<>();
+            
+            // 检查并处理 Mithril 组合
+            List<AutoMineTargetManager.BlockData> mithrilComponents = getMithrilComponents(sender);
+            if (remainingTargets.containsAll(mithrilComponents)) {
+                remainingTargets.removeAll(mithrilComponents);
+                groupComponents.add(createGroupComponent("Mithril", "skyblock:mithril", mithrilComponents));
             }
+            
+            // 检查并处理 Titanium 组合
+            List<AutoMineTargetManager.BlockData> titaniumComponents = getTitaniumComponents(sender);
+            if (remainingTargets.containsAll(titaniumComponents)) {
+                remainingTargets.removeAll(titaniumComponents);
+                groupComponents.add(createGroupComponent("Titanium", "skyblock:titanium", titaniumComponents));
+            }
+
+            // 显示整合后的组合
+            for (ChatComponentText component : groupComponents) {
+                sender.addChatMessage(component);
+            }
+            
+            // 显示剩余的独立方块
+            for (AutoMineTargetManager.BlockData blockData : remainingTargets) {
+                String displayName = getBlockDisplayName(blockData);
+                String id = blockData.toString();
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.WHITE + "- " + LangUtil.translate("ghost.automine.command.list.block_entry", displayName, id)));
+            }
+
         } else {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.empty_blocks")));
         }
         sender.addChatMessage(new ChatComponentText(" "));
 
+        // --- 权重 ---
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.automine.command.list.header_weights")));
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.automine.command.list.weights_default_hint")));
         if(hasWeights) {
@@ -126,15 +158,14 @@ public class AutoMineCommand extends CommandBase {
         try {
             String blockId = input;
             int meta = -1; // -1 for wildcard
-            if (input.contains(":")) {
-                String[] parts = input.split(":");
-                if (parts.length > 2) {
-                    blockId = parts[0] + ":" + parts[1];
-                    try {
-                        meta = Integer.parseInt(parts[2]);
-                    } catch (NumberFormatException e) {
-                        throw new CommandException("commands.generic.num.invalid", parts[2]);
-                    }
+            int lastColon = input.lastIndexOf(':');
+            if (lastColon != -1 && lastColon > input.indexOf(':')) { // Ensure it's not the first colon (e.g., minecraft:stone)
+                String potentialMeta = input.substring(lastColon + 1);
+                try {
+                    meta = Integer.parseInt(potentialMeta);
+                    blockId = input.substring(0, lastColon);
+                } catch (NumberFormatException e) {
+                    // Not a meta, so the whole string is the ID
                 }
             }
             Block block = getBlockByText(sender, blockId);
@@ -163,10 +194,9 @@ public class AutoMineCommand extends CommandBase {
             }
             String blockIdOrAlias = args[2];
             if ("skyblock:mithril".equalsIgnoreCase(blockIdOrAlias)) {
-                List<String> mithrilComponents = Arrays.asList("minecraft:wool:7", "minecraft:prismarine", "minecraft:wool:11", "minecraft:stained_hardened_clay:9");
+                List<AutoMineTargetManager.BlockData> mithrilComponents = getMithrilComponents(sender);
                 int addedCount = 0;
-                for (String componentId : mithrilComponents) {
-                    AutoMineTargetManager.BlockData blockData = parseBlockData(sender, componentId);
+                for (AutoMineTargetManager.BlockData blockData : mithrilComponents) {
                     if (AutoMineTargetManager.targetBlockTypes.add(blockData)) {
                         addedCount++;
                     }
@@ -178,10 +208,16 @@ public class AutoMineCommand extends CommandBase {
                     sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.add.group.already_exists", "Mithril")));
                 }
             } else if ("skyblock:titanium".equalsIgnoreCase(blockIdOrAlias)) {
-                AutoMineTargetManager.BlockData blockData = parseBlockData(sender, "minecraft:stone:4");
-                if (AutoMineTargetManager.targetBlockTypes.add(blockData)) {
+                List<AutoMineTargetManager.BlockData> titaniumComponents = getTitaniumComponents(sender);
+                int addedCount = 0;
+                for(AutoMineTargetManager.BlockData blockData : titaniumComponents){
+                    if(AutoMineTargetManager.targetBlockTypes.add(blockData)){
+                        addedCount++;
+                    }
+                }
+                if (addedCount > 0) {
                     AutoMineTargetManager.saveBlockTypes();
-                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.group.success", "Titanium", 1)));
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.group.success", "Titanium", addedCount)));
                 } else {
                     sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.add.group.already_exists", "Titanium")));
                 }
@@ -189,7 +225,7 @@ public class AutoMineCommand extends CommandBase {
                 AutoMineTargetManager.BlockData blockData = parseBlockData(sender, blockIdOrAlias);
                 if (AutoMineTargetManager.targetBlockTypes.add(blockData)) {
                     AutoMineTargetManager.saveBlockTypes();
-                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.block.success", blockData.toString())));
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.block.success", getBlockDisplayName(blockData))));
                 } else {
                     sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.add.block.already_exists", blockData.toString())));
                 }
@@ -347,5 +383,48 @@ public class AutoMineCommand extends CommandBase {
             }
         }
         return Collections.emptyList();
+    }
+    
+    // --- Helper Methods for Block Groups & Display ---
+
+    private String getBlockDisplayName(AutoMineTargetManager.BlockData blockData) {
+        if (blockData.metadata == -1) {
+            return blockData.block.getLocalizedName();
+        }
+        return new ItemStack(blockData.block, 1, blockData.metadata).getDisplayName();
+    }
+
+    private List<AutoMineTargetManager.BlockData> getMithrilComponents(ICommandSender sender) {
+        List<String> ids = Arrays.asList("minecraft:wool:7", "minecraft:prismarine", "minecraft:wool:11", "minecraft:stained_hardened_clay:9");
+        List<AutoMineTargetManager.BlockData> components = new ArrayList<>();
+        for(String id : ids) {
+            try {
+                components.add(parseBlockData(sender, id));
+            } catch (CommandException e) { /* ignore */ }
+        }
+        return components;
+    }
+
+    private List<AutoMineTargetManager.BlockData> getTitaniumComponents(ICommandSender sender) {
+        List<String> ids = Arrays.asList("minecraft:stone:4");
+        List<AutoMineTargetManager.BlockData> components = new ArrayList<>();
+        for(String id : ids) {
+            try {
+                components.add(parseBlockData(sender, id));
+            } catch (CommandException e) { /* ignore */ }
+        }
+        return components;
+    }
+
+    private ChatComponentText createGroupComponent(String groupName, String alias, List<AutoMineTargetManager.BlockData> components) {
+        String hoverText = LangUtil.translate("ghost.automine.command.list.group_hover_tooltip", 
+            components.stream()
+                .map(this::getBlockDisplayName)
+                .collect(Collectors.joining(", ")));
+        
+        ChatComponentText textComponent = new ChatComponentText(EnumChatFormatting.WHITE + "- " + LangUtil.translate("ghost.automine.command.list.block_entry", groupName, alias));
+        ChatStyle style = new ChatStyle().setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText(hoverText)));
+        textComponent.setChatStyle(style);
+        return textComponent;
     }
 }
