@@ -11,13 +11,17 @@ import net.minecraft.command.WrongUsageException;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.ResourceLocation;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * /automine 命令的实现类，支持坐标和方块类型两种模式。
+ * /automine 命令的实现类，支持坐标、方块类型和权重模式。
  */
 public class AutoMineCommand extends CommandBase {
 
@@ -48,77 +52,105 @@ public class AutoMineCommand extends CommandBase {
             case "add":
                 handleAdd(sender, args);
                 break;
-
             case "remove":
                 handleRemove(sender, args);
                 break;
-
             case "list":
-                // 列表命令现在会显示所有类型的目标
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + "--- " + LangUtil.translate("ghost.automine.command.list.header_main") + " ---"));
-
-                boolean hasCoords = !AutoMineTargetManager.targetBlocks.isEmpty();
-                boolean hasBlocks = !AutoMineTargetManager.targetBlockTypes.isEmpty();
-
-                if (!hasCoords && !hasBlocks) {
-                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.none")));
-                    break;
-                }
-
-                // 显示坐标目标
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.automine.command.list.header_coords")));
-                if (hasCoords) {
-                    for (int i = 0; i < AutoMineTargetManager.targetBlocks.size(); i++) {
-                        BlockPos p = AutoMineTargetManager.targetBlocks.get(i);
-                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "" + (i + 1) + ". " + EnumChatFormatting.WHITE + String.format("(%d, %d, %d)", p.getX(), p.getY(), p.getZ())));
-                    }
-                } else {
-                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.empty_coords")));
-                }
-
-                sender.addChatMessage(new ChatComponentText(" ")); // 添加一个空行作为分隔
-
-                // 显示方块目标
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.automine.command.list.header_blocks")));
-                if (hasBlocks) {
-                    for (Block block : AutoMineTargetManager.targetBlockTypes) {
-                        String name = block.getLocalizedName();
-                        String id = block.getRegistryName().toString();
-                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.WHITE + "- " + LangUtil.translate("ghost.automine.command.list.block_entry", name, id)));
-                    }
-                } else {
-                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.empty_blocks")));
-                }
+                handleList(sender);
                 break;
-
             case "clear":
                 handleClear(sender, args);
                 break;
-
+            case "weight":
+                handleWeight(sender, args);
+                break;
             case "toggle":
             case "start":
             case "stop":
                 AutoMineHandler.toggle();
                 break;
-
             default:
                 throw new WrongUsageException(getCommandUsage(sender));
         }
     }
+
+    private void handleList(ICommandSender sender) {
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + "--- " + LangUtil.translate("ghost.automine.command.list.header_main") + " ---"));
+
+        boolean hasCoords = !AutoMineTargetManager.targetBlocks.isEmpty();
+        boolean hasBlocks = !AutoMineTargetManager.targetBlockTypes.isEmpty();
+        boolean hasWeights = !AutoMineTargetManager.targetBlockWeights.isEmpty();
+
+        if (!hasCoords && !hasBlocks) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.none")));
+        }
+
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.automine.command.list.header_coords")));
+        if (hasCoords) {
+            for (int i = 0; i < AutoMineTargetManager.targetBlocks.size(); i++) {
+                BlockPos p = AutoMineTargetManager.targetBlocks.get(i);
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "" + (i + 1) + ". " + EnumChatFormatting.WHITE + String.format("(%d, %d, %d)", p.getX(), p.getY(), p.getZ())));
+            }
+        } else {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.empty_coords")));
+        }
+        sender.addChatMessage(new ChatComponentText(" "));
+
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.automine.command.list.header_blocks")));
+        if (hasBlocks) {
+            for (AutoMineTargetManager.BlockData blockData : AutoMineTargetManager.targetBlockTypes) {
+                String name = blockData.block.getLocalizedName();
+                String id = blockData.toString();
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.WHITE + "- " + LangUtil.translate("ghost.automine.command.list.block_entry", name, id)));
+            }
+        } else {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.empty_blocks")));
+        }
+        sender.addChatMessage(new ChatComponentText(" "));
+
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.automine.command.list.header_weights")));
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.DARK_GRAY + LangUtil.translate("ghost.automine.command.list.weights_default_hint")));
+        if(hasWeights) {
+            for (Map.Entry<Block, Integer> entry : AutoMineTargetManager.targetBlockWeights.entrySet()) {
+                String name = entry.getKey().getLocalizedName();
+                String id = entry.getKey().getRegistryName().toString();
+                Integer weight = entry.getValue();
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.WHITE + "- " + LangUtil.translate("ghost.automine.command.list.weight_entry", name, id, weight)));
+            }
+        } else {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.command.list.empty_weights")));
+        }
+    }
     
-    /**
-     * 处理 /automine add 子命令
-     * @param sender 命令发送者
-     * @param args 命令参数
-     * @throws CommandException 命令异常
-     */
+    private AutoMineTargetManager.BlockData parseBlockData(ICommandSender sender, String input) throws CommandException {
+        try {
+            String blockId = input;
+            int meta = -1; // -1 for wildcard
+            if (input.contains(":")) {
+                String[] parts = input.split(":");
+                if (parts.length > 2) {
+                    blockId = parts[0] + ":" + parts[1];
+                    try {
+                        meta = Integer.parseInt(parts[2]);
+                    } catch (NumberFormatException e) {
+                        throw new CommandException("commands.generic.num.invalid", parts[2]);
+                    }
+                }
+            }
+            Block block = getBlockByText(sender, blockId);
+            return new AutoMineTargetManager.BlockData(block, meta);
+        } catch (CommandException e) {
+            throw new CommandException("commands.generic.block.notFound", input);
+        }
+    }
+    
     private void handleAdd(ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 2) {
             throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.add"));
         }
         String addType = args[1].toLowerCase();
         if ("coord".equals(addType)) {
-            if (args.length < 5) { // automine add coord x y z
+            if (args.length < 5) {
                 throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.add.coord"));
             }
             BlockPos pos = parseBlockPos(sender, args, 2, false);
@@ -126,34 +158,54 @@ public class AutoMineCommand extends CommandBase {
             AutoMineTargetManager.saveCoordinates();
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.coord.success", pos.getX(), pos.getY(), pos.getZ())));
         } else if ("block".equals(addType)) {
-            if (args.length < 3) { // automine add block <block_id>
+            if (args.length < 3) {
                 throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.add.block"));
             }
-            Block block = getBlockByText(sender, args[2]);
-            if (AutoMineTargetManager.targetBlockTypes.add(block)) {
-                AutoMineTargetManager.saveBlockTypes();
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.block.success", block.getLocalizedName())));
+            String blockIdOrAlias = args[2];
+            if ("skyblock:mithril".equalsIgnoreCase(blockIdOrAlias)) {
+                List<String> mithrilComponents = Arrays.asList("minecraft:wool:7", "minecraft:prismarine", "minecraft:wool:11", "minecraft:stained_hardened_clay:9");
+                int addedCount = 0;
+                for (String componentId : mithrilComponents) {
+                    AutoMineTargetManager.BlockData blockData = parseBlockData(sender, componentId);
+                    if (AutoMineTargetManager.targetBlockTypes.add(blockData)) {
+                        addedCount++;
+                    }
+                }
+                if (addedCount > 0) {
+                    AutoMineTargetManager.saveBlockTypes();
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.group.success", "Mithril", addedCount)));
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.add.group.already_exists", "Mithril")));
+                }
+            } else if ("skyblock:titanium".equalsIgnoreCase(blockIdOrAlias)) {
+                AutoMineTargetManager.BlockData blockData = parseBlockData(sender, "minecraft:stone:4");
+                if (AutoMineTargetManager.targetBlockTypes.add(blockData)) {
+                    AutoMineTargetManager.saveBlockTypes();
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.group.success", "Titanium", 1)));
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.add.group.already_exists", "Titanium")));
+                }
             } else {
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.add.block.already_exists", block.getLocalizedName())));
+                AutoMineTargetManager.BlockData blockData = parseBlockData(sender, blockIdOrAlias);
+                if (AutoMineTargetManager.targetBlockTypes.add(blockData)) {
+                    AutoMineTargetManager.saveBlockTypes();
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.add.block.success", blockData.toString())));
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.add.block.already_exists", blockData.toString())));
+                }
             }
         } else {
             throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.add"));
         }
     }
-
-    /**
-     * 处理 /automine remove 子命令
-     * @param sender 命令发送者
-     * @param args 命令参数
-     * @throws CommandException 命令异常
-     */
+    
     private void handleRemove(ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 2) {
             throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.remove"));
         }
         String removeType = args[1].toLowerCase();
         if ("coord".equals(removeType)) {
-            if (args.length < 3) { // automine remove coord <index>
+            if (args.length < 3) {
                 throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.remove.coord"));
             }
             int indexToRemove = parseInt(args[2], 1) - 1;
@@ -165,27 +217,21 @@ public class AutoMineCommand extends CommandBase {
                 throw new CommandException(LangUtil.translate("ghost.automine.command.remove.coord.error", AutoMineTargetManager.targetBlocks.size()));
             }
         } else if ("block".equals(removeType)) {
-            if (args.length < 3) { // automine remove block <block_id>
+            if (args.length < 3) {
                 throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.remove.block"));
             }
-            Block block = getBlockByText(sender, args[2]);
-            if (AutoMineTargetManager.targetBlockTypes.remove(block)) {
+            AutoMineTargetManager.BlockData blockData = parseBlockData(sender, args[2]);
+            if (AutoMineTargetManager.targetBlockTypes.remove(blockData)) {
                 AutoMineTargetManager.saveBlockTypes();
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.remove.block.success", block.getLocalizedName())));
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.remove.block.success", blockData.toString())));
             } else {
-                throw new CommandException(LangUtil.translate("ghost.automine.command.remove.block.not_found", block.getLocalizedName()));
+                throw new CommandException(LangUtil.translate("ghost.automine.command.remove.block.not_found", blockData.toString()));
             }
         } else {
             throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.remove"));
         }
     }
 
-    /**
-     * 处理 /automine clear 子命令
-     * @param sender 命令发送者
-     * @param args 命令参数
-     * @throws CommandException 命令异常
-     */
     private void handleClear(ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 2) {
             throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.clear"));
@@ -199,25 +245,55 @@ public class AutoMineCommand extends CommandBase {
             AutoMineTargetManager.targetBlockTypes.clear();
             AutoMineTargetManager.saveBlockTypes();
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.clear.blocks.success")));
+        } else if ("weights".equals(clearType)) {
+            AutoMineTargetManager.targetBlockWeights.clear();
+            AutoMineTargetManager.saveBlockWeights();
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.clear.weights.success")));
         } else if ("blacklist".equals(clearType)) {
-            // 清除临时的黑名单
             AutoMineHandler.clearBlacklist();
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.clear.blacklist.success")));
         } else {
             throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.clear"));
         }
 
-        // 如果清空后没有任何目标了，并且自动挖掘正在运行，则关闭它
         if (AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty() && AutoMineHandler.isActive()) {
             AutoMineHandler.toggle();
         }
     }
 
+    private void handleWeight(ICommandSender sender, String[] args) throws CommandException {
+        if (args.length < 2) {
+            throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.weight"));
+        }
+        String action = args[1].toLowerCase();
+        switch (action) {
+            case "set":
+                if (args.length < 4) {
+                    throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.weight.set"));
+                }
+                Block block = getBlockByText(sender, args[2]);
+                int weight = parseInt(args[3], 1);
+                if (weight <= 0) {
+                    throw new CommandException(LangUtil.translate("ghost.automine.command.weight.error.positive"));
+                }
+                AutoMineTargetManager.targetBlockWeights.put(block, weight);
+                AutoMineTargetManager.saveBlockWeights();
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.command.weight.set.success", block.getLocalizedName(), weight)));
+                break;
+            case "clear":
+                AutoMineTargetManager.targetBlockWeights.clear();
+                AutoMineTargetManager.saveBlockWeights();
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.command.clear.weights.success")));
+                break;
+            default:
+                throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.weight"));
+        }
+    }
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "add", "remove", "list", "clear", "toggle");
+            return getListOfStringsMatchingLastWord(args, "add", "remove", "list", "clear", "toggle", "weight");
         }
         if (args.length == 2) {
             String subCmd = args[0].toLowerCase();
@@ -225,7 +301,10 @@ public class AutoMineCommand extends CommandBase {
                 return getListOfStringsMatchingLastWord(args, "coord", "block");
             }
             if ("clear".equals(subCmd)) {
-                return getListOfStringsMatchingLastWord(args, "coords", "blocks", "blacklist");
+                return getListOfStringsMatchingLastWord(args, "coords", "blocks", "weights", "blacklist");
+            }
+            if ("weight".equals(subCmd)) {
+                return getListOfStringsMatchingLastWord(args, "set", "clear");
             }
         }
         if (args.length > 2) {
@@ -233,10 +312,16 @@ public class AutoMineCommand extends CommandBase {
             String type = args[1].toLowerCase();
             if ("add".equals(subCmd)) {
                 if ("coord".equals(type) && args.length >= 3 && args.length <= 5) {
-                    return func_175771_a(args, 2, pos); // 坐标补全
+                    return func_175771_a(args, 2, pos);
                 }
                 if ("block".equals(type) && args.length == 3) {
-                    return getListOfStringsMatchingLastWord(args, Block.blockRegistry.getKeys()); // 方块ID补全
+                    List<String> suggestions = new ArrayList<>();
+                    suggestions.add("skyblock:mithril");
+                    suggestions.add("skyblock:titanium");
+                    for (ResourceLocation location : Block.blockRegistry.getKeys()) {
+                        suggestions.add(location.toString());
+                    }
+                    return getListOfStringsMatchingLastWord(args, suggestions);
                 }
             }
             if ("remove".equals(subCmd)) {
@@ -244,11 +329,20 @@ public class AutoMineCommand extends CommandBase {
                     return getListOfStringsMatchingLastWord(args, "1"); 
                 }
                 if ("block".equals(type) && args.length == 3) {
-                    // 为 remove block 提供已添加方块的ID补全
-                    List<String> addedBlockIds = AutoMineTargetManager.targetBlockTypes.stream()
-                            .map(b -> b.getRegistryName().toString())
-                            .collect(Collectors.toList());
+                    List<String> addedBlockIds = AutoMineTargetManager.targetBlockTypes.stream().map(AutoMineTargetManager.BlockData::toString).collect(Collectors.toList());
                     return getListOfStringsMatchingLastWord(args, addedBlockIds);
+                }
+            }
+            if ("weight".equals(subCmd) && "set".equals(type)) {
+                if (args.length == 3) {
+                    List<String> blockIdSuggestions = new ArrayList<>();
+                    for (ResourceLocation location : Block.blockRegistry.getKeys()) {
+                        blockIdSuggestions.add(location.toString());
+                    }
+                    return getListOfStringsMatchingLastWord(args, blockIdSuggestions);
+                }
+                if (args.length == 4) {
+                    return getListOfStringsMatchingLastWord(args, "10", "50", "100", "200");
                 }
             }
         }

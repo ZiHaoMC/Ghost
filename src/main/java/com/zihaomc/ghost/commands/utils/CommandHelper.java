@@ -63,56 +63,54 @@ public class CommandHelper {
     }
 
     /**
-     * 解析方块状态字符串 (例如 "minecraft:stone:1" 或 "log")。
-     * @param input 输入字符串
+     * [重构] 解析方块状态字符串 (例如 "minecraft:stone:1" 或 "log")。
+     * @param sender 命令发送者，用于 getBlockByText
+     * @param input  输入字符串
      * @return BlockStateProxy 实例
      * @throws CommandException 如果解析失败
      */
-    public static BlockStateProxy parseBlockState(String input) throws CommandException {
-        try {
-            Block block;
-            int meta = 0;
+    public static BlockStateProxy parseBlockState(ICommandSender sender, String input) throws CommandException {
+        String blockIdString = input;
+        int meta = 0;
+
+        // 查找最后一个冒号，以正确处理 "modid:block:meta" 格式
+        int lastColon = input.lastIndexOf(':');
+        if (lastColon != -1) {
+            String potentialMeta = input.substring(lastColon + 1);
             try {
-                block = CommandBase.getBlockByText(Minecraft.getMinecraft().thePlayer, input);
-            } catch (NumberFormatException nfe) {
-                try {
-                    int blockId = Integer.parseInt(input);
-                    block = Block.getBlockById(blockId);
-                    if (block == null) {
-                        throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block"));
-                    }
-                } catch (NumberFormatException nfe2) {
-                    throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block"));
-                }
+                // 尝试将冒号后的部分解析为数字
+                int parsedMeta = Integer.parseInt(potentialMeta);
+                // 如果成功，则前面的部分是方块ID
+                blockIdString = input.substring(0, lastColon);
+                meta = parsedMeta;
+            } catch (NumberFormatException e) {
+                // 如果失败，说明整个字符串都是方块ID (例如 "minecraft:log")
+                blockIdString = input;
             }
-            if (input.contains(":")) {
-                String[] parts = input.split(":");
-                String potentialMetaStr = parts[parts.length - 1];
-                if (isNumber(potentialMetaStr)) {
-                    String nameWithoutMeta = input.substring(0, input.lastIndexOf(':'));
-                    try {
-                        Block blockFromNameOnly = CommandBase.getBlockByText(Minecraft.getMinecraft().thePlayer, nameWithoutMeta);
-                        if (blockFromNameOnly.equals(block)) {
-                            try {
-                                int parsedMeta = Integer.parseInt(potentialMetaStr);
-                                block.getStateFromMeta(parsedMeta);
-                                meta = parsedMeta;
-                            } catch (IllegalArgumentException e) {
-                                LogUtil.warn("log.warn.command.set.meta.invalid", block.getRegistryName(), potentialMetaStr);
-                            }
-                        }
-                    } catch (CommandException e) { /* 名称部分无效时忽略 */ }
-                }
-            }
-            if (block == Blocks.air) meta = 0;
-            LogUtil.debug("log.info.command.parse.success", block.getRegistryName(), Block.getIdFromBlock(block), meta);
-            return new BlockStateProxy(Block.getIdFromBlock(block), meta);
-        } catch (CommandException ce) {
-            throw ce;
-        } catch (Exception e) {
-            LogUtil.printStackTrace("log.error.command.parse.failed", e, input);
-            throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block"));
         }
+
+        Block block;
+        try {
+            block = CommandBase.getBlockByText(sender, blockIdString);
+        } catch (CommandException e) {
+            throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block_id", blockIdString));
+        }
+
+        if (block == null) {
+            throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block_id", blockIdString));
+        }
+
+        // 验证 metadata 是否有效
+        try {
+            block.getStateFromMeta(meta);
+        } catch (IllegalArgumentException e) {
+            throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_metadata", meta, block.getRegistryName()));
+        }
+
+        if (block == Blocks.air) meta = 0;
+        
+        LogUtil.debug("log.info.command.parse.success", block.getRegistryName(), Block.getIdFromBlock(block), meta);
+        return new BlockStateProxy(Block.getIdFromBlock(block), meta);
     }
     
     /**

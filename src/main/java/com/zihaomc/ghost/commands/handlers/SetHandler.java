@@ -40,7 +40,7 @@ public class SetHandler implements ICommandHandler {
         }
         
         BlockPos pos = CommandHelper.parseBlockPosLegacy(sender, args, 1);
-        BlockStateProxy state = CommandHelper.parseBlockState(args[4]);
+        BlockStateProxy state = CommandHelper.parseBlockState(sender, args[4]);
         Block block = Block.getBlockById(state.blockId);
         
         // 允许使用 minecraft:air。 parseBlockState 已经处理了 null 的情况。

@@ -40,7 +40,7 @@ public class FillHandler implements ICommandHandler {
         
         BlockPos from = CommandHelper.parseBlockPosLegacy(sender, args, 1);
         BlockPos to = CommandHelper.parseBlockPosLegacy(sender, args, 4);
-        BlockStateProxy state = CommandHelper.parseBlockState(args[7]);
+        BlockStateProxy state = CommandHelper.parseBlockState(sender, args[7]);
         Block block = Block.getBlockById(state.blockId);
 
         // 允许使用 minecraft:air。

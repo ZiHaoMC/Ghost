@@ -20,14 +20,12 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * "Auto Mine" 功能的核心处理器，支持坐标和方块类型两种模式。
+ * "Auto Mine" 功能的核心处理器，支持坐标、方块类型和权重模式。
  */
 public class AutoMineHandler {
 
@@ -53,7 +51,8 @@ public class AutoMineHandler {
     private static int currentMoveDuration = 0;
     private static KeyBinding currentMoveKey = null;
 
-    private static Block lastMinedType = null;
+    private static IBlockState lastMinedState = null;
+    private static final int DEFAULT_WEIGHT = 10;
 
     public static void toggle() {
         if (!isActive && AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
@@ -91,7 +90,7 @@ public class AutoMineHandler {
         currentTarget = null;
         isActive = false;
         unmineableBlacklist.clear();
-        lastMinedType = null;
+        lastMinedState = null;
     }
     
     public static void clearBlacklist() {
@@ -145,12 +144,11 @@ public class AutoMineHandler {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
                 miningStartTime = null; 
                 
-                // 连锁挖掘逻辑: 优先检查上一个目标周围
                 BlockPos veinTarget = findVeinMineTarget();
                 if (veinTarget != null) {
                     currentTarget = veinTarget;
                 } else {
-                    // 如果没有连锁目标，则执行全局扫描
+                    lastMinedState = null; // Reset for global search
                     currentTarget = findBestTarget();
                 }
 
@@ -178,7 +176,7 @@ public class AutoMineHandler {
                 
                 IBlockState targetBlockState = mc.theWorld.getBlockState(currentTarget);
                 Block blockAtTarget = targetBlockState.getBlock();
-                lastMinedType = blockAtTarget;
+                lastMinedState = targetBlockState;
 
                 boolean shouldSwitchTarget = false;
                 if (blockAtTarget == Blocks.air) {
@@ -266,40 +264,31 @@ public class AutoMineHandler {
         }
     }
     
-    /**
-     * 如果连锁挖掘开启，寻找上一个目标方块周围的同类方块。
-     * @return 找到的连锁挖掘目标，如果没有则返回 null。
-     */
     private BlockPos findVeinMineTarget() {
-        // 检查是否满足连锁挖掘的前提条件
-        if (!GhostConfig.AutoMine.enableVeinMining || currentTarget == null || lastMinedType == null || lastMinedType == Blocks.air || AutoMineTargetManager.targetBlocks.contains(currentTarget)) {
+        if (!GhostConfig.AutoMine.enableVeinMining || currentTarget == null || lastMinedState == null || lastMinedState.getBlock() == Blocks.air || AutoMineTargetManager.targetBlocks.contains(currentTarget)) {
             return null;
         }
     
-        // 此方法在方块被挖掉后调用，所以上一个目标位置现在应该是空气
         if (mc.theWorld.getBlockState(currentTarget).getBlock() == Blocks.air) {
             BlockPos lastPos = currentTarget;
             BlockPos bestNeighbor = null;
             double minScore = Double.MAX_VALUE;
     
-            // 遍历所有相邻的方块
             for (EnumFacing facing : EnumFacing.values()) {
                 BlockPos neighborPos = lastPos.offset(facing);
-                Block neighborBlock = mc.theWorld.getBlockState(neighborPos).getBlock();
+                IBlockState neighborState = mc.theWorld.getBlockState(neighborPos);
     
-                // 检查邻近方块是否与上一个被挖掉的方块类型相同，并且是一个有效的目标
-                if (neighborBlock == lastMinedType && isTargetValid(neighborPos)) {
-                    double score = getAngleDifferenceToBlock(neighborPos); // 根据需要转动的角度评分
+                if (neighborState == lastMinedState && isTargetValid(neighborPos)) {
+                    double score = getAngleDifferenceToBlock(neighborPos);
                     if (score < minScore) {
                         minScore = score;
                         bestNeighbor = neighborPos;
                     }
                 }
             }
-            return bestNeighbor; // 如果没找到，这里会返回 null
+            return bestNeighbor;
         }
         
-        // 如果上一个目标位置的方块不是空气，说明状态异常，不进行连锁挖掘
         return null;
     }
 
@@ -316,7 +305,7 @@ public class AutoMineHandler {
             int radius = GhostConfig.AutoMine.searchRadius;
             BlockPos playerPos = mc.thePlayer.getPosition();
             for (BlockPos pos : BlockPos.getAllInBox(playerPos.add(-radius, -radius, -radius), playerPos.add(radius, radius, radius))) {
-                if (AutoMineTargetManager.targetBlockTypes.contains(mc.theWorld.getBlockState(pos).getBlock())) {
+                if (isBlockTypeTargeted(mc.theWorld.getBlockState(pos))) {
                     if (isTargetValid(pos)) {
                         candidates.add(pos);
                     }
@@ -335,7 +324,10 @@ public class AutoMineHandler {
             double angleDiff = getAngleDifferenceToBlock(candidate);
             double distanceSq = mc.thePlayer.getDistanceSq(candidate);
             
-            double score = angleDiff * 10.0 + distanceSq;
+            Block candidateBlock = mc.theWorld.getBlockState(candidate).getBlock();
+            int weight = AutoMineTargetManager.targetBlockWeights.getOrDefault(candidateBlock, DEFAULT_WEIGHT);
+            
+            double score = (angleDiff * 10.0 + distanceSq) / weight;
 
             if (score < minScore) {
                 minScore = score;
@@ -344,6 +336,16 @@ public class AutoMineHandler {
         }
 
         return bestPos;
+    }
+    
+    private boolean isBlockTypeTargeted(IBlockState state) {
+        Block block = state.getBlock();
+        int meta = block.getMetaFromState(state);
+        
+        AutoMineTargetManager.BlockData specificBlock = new AutoMineTargetManager.BlockData(block, meta);
+        AutoMineTargetManager.BlockData wildcardBlock = new AutoMineTargetManager.BlockData(block, -1);
+
+        return AutoMineTargetManager.targetBlockTypes.contains(specificBlock) || AutoMineTargetManager.targetBlockTypes.contains(wildcardBlock);
     }
 
     private double getAngleDifferenceToBlock(BlockPos pos) {
@@ -387,7 +389,7 @@ public class AutoMineHandler {
             return false;
         }
         
-        if (!AutoMineTargetManager.targetBlocks.contains(pos) && !AutoMineTargetManager.targetBlockTypes.contains(block)) {
+        if (!AutoMineTargetManager.targetBlocks.contains(pos) && !isBlockTypeTargeted(state)) {
             return false;
         }
 
