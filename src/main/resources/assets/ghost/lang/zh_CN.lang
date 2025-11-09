@@ -14,8 +14,8 @@ key.ghost.toggleAutoMine=切换 自动挖掘
 # ==================================
 # ===         通用文本           ===
 # ==================================
-ghost.generic.enabled=启用
-ghost.generic.disabled=禁用
+ghost.generic.enabled=§a启用
+ghost.generic.disabled=§c禁用
 ghost.generic.toggle.feedback=%s 已 %s
 ghost.generic.prefix.default=[Ghost] 
 ghost.generic.prefix.translation=[翻译]
@@ -24,51 +24,88 @@ commands.generic.player.unsupported=该命令只能由玩家执行。
 # ==================================
 # ===         自动挖掘          ===
 # ==================================
-ghost.automine.command.usage=用法: /automine <add|remove|list|clear|toggle|weight> [参数...]
-ghost.automine.command.usage.add=用法: /automine add <coord|block> <参数...>
-ghost.automine.command.usage.add.coord=用法: /automine add coord <x> <y> <z>
-ghost.automine.command.usage.add.block=用法: /automine add block <方块ID>
-ghost.automine.command.usage.remove=用法: /automine remove <coord|block> <参数...>
-ghost.automine.command.usage.remove.coord=用法: /automine remove coord <编号>
-ghost.automine.command.usage.remove.block=用法: /automine remove block <方块ID>
-ghost.automine.command.usage.clear=用法: /automine clear <coords|blocks|weights|blacklist>
-ghost.automine.command.usage.weight=用法: /automine weight <set|list|clear> [参数...]
-ghost.automine.command.usage.weight.set=用法: /automine weight set <方块ID> <权重>
-ghost.automine.command.add.coord.success=已添加挖掘坐标: (%d, %d, %d)
-ghost.automine.command.add.block.success=已添加挖掘目标方块: %s
-ghost.automine.command.add.block.already_exists=警告: %s 已经是挖掘目标了。
-ghost.automine.command.add.group.success=已为 %1$s 组合添加 %2$d 个新的方块类型到目标列表。
-ghost.automine.command.add.group.already_exists=%1$s 组合的所有方块类型均已在目标列表中。
-ghost.automine.command.remove.coord.success=已移除挖掘坐标: (%d, %d, %d)
-ghost.automine.command.remove.coord.error=错误: 无效的编号。请输入 1 到 %d 之间的数字。
-ghost.automine.command.remove.block.success=已移除挖掘目标方块: %s
-ghost.automine.command.remove.block.not_found=错误: %s 不在挖掘目标列表中。
-ghost.automine.command.list.header_main=自动挖掘目标列表
-ghost.automine.command.list.header_coords=坐标目标:
-ghost.automine.command.list.header_blocks=方块目标:
-ghost.automine.command.list.header_weights=方块权重 (优先级):
-ghost.automine.command.list.weight_entry=%1$s (%2$s) - 权重: %3$d
-ghost.automine.command.list.empty_weights=未设置任何方块权重。
-ghost.automine.command.list.empty_coords=坐标列表为空。
-ghost.automine.command.list.empty_blocks=未设置目标方块。
-ghost.automine.command.list.block_entry=%s (%s)
-ghost.automine.command.list.none=未设置任何挖掘目标。
-ghost.automine.command.list.weights_default_hint=(未设置的方块默认权重为 10)
-ghost.automine.command.list.group_hover_tooltip=包含: %s
-ghost.automine.command.clear.coords.success=自动挖掘坐标列表已清空。
-ghost.automine.command.clear.blocks.success=自动挖掘方块列表已清空。
-ghost.automine.command.clear.blacklist.success=已清空自动挖掘的临时黑名单。
-ghost.automine.command.clear.weights.success=已成功清除所有方块权重。
-ghost.automine.command.weight.set.success=已将方块 %1$s 的权重设置为 %2$d。
-ghost.automine.error.no_targets_set=错误: 未设置任何挖掘目标 (坐标或方块类型)，无法启动。
-ghost.automine.error.no_targets_left=错误: 没有剩余的挖掘目标了，自动挖掘已停止。
-ghost.automine.error.unmineable_block_blacklisted=警告: 方块 %s (%d, %d, %d) 无法被破坏，已列入黑名单。
-ghost.automine.error.mining_timeout_blacklisted=警告: 挖掘方块 %s (%d, %d, %d) 超时，已列入黑名单。
-ghost.automine.status.waiting=当前没有可挖掘的目标，正在等待...
-ghost.automine.status.target_changed=警告: 目标方块 (%d, %d, %d) 已变为 %s，不再是目标，正在寻找新目标。
-ghost.automine.status.target_blacklisted=警告: 目标方块 (%d, %d, %d) 暂时无法挖掘，已跳过。
-ghost.automine.command.weight.error.positive=错误: 权重值必须是一个正整数。
+# --- 用法 (Usage) ---
+ghost.automine.command.usage=§c用法: /automine <子命令> [参数...]。输入 /automine help 查看详情。
+ghost.automine.command.usage.add=§c用法: /automine add <coord|block|group> <参数...>
+ghost.automine.command.usage.add.coord=§c用法: /automine add coord <x> <y> <z>
+ghost.automine.command.usage.add.block=§c用法: /automine add block <方块ID[:元数据]>
+ghost.automine.command.usage.add.group=§c用法: /automine add group <组名>
+ghost.automine.command.usage.remove=§c用法: /automine remove <coord|block|group> <参数...>
+ghost.automine.command.usage.remove.coord=§c用法: /automine remove coord <编号>
+ghost.automine.command.usage.remove.block=§c用法: /automine remove block <方块ID[:元数据]>
+ghost.automine.command.usage.remove.group=§c用法: /automine remove group <组名>
+ghost.automine.command.usage.clear=§c用法: /automine clear <coords|blocks|weights|blacklist>
+ghost.automine.command.usage.weight=§c用法: /automine weight <set|clear> <参数...>
+ghost.automine.command.usage.weight.set=§c用法: /automine weight set <方块ID> <权重>
+ghost.automine.command.usage.weight.clear_one=§c用法: /automine weight clear <方块ID>
+ghost.automine.command.usage.group=§c用法: /automine group <create|delete> <参数...>
+ghost.automine.command.usage.group.create=§c用法: /automine group create <组名> <方块ID1> [方块ID2]...
+ghost.automine.command.usage.group.delete=§c用法: /automine group delete <组名>
 
+# --- 成功/失败/状态消息 ---
+ghost.automine.command.add.coord.success=§a已添加挖掘坐标: (%d, %d, %d)
+ghost.automine.command.add.block.success=§a已添加挖掘目标方块: %s
+ghost.automine.command.add.block.already_exists=§e警告: %s 已经是挖掘目标了。
+ghost.automine.command.add.group.success=§a已将方块组 '%1$s' 中的 %2$d 个新方块添加至目标列表。
+ghost.automine.command.add.group.already_exists=§e方块组 '%1$s' 中的所有方块均已在目标列表中。
+ghost.automine.command.remove.coord.success=§e已移除挖掘坐标: (%d, %d, %d)
+ghost.automine.command.remove.coord.error=§c错误: 无效的编号。请输入 1 到 %d 之间的数字。
+ghost.automine.command.remove.block.success=§e已移除挖掘目标方块: %s
+ghost.automine.command.remove.block.not_found=§c错误: %s 不在挖掘目标列表中。
+ghost.automine.command.remove.group.success=§e已从目标列表中移除方块组 '%1$s' 包含的 %2$d 个方块。
+ghost.automine.command.remove.group.none_found=§e方块组 '%1$s' 中的所有方块均不在目标列表中。
+ghost.automine.command.clear.coords.success=§e自动挖掘坐标列表已清空。
+ghost.automine.command.clear.blocks.success=§e自动挖掘方块列表已清空。
+ghost.automine.command.clear.blacklist.success=§e已清空自动挖掘的临时黑名单。
+ghost.automine.command.clear.weights.success=§e已成功清除所有自定义方块权重。
+ghost.automine.command.weight.set.success=§a已将方块 %1$s 的权重设置为 %2$d。
+ghost.automine.command.weight.clear.success=§e已清除方块 %s 的自定义权重。
+ghost.automine.command.weight.clear.not_found=§c错误: 方块 %s 没有设置自定义权重。
+ghost.automine.command.weight.error.positive=§c错误: 权重值必须是一个正整数。
+ghost.automine.command.group.create.success=§a已创建方块组 '%1$s'，包含 %2$d 个方块。
+ghost.automine.command.group.delete.success=§e已删除方块组 '%s'。
+ghost.automine.command.group.not_found=§c错误: 未找到名为 '%s' 的方块组。
+
+# --- 列表 (List) ---
+ghost.automine.command.list.header_main=自动挖掘目标列表
+ghost.automine.command.list.header_coords=§b坐标目标:
+ghost.automine.command.list.header_blocks=§b方块类型目标:
+ghost.automine.command.list.header_weights=§b方块权重 (优先级):
+ghost.automine.command.list.header_groups=§b方块组:
+ghost.automine.command.list.block_entry=§f- %1$s §7(%2$s)
+ghost.automine.command.list.weight_entry=§f- %1$s §7(%2$s)§f - 权重: §e%3$d
+ghost.automine.command.list.empty_weights=§7未设置任何自定义方块权重。
+ghost.automine.command.list.empty_coords=§7坐标列表为空。
+ghost.automine.command.list.empty_blocks=§7未设置目标方块类型。
+ghost.automine.command.list.empty_groups=§7未定义任何方块组。
+ghost.automine.command.list.none=§7未设置任何挖掘目标。
+ghost.automine.command.list.weights_default_hint=§8(未设置的方块默认权重为 10)
+ghost.automine.command.list.group_hover_tooltip=§e包含: §f%s
+
+# --- 帮助 (Help) ---
+ghost.automine.command.help.header=§6--- 自动挖掘命令帮助 (/automine) ---
+ghost.automine.command.help.description=§7管理自动挖掘的目标和设置。
+ghost.automine.command.help.subcommands.header=§a可用子命令:
+ghost.automine.command.help.subcommand.toggle=  §e/automine toggle§7 - 启动或停止自动挖掘。
+ghost.automine.command.help.subcommand.list=  §e/automine list§7 - 显示所有当前的目标、组和权重。
+ghost.automine.command.help.subcommand.add=  §e/automine add <coord|block|group> ...§7 - 添加一个新的挖掘目标。
+ghost.automine.command.help.subcommand.remove=  §e/automine remove <coord|block|group> ...§7 - 移除一个已有的挖掘目标。
+ghost.automine.command.help.subcommand.clear=  §e/automine clear <coords|blocks|weights|blacklist>§7 - 清空一类目标。
+ghost.automine.command.help.subcommand.weight=  §e/automine weight <set|clear> ...§7 - 设置方块的挖掘优先级权重。
+ghost.automine.command.help.subcommand.group=  §e/automine group <create|delete> ...§7 - 管理自定义的方块组。
+ghost.automine.command.help.examples.header=§a示例:
+ghost.automine.command.help.examples.add_coord=  §b/automine add coord 100 50 200
+ghost.automine.command.help.examples.add_block=  §b/automine add block minecraft:diamond_ore
+ghost.automine.command.help.examples.add_group=  §b/automine add group skyblock:mithril
+ghost.automine.command.help.examples.remove_coord=  §b/automine remove coord 1
+ghost.automine.command.help.examples.create_group=  §b/automine group create my_ores minecraft:iron_ore minecraft:gold_ore
+ghost.automine.command.help.examples.set_weight=  §b/automine weight set minecraft:coal_ore 5
+
+# --- 运行时消息 ---
+ghost.automine.error.no_targets_set=§c错误: 未设置任何挖掘目标 (坐标或方块类型)，无法启动。
+ghost.automine.error.no_targets_left=§c错误: 没有剩余的挖掘目标了，自动挖掘已停止。
+ghost.automine.error.mining_timeout_blacklisted=§e警告: 挖掘方块 %s (%d, %d, %d) 超时，已临时加入黑名单。
+ghost.automine.status.waiting=§7当前没有可挖掘的目标，正在等待...
 
 # ==================================
 # ===        翻译功能          ===
@@ -192,7 +229,7 @@ ghostblock.commands.clear.progress=清除进度: {0} {1}
 # cancel 命令
 ghostblock.commands.cancel.usage=用法: /cgb cancel <任务ID1> [任务ID2...]
 ghostblock.commands.cancel.success.multi=已成功取消或暂停 %1$d 个任务: %2$s
-ghostblock.commands.cancel.invalid_ids=错误: 以下任务ID无效或不存在: %1$s
+ghost.commands.cancel.invalid_ids=错误: 以下任务ID无效或不存在: %1$s
 
 # resume 命令
 ghostblock.commands.resume.usage=用法: /cgb resume <任务ID>
@@ -623,7 +660,6 @@ log.debug.fill.check.ebs.limitReached=EBS 检查达到上限 %d，将强制批�
 log.debug.fill.check.ebs.progress=EBS 检查: %s, Section就绪: %b
 log.debug.fill.check.ebs.foundNotReady=在第 %d 次检查时发现未就绪的 Section: %s
 log.debug.fill.check.ebs.complete=EBS 检查完成 (检查了 %d 个)，发现未就绪: %b
-log.debug.fill.check.ebs.implicitRequired=检测到未加载区块，需要隐式批处理。
 log.debug.fill.check.ebs.allReady=所有检查的区块 Section 均已就绪。
 log.debug.fill.check.ebs.skipped=跳过 EBS 检查 (批处理模式: %b)。
 log.debug.fill.decision.final=最终决策: useBatch=%b, implicitBatchRequired=%b

@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * 管理 AutoMine 目标（坐标列表、方块类型、方块权重）的持久化。
+ * 管理 AutoMine 目标（坐标、方块类型、权重、自定义组）的持久化。
  */
 public class AutoMineTargetManager {
 
@@ -28,6 +28,7 @@ public class AutoMineTargetManager {
     private static final String TARGETS_COORD_FILE_NAME = "automine_targets.json";
     private static final String TARGET_BLOCKS_FILE_NAME = "automine_blocks.json";
     private static final String TARGET_WEIGHTS_FILE_NAME = "automine_weights.json";
+    private static final String TARGET_GROUPS_FILE_NAME = "automine_groups.json";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     /** 内存中的坐标目标列表 */
@@ -36,6 +37,8 @@ public class AutoMineTargetManager {
     public static final Set<BlockData> targetBlockTypes = new HashSet<>();
     /** 内存中的方块权重映射 */
     public static final Map<Block, Integer> targetBlockWeights = new ConcurrentHashMap<>();
+    /** 内存中的自定义方块组 */
+    public static final Map<String, List<String>> customBlockGroups = new ConcurrentHashMap<>();
 
     /**
      * 一个内部类，用于唯一标识一个方块及其数据值。
@@ -55,12 +58,12 @@ public class AutoMineTargetManager {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             BlockData blockData = (BlockData) o;
-            return metadata == blockData.metadata && Objects.equals(block, blockData.block);
+            return metadata == blockData.metadata && Objects.equals(block.getRegistryName(), blockData.block.getRegistryName());
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(block, metadata);
+            return Objects.hash(block.getRegistryName(), metadata);
         }
 
         @Override
@@ -96,11 +99,21 @@ public class AutoMineTargetManager {
         if (!configDir.exists()) configDir.mkdirs();
         return new File(configDir, TARGET_WEIGHTS_FILE_NAME);
     }
+    
+    private static File getGroupsFile() {
+        File configDir = new File(CONFIG_DIR);
+        if (!configDir.exists()) configDir.mkdirs();
+        return new File(configDir, TARGET_GROUPS_FILE_NAME);
+    }
 
+    /**
+     * 在游戏启动时加载所有持久化的目标数据。
+     */
     public static void loadTargets() {
         loadCoordinates();
         loadBlockTypes();
         loadBlockWeights();
+        loadBlockGroups();
     }
 
     private static void loadCoordinates() {
@@ -129,15 +142,18 @@ public class AutoMineTargetManager {
                 targetBlockTypes.clear();
                 for (String blockIdString : loadedBlockIds) {
                     try {
-                        String[] parts = blockIdString.split(":");
-                        Block block;
+                        String blockName = blockIdString;
                         int meta = -1;
-                        if (parts.length > 2) { // e.g., minecraft:wool:7
-                            block = Block.blockRegistry.getObject(new ResourceLocation(parts[0] + ":" + parts[1]));
-                            meta = Integer.parseInt(parts[2]);
-                        } else {
-                            block = Block.blockRegistry.getObject(new ResourceLocation(blockIdString));
+                        int lastColon = blockIdString.lastIndexOf(':');
+                        if (lastColon > 0 && lastColon > blockIdString.indexOf(':')) {
+                             try {
+                                meta = Integer.parseInt(blockIdString.substring(lastColon + 1));
+                                blockName = blockIdString.substring(0, lastColon);
+                            } catch (NumberFormatException e) {
+                                // Not a meta
+                            }
                         }
+                        Block block = Block.blockRegistry.getObject(new ResourceLocation(blockName));
                         if (block != null) {
                             targetBlockTypes.add(new BlockData(block, meta));
                         } else {
@@ -174,6 +190,26 @@ public class AutoMineTargetManager {
             }
         } catch (Exception e) {
             LogUtil.error("log.automine.weights.load_failed", e.getMessage());
+        }
+    }
+
+    private static void loadBlockGroups() {
+        File groupsFile = getGroupsFile();
+        if (!groupsFile.exists()) {
+            // 如果文件不存在，加载预定义的组
+            PredefinedGroupManager.initializePredefinedGroups();
+            return;
+        }
+        try (Reader reader = new FileReader(groupsFile)) {
+            Type type = new TypeToken<Map<String, List<String>>>(){}.getType();
+            Map<String, List<String>> loadedGroups = GSON.fromJson(reader, type);
+            if (loadedGroups != null) {
+                customBlockGroups.clear();
+                customBlockGroups.putAll(loadedGroups);
+                LogUtil.info("log.automine.groups.loaded", customBlockGroups.size());
+            }
+        } catch (Exception e) {
+            LogUtil.error("log.automine.groups.load_failed", e.getMessage());
         }
     }
 
@@ -216,6 +252,21 @@ public class AutoMineTargetManager {
             GSON.toJson(weightsToSave, writer);
         } catch (IOException e) {
             LogUtil.error("log.automine.weights.save_failed", e.getMessage());
+        }
+    }
+
+    public static void saveBlockGroups() {
+        File groupsFile = getGroupsFile();
+        if (customBlockGroups.isEmpty()) {
+            if (groupsFile.exists()) {
+                groupsFile.delete();
+            }
+            return;
+        }
+        try (Writer writer = new FileWriter(groupsFile)) {
+            GSON.toJson(customBlockGroups, writer);
+        } catch (IOException e) {
+            LogUtil.error("log.automine.groups.save_failed", e.getMessage());
         }
     }
 }
