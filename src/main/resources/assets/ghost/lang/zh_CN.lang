@@ -20,6 +20,7 @@ ghost.generic.toggle.feedback=%s 已 %s
 ghost.generic.prefix.default=[Ghost] 
 ghost.generic.prefix.translation=[翻译]
 commands.generic.player.unsupported=该命令只能由玩家执行。
+commands.generic.block.notFound=错误: 未找到名为 '%s' 的方块。
 
 # ==================================
 # ===         自动挖掘          ===
@@ -240,6 +241,7 @@ ghostblock.commands.resume.invalid_type=错误: 此类型的任务 (%1$s) 不支
 
 # undo 命令
 ghostblock.commands.undo.usage=用法: /cgb undo [编号]
+ghostblock.commands.undo.usage.extended=用法: /cgb undo [历史记录编号]
 ghostblock.commands.undo.empty=错误: 没有可以撤销的操作。
 ghostblock.commands.undo.record_created_clear=已为文件删除操作创建撤销记录。
 ghostblock.commands.undo.restoring_user_files=正在恢复用户文件至先前状态...
@@ -546,16 +548,11 @@ log.info.hidden.saved=已保存 %d 条隐藏翻译记录。
 log.error.hidden.saveFailed=保存隐藏翻译记录时出错: %s
 
 # --- 任务 ---
-log.info.task.fill.complete=填充任务 #%d 完成
-log.info.task.load.complete=加载任务 #%d 完成
-log.info.task.clear.complete=清除任务 #%d 完成
 log.info.task.fill.init=FillTask #%d 初始化 (带距离检查策略): total=%d, batch=%d
 log.error.task.fill.invalidBlock=FillTask #%d 错误：无效方块 ID %d 或尝试填充空气。任务取消。
 log.warn.task.fill.notClient=填充任务 #%d 警告: 尝试在非客户端世界执行任务！位置: %s
 log.warn.task.fill.placeError=填充任务 #%d 警告: 在位置就绪后设置方块时出错 %s: %s
 log.info.task.fill.playerInvalid=FillTask #%d: 命令发送者玩家已失效或不在当前世界，取消任务。
-log.info.task.fill.posReady=FillTask #%d: 位置现已就绪: %s. 尝试放置...
-log.info.task.fill.posWaiting=FillTask #%d: 等待放置: %s (原因: %s)
 log.info.task.fill.posInvalidY=FillTask #%d: 无效Y坐标 (%d)，从任务移除: %s
 log.info.task.fill.complete.log=FillTask #%d 任务完成。成功放置: %d / 初始总数: %d
 log.info.task.fill.complete.waitingList=FillTask #%d 注意: 任务完成时仍有 %d 个方块在等待列表中。
@@ -574,7 +571,6 @@ log.warn.task.load.notClient=加载任务 #%d 警告: 尝试在非客户端世�
 log.warn.task.load.placeError=加载任务 #%d 警告: 在位置就绪后设置方块时出错 %s (索引: %d): %s
 log.warn.task.load.invalidBlock=加载任务 #%d 警告: 无效方块ID '%s' 在 %s (索引: %d)
 log.info.task.load.playerInvalid=LoadTask #%d: 命令发送者玩家已失效或不在当前世界，取消任务。
-log.info.task.load.posReady=LoadTask #%d: 位置现已就绪: %s (索引: %d). 尝试加载...
 log.info.task.load.posWaiting=LoadTask #%d: 等待加载: %s (索引: %d, 原因: %s)
 log.info.task.load.posInvalidY=LoadTask #%d: 无效Y坐标 (%d)，跳过条目: %s (索引: %d)
 log.info.task.load.complete.log=LoadTask #%d 任务完成。
@@ -590,7 +586,6 @@ log.info.task.load.markedCancelled=LoadTask #%d 标记为取消。
 log.info.task.cancel.fill=填充任务 #%d 已取消并暂停。
 log.info.task.cancel.load=加载任务 #%d 已取消并暂停。
 log.info.task.cancel.clear=清除任务 #%d 已取消。
-log.info.tasks.cancelled.count=取消了 %d 个活动/暂停任务。
 log.error.tick.fallback.failed=Tick Fallback 逻辑执行失败:
 log.fatal.fill.exec.sync.error=同步填充时发生严重错误！Pos: %s, 错误: %s
 log.error.set.loadedChunk.failed=在已加载区块中设置方块失败: %s
@@ -605,6 +600,10 @@ log.error.clear.task.originalBlock.notFound=清除任务错误：找不到原始
 log.info.clear.task.file.deleted=清除任务完成，删除自动文件 %s 结果: %b
 log.info.clear.task.file.notFound=清除任务完成，未找到自动文件 %s
 log.info.clear.file.alreadyDeleted=尝试清除的文件 %s 已被删除。
+log.warn.fill.largeVolume=警告: 尝试填充一个非常大的区域 (超过 %d 个方块)。
+log.info.undo.taskCancelled=撤销操作时，关联的任务 #%d 被自动取消。
+log.info.task.fill.posReady=FillTask #%d: 位置现已就绪: %s. 尝试放置...
+log.info.task.fill.posWaiting=FillTask #%d: 等待放置: %s (原因: %s)
 
 # --- 自动放置 ---
 log.debug.autoplace.tick.dataMissing=AutoPlaceTick Tick %d: 玩家/世界/目标数据不完整，取消。
@@ -648,7 +647,6 @@ log.debug.fill.config.info=Fill: 配置 - forceBatch=%b, forcedSize=%d
 log.debug.fill.params.info=Fill: 用户参数 - providedBatchFlag=%b, providedBatchSize=%b
 log.debug.fill.decision.info=Fill: 决策 - useBatch=%b, batchSize=%s
 log.debug.fill.volume.calculated=计算出的填充体积: %d
-log.warn.fill.largeSync=警告: 尝试同步填充一个大区域 (超过 %d 个方块)。
 log.debug.fill.totalBlocks=总共 %d 个方块将被填充。
 log.debug.fill.autosave.collected=收集了 %d 个原始方块信息用于自动保存。
 log.debug.fill.autosave.skipped=Fill: 没有新的原始方块需要自动保存。

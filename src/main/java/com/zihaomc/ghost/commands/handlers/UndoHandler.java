@@ -199,10 +199,10 @@ public class UndoHandler implements ICommandHandler {
             }
         } else {
             if (entriesFromUndoFile.isEmpty()) {
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.undo.error.data_file_empty_ghost"));
+                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghost.commands.undo.error.data_file_empty_ghost"));
                 return;
             }
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.undo.restoring_ghost_blocks"));
+            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghost.commands.undo.restoring_ghost_blocks"));
             AtomicInteger restoredCount = new AtomicInteger();
             List<GhostBlockEntry> restoredGhostEntries = new ArrayList<>();
 
@@ -216,19 +216,19 @@ public class UndoHandler implements ICommandHandler {
                         restoredGhostEntries.add(entry);
                     } catch (Exception e) {
                         LogUtil.error("log.error.undo.restore.clear.failed", pos, e.getMessage());
-                        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED,"ghostblock.commands.undo.error.restore_ghost_failed", pos.getX(), pos.getY(), pos.getZ(), e.getMessage()));
+                        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED,"ghost.commands.undo.error.restore_ghost_failed", pos.getX(), pos.getY(), pos.getZ(), e.getMessage()));
                     }
                 } else {
-                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED,"ghostblock.commands.undo.error_block_lookup", entry.blockId, pos.getX(), pos.getY(), pos.getZ()));
+                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED,"ghost.commands.undo.error_block_lookup", entry.blockId, pos.getX(), pos.getY(), pos.getZ()));
                 }
             });
 
             if (!restoredGhostEntries.isEmpty()) {
                 String autoFileName = CommandHelper.getAutoClearFileName(world);
                 GhostBlockData.saveData(world, restoredGhostEntries, autoFileName, false);
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY,"ghostblock.commands.undo.auto_file_restored", restoredGhostEntries.size()));
+                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY,"ghost.commands.undo.auto_file_restored", restoredGhostEntries.size()));
             }
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.undo.success_clear", restoredCount.get()));
+            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghost.commands.undo.success_clear", restoredCount.get()));
         }
     }
 
