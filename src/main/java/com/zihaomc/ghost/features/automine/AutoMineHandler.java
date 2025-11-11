@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.init.Blocks;
+import net.minecraft.network.play.client.C07PacketPlayerDigging;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
@@ -25,9 +26,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * "Auto Mine" 功能的核心处理器，支持坐标、方块类型和权重模式。
+ * "Auto Mine" 功能的核心处理器。
  */
 public class AutoMineHandler {
+
+    public enum MiningMode {
+        SIMULATE,
+        PACKET_NORMAL,
+        PACKET_INSTANT
+    }
 
     private enum State {
         IDLE,
@@ -43,8 +50,8 @@ public class AutoMineHandler {
     private int waitTicks = 0;
 
     private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
-    private Long miningStartTime = null; 
-    
+    private Long miningStartTime = null;
+
     private static boolean modIsControllingSneak = false;
 
     private static int randomMoveTicks = 0;
@@ -54,6 +61,13 @@ public class AutoMineHandler {
     private static IBlockState lastMinedState = null;
     private static final int DEFAULT_WEIGHT = 10;
 
+    private static MiningMode currentMiningMode = MiningMode.SIMULATE;
+    
+    private static float breakProgress = 0.0f;
+    private static BlockPos lastPacketTarget = null;
+    
+    private static boolean isPausedByGui = false;
+
     public static void toggle() {
         if (!isActive && AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.no_targets_set")));
@@ -61,6 +75,8 @@ public class AutoMineHandler {
         }
 
         isActive = !isActive;
+        isPausedByGui = false;
+        
         String status = isActive ? EnumChatFormatting.GREEN + LangUtil.translate("ghost.generic.enabled") : EnumChatFormatting.RED + LangUtil.translate("ghost.generic.disabled");
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.keybind.toggle.automine") + " " + status));
 
@@ -91,8 +107,43 @@ public class AutoMineHandler {
         isActive = false;
         unmineableBlacklist.clear();
         lastMinedState = null;
+        
+        breakProgress = 0.0f;
+        lastPacketTarget = null;
     }
     
+    public static void setMiningMode(MiningMode mode) {
+        if (currentMiningMode != mode) {
+            currentMiningMode = mode;
+            GhostConfig.setAutoMineMiningMode(mode.name());
+            
+            if (isActive) {
+                reset();
+                toggle();
+            }
+            mc.thePlayer.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.mode.set", mode.name())));
+
+            if (mode == MiningMode.PACKET_NORMAL || mode == MiningMode.PACKET_INSTANT) {
+                mc.thePlayer.addChatMessage(new ChatComponentText(" "));
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "==================== [ " + EnumChatFormatting.YELLOW + "风险警告" + EnumChatFormatting.RED + " ] ===================="));
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.warning.packet_mode")));
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.warning.recommend_simulate")));
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "====================================================="));
+                mc.thePlayer.addChatMessage(new ChatComponentText(" "));
+            } else if (mode == MiningMode.SIMULATE) {
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.info.simulate_safe")));
+            }
+        }
+    }
+
+    public static void setCurrentMiningMode_noMessage(MiningMode mode) {
+        currentMiningMode = mode;
+    }
+
+    public static MiningMode getMiningMode() {
+        return currentMiningMode;
+    }
+
     public static void clearBlacklist() {
         unmineableBlacklist.clear();
     }
@@ -104,10 +155,22 @@ public class AutoMineHandler {
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || mc.theWorld == null) {
-            if (!isActive && mc.gameSettings.keyBindAttack.isKeyDown() && currentState != State.IDLE) {
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
-            }
             return;
+        }
+
+        if (currentMiningMode == MiningMode.SIMULATE) {
+            if (mc.currentScreen != null) {
+                if (isActive && !isPausedByGui) {
+                    reset();
+                    isPausedByGui = true;
+                }
+                return;
+            } else {
+                if (isPausedByGui) {
+                    isPausedByGui = false;
+                    toggle();
+                }
+            }
         }
         
         handleMovementKeys();
@@ -141,90 +204,146 @@ public class AutoMineHandler {
 
         switch (currentState) {
             case SWITCHING_TARGET:
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
-                miningStartTime = null; 
-                
-                BlockPos veinTarget = findVeinMineTarget();
-                if (veinTarget != null) {
-                    currentTarget = veinTarget;
-                } else {
-                    lastMinedState = null; // Reset for global search
-                    currentTarget = findBestTarget();
-                }
-
-                if (currentTarget != null) {
-                    currentState = State.MINING;
-                } else {
-                    mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.status.waiting")));
-                    currentState = State.WAITING;
-                    waitTicks = 0;
-                }
+                handleSwitchingTarget();
                 break;
-
             case WAITING:
                 waitTicks++;
                 if (waitTicks >= 20) { 
                     currentState = State.SWITCHING_TARGET;
                 }
                 break;
-
             case MINING:
-                if (currentTarget == null) {
-                    currentState = State.SWITCHING_TARGET; 
-                    return;
-                }
-                
-                IBlockState targetBlockState = mc.theWorld.getBlockState(currentTarget);
-                Block blockAtTarget = targetBlockState.getBlock();
-                lastMinedState = targetBlockState;
-
-                boolean shouldSwitchTarget = false;
-                if (blockAtTarget == Blocks.air) {
-                    shouldSwitchTarget = true;
-                } else if (isTargetValid(currentTarget)) { 
-                    long mineTimeoutMs = GhostConfig.AutoMine.mineTimeoutSeconds * 1000L;
-                    if (miningStartTime == null) {
-                        miningStartTime = System.currentTimeMillis();
-                    } else if (System.currentTimeMillis() - miningStartTime > mineTimeoutMs) {
-                        unmineableBlacklist.put(currentTarget, blockAtTarget);
-                        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.mining_timeout_blacklisted", blockAtTarget.getLocalizedName(), currentTarget.getX(), currentTarget.getY(), currentTarget.getZ())));
-                        shouldSwitchTarget = true;
-                    }
-                } else {
-                    shouldSwitchTarget = true;
-                }
-                
-                if (shouldSwitchTarget) {
-                    currentState = State.SWITCHING_TARGET;
-                    return;
-                }
-
-                Vec3 bestPointToLookAt = RotationUtil.getClosestVisiblePoint(currentTarget);
-                if (bestPointToLookAt == null) {
-                    currentState = State.SWITCHING_TARGET;
-                    return;
-                }
-
-                float[] targetRots = RotationUtil.getRotations(bestPointToLookAt);
-                if (GhostConfig.AutoMine.instantRotation) {
-                    mc.thePlayer.rotationYaw = targetRots[0];
-                    mc.thePlayer.rotationPitch = targetRots[1];
-                } else {
-                    float[] smoothRots = RotationUtil.getSmoothRotations(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, targetRots[0], targetRots[1], (float) GhostConfig.AutoMine.rotationSpeed);
-                    mc.thePlayer.rotationYaw = smoothRots[0];
-                    mc.thePlayer.rotationPitch = smoothRots[1];
-                }
-
-                MovingObjectPosition mouseOver = mc.objectMouseOver;
-                boolean isCrosshairOnTarget = mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget);
-
-                if (isCrosshairOnTarget) {
-                    KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), true);
-                } else {
-                    KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
-                }
+                handleMining();
                 break;
         }
+    }
+    
+    private void handleSwitchingTarget() {
+        KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
+        miningStartTime = null; 
+        breakProgress = 0.0f; 
+        
+        BlockPos veinTarget = findVeinMineTarget();
+        if (veinTarget != null) {
+            currentTarget = veinTarget;
+        } else {
+            lastMinedState = null;
+            currentTarget = findBestTarget();
+        }
+
+        if (currentTarget != null) {
+            currentState = State.MINING;
+        } else {
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.status.waiting")));
+            currentState = State.WAITING;
+            waitTicks = 0;
+        }
+    }
+    
+    private void handleMining() {
+        if (currentTarget == null) {
+            currentState = State.SWITCHING_TARGET; 
+            return;
+        }
+        
+        IBlockState targetBlockState = mc.theWorld.getBlockState(currentTarget);
+        Block blockAtTarget = targetBlockState.getBlock();
+        if (blockAtTarget != Blocks.air) {
+            lastMinedState = targetBlockState;
+        }
+
+        if (blockAtTarget == Blocks.air || !isTargetValid(currentTarget) || checkTimeout(blockAtTarget)) {
+            currentState = State.SWITCHING_TARGET;
+            return;
+        }
+
+        Vec3 bestPointToLookAt = RotationUtil.getClosestVisiblePoint(currentTarget);
+        if (bestPointToLookAt == null) {
+            currentState = State.SWITCHING_TARGET;
+            return;
+        }
+        
+        // --- 修正点: 彻底分离 PACKET_INSTANT 的逻辑 ---
+
+        if (currentMiningMode == MiningMode.PACKET_INSTANT) {
+            // 对于瞬发模式，总是强制瞬间旋转
+            float[] targetRots = RotationUtil.getRotations(bestPointToLookAt);
+            mc.thePlayer.rotationYaw = targetRots[0];
+            mc.thePlayer.rotationPitch = targetRots[1];
+
+            // Minecraft 的 objectMouseOver 在同一 tick 内不会立即更新，所以我们自己进行一次射线追踪
+            MovingObjectPosition mop = mc.thePlayer.rayTrace(GhostConfig.AutoMine.maxReachDistance, 1.0F);
+
+            if (mop != null && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mop.getBlockPos().equals(currentTarget)) {
+                EnumFacing facing = mop.sideHit;
+                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.START_DESTROY_BLOCK, currentTarget, facing));
+                mc.thePlayer.swingItem();
+                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.STOP_DESTROY_BLOCK, currentTarget, facing));
+                currentState = State.SWITCHING_TARGET;
+            }
+            // 如果没对准，就在下一tick再次尝试瞬时旋转和发送
+            return;
+        }
+        
+        // --- SIMULATE 和 PACKET_NORMAL 模式的共享旋转逻辑 ---
+        float[] targetRots = RotationUtil.getRotations(bestPointToLookAt);
+        if (GhostConfig.AutoMine.instantRotation) {
+            mc.thePlayer.rotationYaw = targetRots[0];
+            mc.thePlayer.rotationPitch = targetRots[1];
+        } else {
+            float[] smoothRots = RotationUtil.getSmoothRotations(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, targetRots[0], targetRots[1], (float) GhostConfig.AutoMine.rotationSpeed);
+            mc.thePlayer.rotationYaw = smoothRots[0];
+            mc.thePlayer.rotationPitch = smoothRots[1];
+        }
+
+        MovingObjectPosition mouseOver = mc.objectMouseOver;
+        boolean isCrosshairOnTarget = mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget);
+
+        if (currentMiningMode == MiningMode.SIMULATE) {
+            if (isCrosshairOnTarget) {
+                KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), true);
+            } else {
+                KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
+            }
+        } else { // 仅处理 PACKET_NORMAL
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
+            
+            if (!isCrosshairOnTarget) {
+                return; 
+            }
+            
+            EnumFacing facing = mouseOver.sideHit;
+
+            if (!currentTarget.equals(lastPacketTarget)) {
+                breakProgress = 0.0F; 
+                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.START_DESTROY_BLOCK, currentTarget, facing));
+                lastPacketTarget = currentTarget;
+            }
+            
+            mc.thePlayer.swingItem();
+            
+            float hardness = targetBlockState.getBlock().getPlayerRelativeBlockHardness(mc.thePlayer, mc.theWorld, currentTarget);
+            breakProgress += hardness;
+            
+            if (breakProgress >= 1.0f) {
+                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.STOP_DESTROY_BLOCK, currentTarget, facing));
+                currentState = State.SWITCHING_TARGET; 
+            }
+        }
+    }
+
+    private boolean checkTimeout(Block blockAtTarget) {
+        if (miningStartTime == null) {
+            miningStartTime = System.currentTimeMillis();
+            return false;
+        }
+        long mineTimeoutMs = GhostConfig.AutoMine.mineTimeoutSeconds * 1000L;
+        if (System.currentTimeMillis() - miningStartTime > mineTimeoutMs) {
+            unmineableBlacklist.put(currentTarget, blockAtTarget);
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.mining_timeout_blacklisted", blockAtTarget.getLocalizedName(), currentTarget.getX(), currentTarget.getY(), currentTarget.getZ())));
+            return true;
+        }
+        return false;
     }
     
     private void handleMovementKeys() {

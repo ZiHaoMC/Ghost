@@ -32,43 +32,32 @@ import java.io.File;
  * Ghost Mod 的主类。
  * 负责 Mod 的加载、初始化、事件注册和命令注册。
  */
+
 @Mod(modid = Ghost.MODID, name = Ghost.NAME, version = Ghost.VERSION, acceptableRemoteVersions = "*")
 public class Ghost {
 
-    // Mod 的常量信息
     public static final String MODID = "ghost";
     public static final String VERSION = "0.1.1";
     public static final String NAME = "Ghost";
     public static final Logger logger = LogManager.getLogger(MODID);
 
-    /** Mod 的实例 */
     @Mod.Instance(MODID)
     public static Ghost instance;
 
-    /** 侧代理，根据运行环境（客户端/服务端）加载不同的代理类 */
     @SidedProxy(clientSide = "com.zihaomc.ghost.proxy.ClientProxy", serverSide = "com.zihaomc.ghost.proxy.ServerProxy")
     public static CommonProxy proxy;
 
-    /**
-     * FML 预初始化事件处理。
-     * 主要进行配置加载和客户端事件注册。
-     * @param event 预初始化事件对象
-     */
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         LogUtil.info("log.lifecycle.preinit", NAME);
-        // 触发方块类的静态初始化 (有时需要)
         Blocks.fire.toString();
 
-        // 初始化配置
         File configFile = event.getSuggestedConfigurationFile();
         GhostConfig.init(configFile);
 
         proxy.preInit(event);
 
-        // 仅在客户端注册事件处理器
         if (event.getSide() == Side.CLIENT) {
-            
             ItemTooltipTranslationHandler.loadCacheFromFile();
             MinecraftForge.EVENT_BUS.register(new CacheSavingHandler());
             LogUtil.debug("log.feature.cache.init");
@@ -97,47 +86,45 @@ public class Ghost {
             MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
             LogUtil.debug("log.handler.registered.itemTooltip");
 
-            // 注册 AutoMine 功能的核心事件处理器
             MinecraftForge.EVENT_BUS.register(new AutoMineHandler());
             LogUtil.debug("log.handler.registered.autoMine");
             
-            // 注册 GhostBlock 命令的事件处理器
             MinecraftForge.EVENT_BUS.register(new GhostBlockEventHandler());
             LogUtil.debug("log.handler.registered.ghostBlockCommand");
         }
     }
 
-    /**
-     * FML 初始化事件处理。
-     * 主要进行命令注册和特定模块的初始化。
-     * @param event 初始化事件对象
-     */
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         LogUtil.info("log.lifecycle.init", NAME);
 
         proxy.init(event);
         
-        // 加载持久化的数据
         ItemTooltipTranslationHandler.loadCacheFromFile();
-        AutoMineTargetManager.loadTargets(); // 在游戏启动时加载AutoMine坐标
+        AutoMineTargetManager.loadTargets();
 
         if (event.getSide() == Side.CLIENT) {
+            // --- 修正点: 将模式设置的逻辑移动到 init 阶段 ---
+            try {
+                // 这里只设置内部变量，不发送任何聊天消息
+                AutoMineHandler.MiningMode mode = AutoMineHandler.MiningMode.valueOf(GhostConfig.AutoMine.miningMode.toUpperCase());
+                AutoMineHandler.setCurrentMiningMode_noMessage(mode);
+            } catch (IllegalArgumentException e) {
+                LogUtil.warn("log.config.invalid.automineMode", GhostConfig.AutoMine.miningMode);
+                AutoMineHandler.setCurrentMiningMode_noMessage(AutoMineHandler.MiningMode.SIMULATE);
+            }
+            
             LogUtil.debug("log.command.registering.client");
             
-            // 注册 /cgb 命令
             ClientCommandHandler.instance.registerCommand(new GhostBlockCommand());
             LogUtil.debug("log.command.registered.cgb");
             
-            // 注册 /gconfig 命令
             ClientCommandHandler.instance.registerCommand(new GhostConfigCommand());
             LogUtil.debug("log.command.registered.ghostConfig");
 
-            // 注册 /gtranslate 命令
             ClientCommandHandler.instance.registerCommand(new TranslateCommand());
             LogUtil.debug("log.command.registered.gtranslate");
 
-            // 注册新增的 /automine 命令
             ClientCommandHandler.instance.registerCommand(new AutoMineCommand());
             LogUtil.debug("log.command.registered.autoMine");
 
@@ -146,11 +133,6 @@ public class Ghost {
         }
     }
 
-    /**
-     * FML 后初始化事件处理。
-     * 可用于 Mod 间的交互。
-     * @param event 后初始化事件对象
-     */
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event) {
         LogUtil.info("log.lifecycle.postinit", NAME);

@@ -73,6 +73,10 @@ public class AutoMineCommand extends CommandBase {
             case "group":
                 handleGroup(sender, args);
                 break;
+            // 新增 mode 子命令
+            case "mode":
+                handleMode(sender, args);
+                break;
             case "toggle":
             case "start":
             case "stop":
@@ -174,6 +178,30 @@ public class AutoMineCommand extends CommandBase {
                 break;
             default:
                 throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.remove"));
+        }
+    }
+    
+    /**
+     * 处理 /automine mode [模式] 子命令
+     */
+    private void handleMode(ICommandSender sender, String[] args) throws CommandException {
+        if (args.length < 2) {
+            // 如果只输入 /automine mode，则显示当前模式
+            String currentModeName = AutoMineHandler.getMiningMode().name();
+            sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.mode.current", currentModeName)));
+            return;
+        }
+
+        String modeName = args[1].toUpperCase();
+        try {
+            // 尝试将输入的字符串转换为 MiningMode 枚举
+            AutoMineHandler.MiningMode newMode = AutoMineHandler.MiningMode.valueOf(modeName);
+            // 调用 Handler 中的方法来设置新模式
+            AutoMineHandler.setMiningMode(newMode);
+            // Handler 内部会发送成功消息，这里不再重复发送
+        } catch (IllegalArgumentException e) {
+            // 如果转换失败 (例如输入了无效的模式名)，抛出用法错误
+            throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.mode"));
         }
     }
 
@@ -331,6 +359,7 @@ public class AutoMineCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommands.header")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.toggle")));
+        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.mode")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.list")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.add")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.remove")));
@@ -342,6 +371,7 @@ public class AutoMineCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.add_coord")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.add_block")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.add_group")));
+        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.set_mode")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.remove_coord")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.create_group")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.set_weight")));
@@ -350,7 +380,7 @@ public class AutoMineCommand extends CommandBase {
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "add", "remove", "list", "clear", "toggle", "weight", "group", "help");
+            return getListOfStringsMatchingLastWord(args, "add", "remove", "list", "clear", "toggle", "weight", "group", "mode", "help");
         }
         if (args.length == 2) {
             String subCmd = args[0].toLowerCase();
@@ -364,6 +394,9 @@ public class AutoMineCommand extends CommandBase {
                     return getListOfStringsMatchingLastWord(args, "set", "clear");
                 case "group":
                     return getListOfStringsMatchingLastWord(args, "create", "delete");
+                // 为 mode 子命令添加 Tab 补全
+                case "mode":
+                    return getListOfStringsMatchingLastWord(args, Arrays.stream(AutoMineHandler.MiningMode.values()).map(Enum::name).collect(Collectors.toList()));
             }
         }
         if (args.length > 2) {

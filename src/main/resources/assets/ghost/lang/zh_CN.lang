@@ -42,6 +42,7 @@ ghost.automine.command.usage.weight.clear_one=§c用法: /automine weight clear 
 ghost.automine.command.usage.group=§c用法: /automine group <create|delete> <参数...>
 ghost.automine.command.usage.group.create=§c用法: /automine group create <组名> <方块ID1> [方块ID2]...
 ghost.automine.command.usage.group.delete=§c用法: /automine group delete <组名>
+ghost.automine.command.usage.mode=§c用法: /automine mode <SIMULATE|PACKET_NORMAL|PACKET_INSTANT>
 
 # --- 成功/失败/状态消息 ---
 ghost.automine.command.add.coord.success=§a已添加挖掘坐标: (%d, %d, %d)
@@ -66,6 +67,8 @@ ghost.automine.command.weight.error.positive=§c错误: 权重值必须是一个
 ghost.automine.command.group.create.success=§a已创建方块组 '%1$s'，包含 %2$d 个方块。
 ghost.automine.command.group.delete.success=§e已删除方块组 '%s'。
 ghost.automine.command.group.not_found=§c错误: 未找到名为 '%s' 的方块组。
+ghost.automine.command.mode.current=§a当前挖掘模式: §e%s
+ghost.automine.command.mode.set=§a自动挖掘模式已设置为: §e%s
 
 # --- 列表 (List) ---
 ghost.automine.command.list.header_main=自动挖掘目标列表
@@ -88,6 +91,7 @@ ghost.automine.command.help.header=§6--- 自动挖掘命令帮助 (/automine) -
 ghost.automine.command.help.description=§7管理自动挖掘的目标和设置。
 ghost.automine.command.help.subcommands.header=§a可用子命令:
 ghost.automine.command.help.subcommand.toggle=  §e/automine toggle§7 - 启动或停止自动挖掘。
+ghost.automine.command.help.subcommand.mode=  §e/automine mode [模式]§7 - 切换或查看挖掘模式。
 ghost.automine.command.help.subcommand.list=  §e/automine list§7 - 显示所有当前的目标、组和权重。
 ghost.automine.command.help.subcommand.add=  §e/automine add <coord|block|group> ...§7 - 添加一个新的挖掘目标。
 ghost.automine.command.help.subcommand.remove=  §e/automine remove <coord|block|group> ...§7 - 移除一个已有的挖掘目标。
@@ -98,6 +102,7 @@ ghost.automine.command.help.examples.header=§a示例:
 ghost.automine.command.help.examples.add_coord=  §b/automine add coord 100 50 200
 ghost.automine.command.help.examples.add_block=  §b/automine add block minecraft:diamond_ore
 ghost.automine.command.help.examples.add_group=  §b/automine add group skyblock:mithril
+ghost.automine.command.help.examples.set_mode=  §b/automine mode PACKET_NORMAL
 ghost.automine.command.help.examples.remove_coord=  §b/automine remove coord 1
 ghost.automine.command.help.examples.create_group=  §b/automine group create my_ores minecraft:iron_ore minecraft:gold_ore
 ghost.automine.command.help.examples.set_weight=  §b/automine weight set minecraft:coal_ore 5
@@ -107,6 +112,11 @@ ghost.automine.error.no_targets_set=§c错误: 未设置任何挖掘目标 (坐�
 ghost.automine.error.no_targets_left=§c错误: 没有剩余的挖掘目标了，自动挖掘已停止。
 ghost.automine.error.mining_timeout_blacklisted=§e警告: 挖掘方块 %s (%d, %d, %d) 超时，已临时加入黑名单。
 ghost.automine.status.waiting=§7当前没有可挖掘的目标，正在等待...
+
+# 警告信息
+ghost.automine.warning.packet_mode=您已切换到数据包(Packet)挖掘模式。此模式直接与服务器通信，比默认的模拟模式更容易被现代反作弊系统（如Watchdog）检测到，可能导致封禁。请谨慎使用！
+ghost.automine.warning.recommend_simulate=为了最大限度地提高安全性，建议使用 /automine mode SIMULATE 切换回模拟模式。
+ghost.automine.info.simulate_safe=已切换到模拟(SIMULATE)模式。这是最安全的自动挖掘方式，可以有效绕过大多数反作弊检测。
 
 # ==================================
 # ===        翻译功能          ===
@@ -344,6 +354,7 @@ ghost.config.comment.autoMineEnableVeinMining=启用连锁挖矿。当挖掉一�
 ghost.config.comment.autoMineRandomMoveInterval=随机移动的平均间隔时间 (tick, 20 ticks = 1秒)。
 ghost.config.comment.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
 ghost.config.comment.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。最终间隔将在 [interval - variability, interval + variability] 之间。
+ghost.config.comment.autoMineMiningMode=设置自动挖掘的模式。SIMULATE: 模拟玩家按键; PACKET_NORMAL: 发送数据包挖掘并等待方块消失; PACKET_INSTANT: 发送数据包后立即切换目标。
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -424,6 +435,7 @@ ghost.commands.gconfig.help.setting.autoMineEnableRandomMove=启用挖掘时的�
 ghost.commands.gconfig.help.setting.autoMineRandomMoveInterval=随机移动的平均间隔时间 (tick)。
 ghost.commands.gconfig.help.setting.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
 ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。
+ghost.commands.gconfig.help.setting.autoMineMiningMode=设置自动挖掘的模式。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
@@ -444,6 +456,7 @@ ghostblock.commands.gconfig.help.example.autoMineTimeout=/gconfig autoMineTimeou
 ghostblock.commands.gconfig.help.example.autoMineSpeedVariability=/gconfig autoMineSpeedVariability 5.0
 ghostblock.commands.gconfig.help.example.autoMinePreventDiggingDown=/gconfig autoMinePreventDiggingDown false
 ghostblock.commands.gconfig.help.example.autoMineRandomMoveInterval=/gconfig autoMineRandomMoveInterval 200
+ghostblock.commands.gconfig.help.example.autoMineMiningMode=/gconfig autoMineMiningMode PACKET_NORMAL
 ghostblock.commands.gconfig.help.aliases=别名
 
 # ==================================
@@ -530,6 +543,7 @@ log.error.command.parse.failed=解析方块状态时发生意外错误: %s
 # --- 配置 ---
 log.config.notInitialized=配置尚未初始化！
 log.config.loaded=配置已加载或创建并保存更改。
+log.config.invalid.automineMode=配置文件中的 'autoMineMiningMode' 值 ('%s') 无效，将使用默认值 SIMULATE。
 
 # --- 缓存 ---
 log.feature.cache.init=翻译缓存已加载，并已注册保存事件处理器。

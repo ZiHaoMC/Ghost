@@ -133,6 +133,7 @@ public class GhostConfig {
         public static int randomMoveDuration;
         public static int randomMoveIntervalVariability;
         public static boolean enableVeinMining;
+        public static String miningMode;
     }
 
     // --- 核心方法 ---
@@ -261,6 +262,7 @@ public class GhostConfig {
         AutoMine.randomMoveDuration = loadInt(CATEGORY_AUTO_MINE, "randomMoveDuration", 10, 1, 20, "ghost.config.comment.autoMineRandomMoveDuration");
         AutoMine.randomMoveIntervalVariability = loadInt(CATEGORY_AUTO_MINE, "randomMoveIntervalVariability", 100, 0, 1000, "ghost.config.comment.autoMineRandomMoveIntervalVariability");
         AutoMine.enableVeinMining = loadBoolean(CATEGORY_AUTO_MINE, "enableVeinMining", true, "ghost.config.comment.autoMineEnableVeinMining");
+        AutoMine.miningMode = loadString(CATEGORY_AUTO_MINE, "miningMode", "SIMULATE", "ghost.config.comment.autoMineMiningMode");
     }
 
     // --- 加载辅助方法 ---
@@ -500,6 +502,16 @@ public class GhostConfig {
         updateAndSave(CATEGORY_AUTO_MINE, "enableVeinMining", value, () -> AutoMine.enableVeinMining = value);
     }
     
+    public static void setAutoMineMiningMode(String value) {
+        String upperValue = value.toUpperCase();
+        List<String> validModes = Arrays.asList("SIMULATE", "PACKET_NORMAL", "PACKET_INSTANT");
+        if (validModes.contains(upperValue)) {
+            updateAndSave(CATEGORY_AUTO_MINE, "miningMode", upperValue, () -> AutoMine.miningMode = upperValue);
+        } else {
+            throw new RuntimeException(new CommandException("Invalid mining mode. Valid options are: SIMULATE, PACKET_NORMAL, PACKET_INSTANT"));
+        }
+    }
+    
     public static Configuration getConfig() {
         return config;
     }
@@ -555,6 +567,7 @@ public class GhostConfig {
         settingUpdaters.put("autominerandommoveduration", (k, v) -> setAutoMineRandomMoveDuration(parseInt(v)));
         settingUpdaters.put("autominerandommoveintervalvariability", (k, v) -> setAutoMineRandomMoveIntervalVariability(parseInt(v)));
         settingUpdaters.put("automineenableveinmining", (k, v) -> setAutoMineEnableVeinMining(parseBoolean(v)));
+        settingUpdaters.put("automineminingmode", (k, v) -> setAutoMineMiningMode(v));
     }
     
     // --- 解析辅助方法 ---
