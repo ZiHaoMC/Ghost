@@ -209,8 +209,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoMineRandomMoveInterval", GhostConfig.AutoMine.randomMoveInterval));
         sender.addChatMessage(formatSettingLine("autoMineRandomMoveDuration", GhostConfig.AutoMine.randomMoveDuration));
         sender.addChatMessage(formatSettingLine("autoMineRandomMoveIntervalVariability", GhostConfig.AutoMine.randomMoveIntervalVariability));
-        // 显示新增的挖掘模式配置
         sender.addChatMessage(formatSettingLine("autoMineMiningMode", GhostConfig.AutoMine.miningMode));
+        sender.addChatMessage(formatSettingLine("autoMineAntiCheatCheck", GhostConfig.AutoMine.antiCheatCheck));
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
@@ -310,8 +310,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveInterval " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "10-400") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveInterval")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveDuration " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-20") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveDuration")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveIntervalVariability " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "0-1000") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability")));
-        // 添加新配置项的帮助文本
         sender.addChatMessage(new ChatComponentText(op + "  autoMineMiningMode " + tx + "(SIMULATE/PACKET_NORMAL/PACKET_INSTANT) - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineMiningMode")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineAntiCheatCheck " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineAntiCheatCheck")));
 
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.examples.header")));
@@ -343,7 +343,6 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineSpeedVariability 5.0"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMinePreventDiggingDown false"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineRandomMoveInterval 200"));
-        // 添加新配置项的示例
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineMiningMode PACKET_NORMAL"));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.aliases") + ": " + hl + String.join(", ", getCommandAliases())));
@@ -409,7 +408,6 @@ public class GhostConfigCommand extends CommandBase {
                     return CommandBase.getListOfStringsMatchingLastWord(args, "2", "5", "10", "20");
                 case "autominerandommoveintervalvariability":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "10", "20", "50", "100");
-                // 新增 miningMode 的 Tab 补全
                 case "automineminingmode":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "SIMULATE", "PACKET_NORMAL", "PACKET_INSTANT");
             }
@@ -433,6 +431,7 @@ public class GhostConfigCommand extends CommandBase {
                key.equals("automineserverrotation") || key.equals("automineinstantrotation") ||
                key.equals("autominesneak") || key.equals("automineenablerandommove") ||
                key.equals("automineenablerandomspeed") || key.equals("autominepreventdiggingdown") ||
-               key.equals("automineenableveinmining");
+               key.equals("automineenableveinmining") ||
+               key.equals("automineanticheatcheck");
     }
 }

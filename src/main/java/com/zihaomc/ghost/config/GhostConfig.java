@@ -134,6 +134,7 @@ public class GhostConfig {
         public static int randomMoveIntervalVariability;
         public static boolean enableVeinMining;
         public static String miningMode;
+        public static boolean antiCheatCheck; // 新增配置项
     }
 
     // --- 核心方法 ---
@@ -263,6 +264,7 @@ public class GhostConfig {
         AutoMine.randomMoveIntervalVariability = loadInt(CATEGORY_AUTO_MINE, "randomMoveIntervalVariability", 100, 0, 1000, "ghost.config.comment.autoMineRandomMoveIntervalVariability");
         AutoMine.enableVeinMining = loadBoolean(CATEGORY_AUTO_MINE, "enableVeinMining", true, "ghost.config.comment.autoMineEnableVeinMining");
         AutoMine.miningMode = loadString(CATEGORY_AUTO_MINE, "miningMode", "SIMULATE", "ghost.config.comment.autoMineMiningMode");
+        AutoMine.antiCheatCheck = loadBoolean(CATEGORY_AUTO_MINE, "antiCheatCheck", true, "ghost.config.comment.autoMineAntiCheatCheck"); // 新增
     }
 
     // --- 加载辅助方法 ---
@@ -512,6 +514,11 @@ public class GhostConfig {
         }
     }
     
+    // 新增 Setter
+    public static void setAutoMineAntiCheatCheck(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "antiCheatCheck", value, () -> AutoMine.antiCheatCheck = value);
+    }
+    
     public static Configuration getConfig() {
         return config;
     }
@@ -568,6 +575,7 @@ public class GhostConfig {
         settingUpdaters.put("autominerandommoveintervalvariability", (k, v) -> setAutoMineRandomMoveIntervalVariability(parseInt(v)));
         settingUpdaters.put("automineenableveinmining", (k, v) -> setAutoMineEnableVeinMining(parseBoolean(v)));
         settingUpdaters.put("automineminingmode", (k, v) -> setAutoMineMiningMode(v));
+        settingUpdaters.put("automineanticheatcheck", (k, v) -> setAutoMineAntiCheatCheck(parseBoolean(v))); // 新增
     }
     
     // --- 解析辅助方法 ---

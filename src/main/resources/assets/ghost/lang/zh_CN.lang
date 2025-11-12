@@ -118,6 +118,20 @@ ghost.automine.warning.packet_mode=您已切换到数据包(Packet)挖掘模式�
 ghost.automine.warning.recommend_simulate=为了最大限度地提高安全性，建议使用 /automine mode SIMULATE 切换回模拟模式。
 ghost.automine.info.simulate_safe=已切换到模拟(SIMULATE)模式。这是最安全的自动挖掘方式，可以有效绕过大多数反作弊检测。
 
+# 反作弊回弹检测
+ghost.automine.rollback.title=!! 严重警告：检测到挖掘回弹 !!
+ghost.automine.rollback.description=您刚才的挖掘操作被服务器拒绝了。这极有可能是由反作弊系统（如Watchdog）触发的。
+ghost.automine.rollback.advice=为保护您的账号安全，自动挖掘已紧急停止。强烈建议您保持停止状态或切换到更安全的 SIMULATE 模式。
+ghost.automine.rollback.question=您想如何操作?
+ghost.automine.rollback.option.continue=[是, 继续 (本轮禁用检测)]
+ghost.automine.rollback.option.disable=[不再检查 (永久禁用)]
+ghost.automine.rollback.option.stop=[不, 保持停止]
+ghost.automine.error.rollback_confirm_pending=请先在聊天框中对上一个回弹警告做出选择。
+ghost.automine.feedback.continue=将继续尝试自动挖掘，本轮游戏将不再进行回弹检测。请密切关注游戏行为，风险自负。
+ghost.automine.feedback.disable=回弹检测已永久禁用，将继续自动挖掘。您可以通过 /gconfig automineanticheatcheck true 重新开启。
+ghost.automine.feedback.stop=自动挖掘将保持停止状态。
+
+
 # ==================================
 # ===        翻译功能          ===
 # ==================================
@@ -309,7 +323,6 @@ ghostblock.config.enableAutoSave.tooltip=是否在执行 /cgb set 或 /cgb fill 
 ghostblock.config.defaultSaveFileName.tooltip=当启用自动保存 (enableAutoSave=true) 且未使用 -s 时，默认使用的保存文件名。留空或输入 'default' 将使用当前世界/服务器标识符作为文件名。
 ghostblock.config.enableChatSuggestions.tooltip=是否启用在聊天中为命令添加建议按钮的功能 (例如在命令成功或失败后)。
 ghostblock.config.enableCommandHistoryScroll.tooltip=是否启用 Shift + 鼠标滚轮/方向键 切换已发送命令历史的功能。
-ghost.config.comment.disableTwitchAtKey=禁用在聊天框中按下“@”键时弹出Twitch直播窗口的功能。
 ghostblock.config.enableAutoPlaceOnJoin.tooltip=是否在玩家加入世界时，自动在脚下重新放置之前记录的幽灵方块（如果脚下当前是空气）。这可以防止在空中退出后重新进入时掉落。
 ghostblock.config.enableAutoSneakAtEdge.tooltip=是否在玩家走到方块边缘，即将掉落时自动蹲下以防止掉落。
 ghostblock.config.autoSneakForwardOffset.tooltip=自动蹲伏时向前检测的偏移量 (0.05-1.0 之间的小数)。值越小，玩家越靠近方块边缘才会触发自动蹲伏。
@@ -339,6 +352,7 @@ ghost.config.comment.enableMarkdownRendering=启用笔记界面的Markdown格式
 ghost.config.comment.enableColorRendering=启用笔记界面的颜色代码渲染 (例如 §b蓝色)。
 ghost.config.comment.enableAmpersandColorCodes=启用笔记界面的 '&' 颜色代码。启用后，可以使用 '&c' 代替 '§c' 来设置颜色。
 ghost.config.comment.fixGuiStateLossOnResize=修复因全屏切换或窗口大小调整导致的输入框文本丢失问题。[默认: true]
+ghost.config.comment.disableTwitchAtKey=禁用在聊天框中按下“@”键时弹出Twitch直播窗口的功能。
 ghost.config.comment.autoMineRotationSpeed=自动挖掘时，视角转换的基础平滑速度 (度/tick)。值越大，转得越快。(仅在 'instantRotation' 为 false 时生效)
 ghost.config.comment.autoMineMaxReach=自动挖掘时，能够识别并挖掘方块的最大距离（方块）。
 ghost.config.comment.autoMineSearchRadius=自动挖掘 '方块类型' 模式下的搜索半径。
@@ -355,6 +369,7 @@ ghost.config.comment.autoMineRandomMoveInterval=随机移动的平均间隔时�
 ghost.config.comment.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
 ghost.config.comment.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。最终间隔将在 [interval - variability, interval + variability] 之间。
 ghost.config.comment.autoMineMiningMode=设置自动挖掘的模式。SIMULATE: 模拟玩家按键; PACKET_NORMAL: 发送数据包挖掘并等待方块消失; PACKET_INSTANT: 发送数据包后立即切换目标。
+ghost.config.comment.autoMineAntiCheatCheck=启用自动挖掘数据包模式下的反作弊回弹检测。默认开启，以提高安全性。
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -436,6 +451,7 @@ ghost.commands.gconfig.help.setting.autoMineRandomMoveInterval=随机移动的�
 ghost.commands.gconfig.help.setting.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
 ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。
 ghost.commands.gconfig.help.setting.autoMineMiningMode=设置自动挖掘的模式。
+ghost.commands.gconfig.help.setting.autoMineAntiCheatCheck=启用自动挖掘的反作弊回弹检测。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false

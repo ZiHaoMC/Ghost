@@ -73,7 +73,6 @@ public class AutoMineCommand extends CommandBase {
             case "group":
                 handleGroup(sender, args);
                 break;
-            // 新增 mode 子命令
             case "mode":
                 handleMode(sender, args);
                 break;
@@ -81,6 +80,12 @@ public class AutoMineCommand extends CommandBase {
             case "start":
             case "stop":
                 AutoMineHandler.toggle();
+                break;
+            // 新增一个隐藏的内部命令，用于处理回弹确认
+            case "automine_internal_feedback":
+                if (args.length > 1) {
+                    AutoMineHandler.onRollbackFeedback(args[1]);
+                }
                 break;
             default:
                 throw new WrongUsageException(getCommandUsage(sender));
@@ -379,6 +384,11 @@ public class AutoMineCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
+        // 不为内部命令提供Tab补全
+        if (args.length > 0 && "automine_internal_feedback".equalsIgnoreCase(args[0])) {
+            return Collections.emptyList();
+        }
+        
         if (args.length == 1) {
             return getListOfStringsMatchingLastWord(args, "add", "remove", "list", "clear", "toggle", "weight", "group", "mode", "help");
         }

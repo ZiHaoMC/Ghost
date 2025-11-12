@@ -8,14 +8,14 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.event.ClickEvent;
 import net.minecraft.init.Blocks;
-import net.minecraft.network.play.client.C07PacketPlayerDigging;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.IChatComponent;
 import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -27,6 +27,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * "Auto Mine" 功能的核心处理器。
+ * (重构后) 负责状态管理、目标搜寻，并将具体的挖掘行为委托给策略对象。
+ * 同时处理反作弊回弹检测。
  */
 public class AutoMineHandler {
 
@@ -40,7 +42,8 @@ public class AutoMineHandler {
         IDLE,
         SWITCHING_TARGET,
         MINING,
-        WAITING
+        WAITING,
+        VALIDATING_BREAK // 新增状态：用于验证方块是否真的被破坏
     }
 
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -61,14 +64,26 @@ public class AutoMineHandler {
     private static IBlockState lastMinedState = null;
     private static final int DEFAULT_WEIGHT = 10;
 
+    private static IMiningStrategy currentStrategy = new SimulateMiningStrategy();
     private static MiningMode currentMiningMode = MiningMode.SIMULATE;
     
-    private static float breakProgress = 0.0f;
-    private static BlockPos lastPacketTarget = null;
-    
     private static boolean isPausedByGui = false;
+    
+    // --- 反作弊回弹检测相关 ---
+    private static BlockPos blockToValidate = null;
+    private static int validationTicks = 0;
+    private static final int VALIDATION_DELAY_TICKS = 8; // 等待 8 ticks (0.4秒) 来确认方块破坏
+    private static boolean awaitingRollbackConfirmation = false;
+    private static int packetBreaksSinceStart = 0; // 新增：计数器，记录开始后数据包挖掘的次数
+    private static final int CHECKS_TO_PERFORM = 3; // 新增：只检查前3次挖掘
+    private static boolean checksTemporarilyDisabled = false; // 新增：在本轮游戏中临时禁用检查
 
     public static void toggle() {
+        if (awaitingRollbackConfirmation) {
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.rollback_confirm_pending")));
+            return;
+        }
+
         if (!isActive && AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.no_targets_set")));
             return;
@@ -82,8 +97,12 @@ public class AutoMineHandler {
 
         if (isActive) {
             currentState = State.SWITCHING_TARGET;
+            // <--- 核心修复点之一：只在开始时重置挖掘计数器 ---
+            packetBreaksSinceStart = 0;
         } else {
             reset();
+            // <--- 核心修复点之二：只在手动停止时，才重置“临时禁用”状态，为下一次手动开启做准备 ---
+            checksTemporarilyDisabled = false;
         }
     }
 
@@ -99,23 +118,38 @@ public class AutoMineHandler {
             KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), false);
             currentMoveKey = null;
         }
+        if (currentStrategy != null) {
+            currentStrategy.onStopMining();
+        }
+        
         randomMoveTicks = 0;
         currentMoveDuration = 0;
-
         currentState = State.IDLE;
         currentTarget = null;
         isActive = false;
         unmineableBlacklist.clear();
         lastMinedState = null;
-        
-        breakProgress = 0.0f;
-        lastPacketTarget = null;
+        blockToValidate = null;
+        validationTicks = 0;
+        // awaitingRollbackConfirmation 在 reset 时不清空，由用户选择决定
     }
     
     public static void setMiningMode(MiningMode mode) {
         if (currentMiningMode != mode) {
             currentMiningMode = mode;
             GhostConfig.setAutoMineMiningMode(mode.name());
+            
+            switch(mode) {
+                case SIMULATE:
+                    currentStrategy = new SimulateMiningStrategy();
+                    break;
+                case PACKET_NORMAL:
+                    currentStrategy = new PacketNormalMiningStrategy();
+                    break;
+                case PACKET_INSTANT:
+                    currentStrategy = new PacketInstantMiningStrategy();
+                    break;
+            }
             
             if (isActive) {
                 reset();
@@ -138,6 +172,11 @@ public class AutoMineHandler {
 
     public static void setCurrentMiningMode_noMessage(MiningMode mode) {
         currentMiningMode = mode;
+        switch(mode) {
+            case SIMULATE: currentStrategy = new SimulateMiningStrategy(); break;
+            case PACKET_NORMAL: currentStrategy = new PacketNormalMiningStrategy(); break;
+            case PACKET_INSTANT: currentStrategy = new PacketInstantMiningStrategy(); break;
+        }
     }
 
     public static MiningMode getMiningMode() {
@@ -150,6 +189,46 @@ public class AutoMineHandler {
 
     public static boolean isActive() {
         return isActive;
+    }
+    
+    /**
+     * 由策略类调用，用于启动方块破坏的验证流程。
+     * @param pos 刚刚尝试破坏的方块坐标。
+     */
+    public static void startValidation(BlockPos pos) {
+        packetBreaksSinceStart++;
+        // 核心改动：只有在总开关开启、临时禁用未开启、且检查次数未达上限时才进行验证
+        if (GhostConfig.AutoMine.antiCheatCheck && !checksTemporarilyDisabled && packetBreaksSinceStart <= CHECKS_TO_PERFORM) {
+            blockToValidate = pos;
+            validationTicks = 0;
+            currentState = State.VALIDATING_BREAK;
+        } else {
+            // 否则直接跳过验证，进入下一个目标
+            currentState = State.SWITCHING_TARGET;
+        }
+    }
+    
+    /**
+     * 由内部命令调用，处理用户对回弹警告的反馈。
+     * @param action 用户选择的操作 ("continue", "disable", 或 "stop")
+     */
+    public static void onRollbackFeedback(String action) {
+        if (!awaitingRollbackConfirmation) return;
+
+        awaitingRollbackConfirmation = false;
+
+        if ("continue".equalsIgnoreCase(action)) {
+            checksTemporarilyDisabled = true; // <--- 临时禁用检查
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.feedback.continue")));
+            toggle(); // 重新启动
+        } else if ("disable".equalsIgnoreCase(action)) {
+            GhostConfig.setAutoMineAntiCheatCheck(false); // <--- 永久禁用
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + LangUtil.translate("ghost.automine.feedback.disable")));
+            toggle(); // 重新启动
+        } else { // "stop"
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.feedback.stop")));
+            // 保持停止状态
+        }
     }
 
     @SubscribeEvent
@@ -215,13 +294,15 @@ public class AutoMineHandler {
             case MINING:
                 handleMining();
                 break;
+            case VALIDATING_BREAK:
+                handleValidation();
+                break;
         }
     }
     
     private void handleSwitchingTarget() {
-        KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
-        miningStartTime = null; 
-        breakProgress = 0.0f; 
+        if (currentStrategy != null) currentStrategy.onStopMining();
+        miningStartTime = null;
         
         BlockPos veinTarget = findVeinMineTarget();
         if (veinTarget != null) {
@@ -232,6 +313,7 @@ public class AutoMineHandler {
         }
 
         if (currentTarget != null) {
+            if (currentStrategy != null) currentStrategy.onStartMining(currentTarget);
             currentState = State.MINING;
         } else {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.status.waiting")));
@@ -263,73 +345,81 @@ public class AutoMineHandler {
             return;
         }
         
-        // --- 修正点: 彻底分离 PACKET_INSTANT 的逻辑 ---
+        if (currentStrategy != null) {
+            currentStrategy.handleMiningTick(currentTarget, bestPointToLookAt);
+        }
+    }
 
-        if (currentMiningMode == MiningMode.PACKET_INSTANT) {
-            // 对于瞬发模式，总是强制瞬间旋转
-            float[] targetRots = RotationUtil.getRotations(bestPointToLookAt);
-            mc.thePlayer.rotationYaw = targetRots[0];
-            mc.thePlayer.rotationPitch = targetRots[1];
-
-            // Minecraft 的 objectMouseOver 在同一 tick 内不会立即更新，所以我们自己进行一次射线追踪
-            MovingObjectPosition mop = mc.thePlayer.rayTrace(GhostConfig.AutoMine.maxReachDistance, 1.0F);
-
-            if (mop != null && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mop.getBlockPos().equals(currentTarget)) {
-                EnumFacing facing = mop.sideHit;
-                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.START_DESTROY_BLOCK, currentTarget, facing));
-                mc.thePlayer.swingItem();
-                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.STOP_DESTROY_BLOCK, currentTarget, facing));
-                currentState = State.SWITCHING_TARGET;
-            }
-            // 如果没对准，就在下一tick再次尝试瞬时旋转和发送
+    private void handleValidation() {
+        if (blockToValidate == null) {
+            currentState = State.SWITCHING_TARGET;
             return;
         }
         
-        // --- SIMULATE 和 PACKET_NORMAL 模式的共享旋转逻辑 ---
-        float[] targetRots = RotationUtil.getRotations(bestPointToLookAt);
-        if (GhostConfig.AutoMine.instantRotation) {
-            mc.thePlayer.rotationYaw = targetRots[0];
-            mc.thePlayer.rotationPitch = targetRots[1];
-        } else {
-            float[] smoothRots = RotationUtil.getSmoothRotations(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, targetRots[0], targetRots[1], (float) GhostConfig.AutoMine.rotationSpeed);
-            mc.thePlayer.rotationYaw = smoothRots[0];
-            mc.thePlayer.rotationPitch = smoothRots[1];
-        }
+        validationTicks++;
 
-        MovingObjectPosition mouseOver = mc.objectMouseOver;
-        boolean isCrosshairOnTarget = mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget);
-
-        if (currentMiningMode == MiningMode.SIMULATE) {
-            if (isCrosshairOnTarget) {
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), true);
+        if (validationTicks >= VALIDATION_DELAY_TICKS) {
+            IBlockState state = mc.theWorld.getBlockState(blockToValidate);
+            if (state.getBlock() == Blocks.air) {
+                // 成功
+                currentState = State.SWITCHING_TARGET;
             } else {
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
+                // 失败，检测到回弹
+                handleRollbackDetected();
             }
-        } else { // 仅处理 PACKET_NORMAL
-            KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
-            
-            if (!isCrosshairOnTarget) {
-                return; 
-            }
-            
-            EnumFacing facing = mouseOver.sideHit;
-
-            if (!currentTarget.equals(lastPacketTarget)) {
-                breakProgress = 0.0F; 
-                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.START_DESTROY_BLOCK, currentTarget, facing));
-                lastPacketTarget = currentTarget;
-            }
-            
-            mc.thePlayer.swingItem();
-            
-            float hardness = targetBlockState.getBlock().getPlayerRelativeBlockHardness(mc.thePlayer, mc.theWorld, currentTarget);
-            breakProgress += hardness;
-            
-            if (breakProgress >= 1.0f) {
-                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.STOP_DESTROY_BLOCK, currentTarget, facing));
-                currentState = State.SWITCHING_TARGET; 
-            }
+            blockToValidate = null;
         }
+    }
+    
+    private void handleRollbackDetected() {
+        // 将导致回弹的方块加入黑名单
+        unmineableBlacklist.put(blockToValidate, mc.theWorld.getBlockState(blockToValidate).getBlock());
+        // 立即停止所有活动
+        reset();
+        
+        awaitingRollbackConfirmation = true;
+
+        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "====================================================="));
+        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD.toString() + EnumChatFormatting.BOLD + "      " + LangUtil.translate("ghost.automine.rollback.title")));
+        mc.thePlayer.addChatMessage(new ChatComponentText(" "));
+        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.rollback.description")));
+        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.rollback.advice")));
+        mc.thePlayer.addChatMessage(new ChatComponentText(" "));
+
+        ChatComponentText optionsMessage = new ChatComponentText(EnumChatFormatting.WHITE + LangUtil.translate("ghost.automine.rollback.question"));
+        
+        // 选项1: 继续 (临时禁用)
+        ChatComponentText continueButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.continue"));
+        continueButton.setChatStyle(
+            continueButton.getChatStyle()
+                .setColor(EnumChatFormatting.GREEN)
+                .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback continue"))
+        );
+
+        // 选项2: 永久禁用
+        ChatComponentText disableButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.disable"));
+        disableButton.setChatStyle(
+            disableButton.getChatStyle()
+                .setColor(EnumChatFormatting.GOLD)
+                .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback disable"))
+        );
+
+        // 选项3: 停止
+        ChatComponentText stopButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.stop"));
+        stopButton.setChatStyle(
+            stopButton.getChatStyle()
+                .setColor(EnumChatFormatting.RED)
+                .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback stop"))
+        );
+
+        optionsMessage.appendSibling(continueButton);
+        optionsMessage.appendSibling(new ChatComponentText("  "));
+        optionsMessage.appendSibling(disableButton);
+        optionsMessage.appendSibling(new ChatComponentText("  "));
+        optionsMessage.appendSibling(stopButton);
+        
+        mc.thePlayer.addChatMessage(optionsMessage);
+        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "====================================================="));
     }
 
     private boolean checkTimeout(Block blockAtTarget) {
