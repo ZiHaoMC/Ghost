@@ -211,6 +211,12 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoMineRandomMoveIntervalVariability", GhostConfig.AutoMine.randomMoveIntervalVariability));
         sender.addChatMessage(formatSettingLine("autoMineMiningMode", GhostConfig.AutoMine.miningMode));
         sender.addChatMessage(formatSettingLine("autoMineAntiCheatCheck", GhostConfig.AutoMine.antiCheatCheck));
+        
+        sender.addChatMessage(formatSettingLine("autoCraftPlacementDelay", GhostConfig.AutoCraft.autoCraftPlacementDelayTicks));
+        sender.addChatMessage(formatSettingLine("autoCraftCycleDelay", GhostConfig.AutoCraft.autoCraftCycleDelayTicks));
+        sender.addChatMessage(formatSettingLine("autoCraftMenuOpenDelay", GhostConfig.AutoCraft.autoCraftMenuOpenDelayTicks));
+        sender.addChatMessage(formatSettingLine("autoCraftTableOpenDelay", GhostConfig.AutoCraft.autoCraftTableOpenDelayTicks));
+        sender.addChatMessage(formatSettingLine("autoCraftPickupStashWait", GhostConfig.AutoCraft.autoCraftPickupStashWaitTicks));
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
@@ -312,6 +318,11 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveIntervalVariability " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "0-1000") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineMiningMode " + tx + "(SIMULATE/PACKET_NORMAL/PACKET_INSTANT) - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineMiningMode")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineAntiCheatCheck " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineAntiCheatCheck")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoCraftPlacementDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-100") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftPlacementDelay")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoCraftCycleDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-200") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftCycleDelay")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoCraftMenuOpenDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-100") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftMenuOpenDelay")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoCraftTableOpenDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-100") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftTableOpenDelay")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoCraftPickupStashWait " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "10-200") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftPickupStashWait")));
 
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.examples.header")));
@@ -344,6 +355,8 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMinePreventDiggingDown false"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineRandomMoveInterval 200"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineMiningMode PACKET_NORMAL"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoCraftPlacementDelay 5"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoCraftCycleDelay 20"));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.aliases") + ": " + hl + String.join(", ", getCommandAliases())));
     }
@@ -410,6 +423,16 @@ public class GhostConfigCommand extends CommandBase {
                     return CommandBase.getListOfStringsMatchingLastWord(args, "10", "20", "50", "100");
                 case "automineminingmode":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "SIMULATE", "PACKET_NORMAL", "PACKET_INSTANT");
+                case "autocraftplacementdelay":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "1", "3", "5", "10");
+                case "autocraftcycledelay":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "5", "10", "15", "20");
+                case "autocraftmenuopendelay":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "10", "15", "20");
+                case "autocrafttableopendelay":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "10", "15", "20");
+                case "autocraftpickupstashwait":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "5", "10", "20");
             }
         }
         return Collections.emptyList();

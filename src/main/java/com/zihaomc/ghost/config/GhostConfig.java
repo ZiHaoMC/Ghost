@@ -37,6 +37,7 @@ public class GhostConfig {
     public static final String CATEGORY_NOTE = "note_taking";
     public static final String CATEGORY_GUI_TWEAKS = "gui_tweaks";
     public static final String CATEGORY_AUTO_MINE = "auto_mine_feature";
+    public static final String CATEGORY_AUTO_CRAFT = "auto_craft_feature";
 
     // --- 用于命令的统一配置更新器 ---
     public static final Map<String, BiConsumer<String, String>> settingUpdaters = new HashMap<>();
@@ -134,7 +135,15 @@ public class GhostConfig {
         public static int randomMoveIntervalVariability;
         public static boolean enableVeinMining;
         public static String miningMode;
-        public static boolean antiCheatCheck; // 新增配置项
+        public static boolean antiCheatCheck;
+    }
+
+    public static class AutoCraft {
+        public static int autoCraftPlacementDelayTicks;
+        public static int autoCraftCycleDelayTicks;
+        public static int autoCraftMenuOpenDelayTicks;
+        public static int autoCraftTableOpenDelayTicks;
+        public static int autoCraftPickupStashWaitTicks;
     }
 
     // --- 核心方法 ---
@@ -164,6 +173,7 @@ public class GhostConfig {
         loadNoteTakingSettings();
         loadGuiTweaksSettings();
         loadAutoMineSettings();
+        loadAutoCraftSettings();
 
         if (config.hasChanged()) {
             config.save();
@@ -264,7 +274,15 @@ public class GhostConfig {
         AutoMine.randomMoveIntervalVariability = loadInt(CATEGORY_AUTO_MINE, "randomMoveIntervalVariability", 100, 0, 1000, "ghost.config.comment.autoMineRandomMoveIntervalVariability");
         AutoMine.enableVeinMining = loadBoolean(CATEGORY_AUTO_MINE, "enableVeinMining", true, "ghost.config.comment.autoMineEnableVeinMining");
         AutoMine.miningMode = loadString(CATEGORY_AUTO_MINE, "miningMode", "SIMULATE", "ghost.config.comment.autoMineMiningMode");
-        AutoMine.antiCheatCheck = loadBoolean(CATEGORY_AUTO_MINE, "antiCheatCheck", true, "ghost.config.comment.autoMineAntiCheatCheck"); // 新增
+        AutoMine.antiCheatCheck = loadBoolean(CATEGORY_AUTO_MINE, "antiCheatCheck", true, "ghost.config.comment.autoMineAntiCheatCheck");
+    }
+
+    private static void loadAutoCraftSettings() {
+        AutoCraft.autoCraftPlacementDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftPlacementDelayTicks", 1, 1, 100, "ghost.config.comment.autoCraftPlacementDelay");
+        AutoCraft.autoCraftCycleDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftCycleDelayTicks", 5, 1, 200, "ghost.config.comment.autoCraftCycleDelay");
+        AutoCraft.autoCraftMenuOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftMenuOpenDelayTicks", 5, 1, 200, "ghost.config.comment.autoCraftMenuOpenDelay");
+        AutoCraft.autoCraftTableOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftTableOpenDelayTicks", 8, 1, 200, "ghost.config.comment.autoCraftTableOpenDelay");
+        AutoCraft.autoCraftPickupStashWaitTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftPickupStashWaitTicks", 5, 1, 200, "ghost.config.comment.autoCraftPickupStashWait");
     }
 
     // --- 加载辅助方法 ---
@@ -514,11 +532,35 @@ public class GhostConfig {
         }
     }
     
-    // 新增 Setter
     public static void setAutoMineAntiCheatCheck(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "antiCheatCheck", value, () -> AutoMine.antiCheatCheck = value);
     }
     
+    public static void setAutoCraftPlacementDelayTicks(int value) {
+        if (value < 1 || value > 100) return;
+        updateAndSave(CATEGORY_AUTO_CRAFT, "autoCraftPlacementDelayTicks", value, () -> AutoCraft.autoCraftPlacementDelayTicks = value);
+    }
+
+    public static void setAutoCraftCycleDelayTicks(int value) {
+        if (value < 1 || value > 200) return;
+        updateAndSave(CATEGORY_AUTO_CRAFT, "autoCraftCycleDelayTicks", value, () -> AutoCraft.autoCraftCycleDelayTicks = value);
+    }
+
+    public static void setAutoCraftMenuOpenDelayTicks(int value) {
+        if (value < 1 || value > 100) return;
+        updateAndSave(CATEGORY_AUTO_CRAFT, "autoCraftMenuOpenDelayTicks", value, () -> AutoCraft.autoCraftMenuOpenDelayTicks = value);
+    }
+    
+    public static void setAutoCraftTableOpenDelayTicks(int value) {
+        if (value < 1 || value > 100) return;
+        updateAndSave(CATEGORY_AUTO_CRAFT, "autoCraftTableOpenDelayTicks", value, () -> AutoCraft.autoCraftTableOpenDelayTicks = value);
+    }
+
+    public static void setAutoCraftPickupStashWaitTicks(int value) {
+        if (value < 1 || value > 200) return;
+        updateAndSave(CATEGORY_AUTO_CRAFT, "autoCraftPickupStashWaitTicks", value, () -> AutoCraft.autoCraftPickupStashWaitTicks = value);
+    }
+
     public static Configuration getConfig() {
         return config;
     }
@@ -575,7 +617,13 @@ public class GhostConfig {
         settingUpdaters.put("autominerandommoveintervalvariability", (k, v) -> setAutoMineRandomMoveIntervalVariability(parseInt(v)));
         settingUpdaters.put("automineenableveinmining", (k, v) -> setAutoMineEnableVeinMining(parseBoolean(v)));
         settingUpdaters.put("automineminingmode", (k, v) -> setAutoMineMiningMode(v));
-        settingUpdaters.put("automineanticheatcheck", (k, v) -> setAutoMineAntiCheatCheck(parseBoolean(v))); // 新增
+        settingUpdaters.put("automineanticheatcheck", (k, v) -> setAutoMineAntiCheatCheck(parseBoolean(v)));
+        
+        settingUpdaters.put("autocraftplacementdelay", (k, v) -> setAutoCraftPlacementDelayTicks(parseInt(v)));
+        settingUpdaters.put("autocraftcycledelay", (k, v) -> setAutoCraftCycleDelayTicks(parseInt(v)));
+        settingUpdaters.put("autocraftmenuopendelay", (k, v) -> setAutoCraftMenuOpenDelayTicks(parseInt(v)));
+        settingUpdaters.put("autocrafttableopendelay", (k, v) -> setAutoCraftTableOpenDelayTicks(parseInt(v)));
+        settingUpdaters.put("autocraftpickupstashwait", (k, v) -> setAutoCraftPickupStashWaitTicks(parseInt(v)));
     }
     
     // --- 解析辅助方法 ---

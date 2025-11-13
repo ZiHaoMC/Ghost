@@ -133,6 +133,23 @@ ghost.automine.feedback.stop=自动挖掘将保持停止状态。
 
 
 # ==================================
+# ===      自动合成 (AutoCraft)    ===
+# ==================================
+ghost.autocraft.command.usage=§c用法: /autocraft <start|stop>
+ghost.autocraft.status.enabled=§a自动合成已启动。
+ghost.autocraft.status.disabled=§c自动合成已停止。
+ghost.autocraft.status.running=§e自动合成功能已在运行中。
+ghost.autocraft.status.not_running=§e自动合成功能当前未运行。
+ghost.autocraft.error.no_mithril=§cMithril 不足，正在尝试执行 /pickupstash...
+ghost.autocraft.error.no_nether_star=§c错误: 物品栏第9格没有找到下界之星！自动合成已停止。
+ghost.autocraft.error.gui_timeout=§c错误: 打开界面超时，自动合成已停止。
+ghost.autocraft.error.craft_timeout=§c错误: 等待合成结果超时！
+ghost.autocraft.error.pickup_timeout=§c错误: 等待成品槽清空超时！
+log.handler.registered.autoCraft=自动合成事件处理器 (AutoCraftHandler) 已注册。
+log.command.registered.autoCraft=AutoCraftCommand (/autocraft) 已注册。
+
+
+# ==================================
 # ===        翻译功能          ===
 # ==================================
 # 在线翻译命令
@@ -192,7 +209,7 @@ ghostblock.commands.error.unloaded=错误: 目标坐标所在区块未加载。
 ghostblock.commands.error.out_of_world=错误: 目标坐标超出了世界边界 (Y轴应在 0-255 之间)。
 ghostblock.commands.error.invalid_coordinate_format=错误: 无效的坐标格式 '%1$s'。
 ghostblock.commands.task.cancelled_world_change=警告: 由于世界更改/卸载，所有活动任务已被取消。
-ghostblock.commands.error.internal_sync_place_failed=内部错误：同步放置方块时出错，请检查日志。 位置: %s
+ghost.commands.error.internal_sync_place_failed=内部错误：同步放置方块时出错，请检查日志。 位置: %s
 
 # ==================================
 # ===       /cgb 命令族       ===
@@ -308,7 +325,7 @@ ghostblock.commands.cghostblock.help.subcommand.load=从文件加载幽灵方块
 ghostblock.commands.cghostblock.help.subcommand.clear=清除幽灵方块 (从文件或当前世界)。
 ghostblock.commands.cghostblock.help.subcommand.cancel=取消正在运行的后台任务 (fill/load/clear)。
 ghostblock.commands.cghostblock.help.subcommand.resume=恢复一个已暂停的任务。
-ghostblock.commands.cghostblock.help.subcommand.undo=撤销上一次或指定的 set/fill/load/clear 操作。
+ghost.commands.cghostblock.help.subcommand.undo=撤销上一次或指定的 set/fill/load/clear 操作。
 ghostblock.commands.cghostblock.help.subcommand.history=显示可供撤销的操作历史记录。
 ghostblock.commands.cghostblock.help.aliases=别名
 
@@ -370,6 +387,11 @@ ghost.config.comment.autoMineRandomMoveDuration=每次随机移动的持续时�
 ghost.config.comment.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。最终间隔将在 [interval - variability, interval + variability] 之间。
 ghost.config.comment.autoMineMiningMode=设置自动挖掘的模式。SIMULATE: 模拟玩家按键; PACKET_NORMAL: 发送数据包挖掘并等待方块消失; PACKET_INSTANT: 发送数据包后立即切换目标。
 ghost.config.comment.autoMineAntiCheatCheck=启用自动挖掘数据包模式下的反作弊回弹检测。默认开启，以提高安全性。
+ghost.config.comment.autoCraftPlacementDelay=自动合成时，每次放置单个物品并确认成功后的等待时间（游戏刻, 20刻=1秒）。用于防止服务器速率限制。
+ghost.config.comment.autoCraftCycleDelay=自动合成时，完成一次完整合成循环（拿取成品）后，开始下一次循环前的等待时间（游戏刻, 20刻=1秒）。
+ghost.config.comment.autoCraftMenuOpenDelay=自动合成时，点击下界之星后，等待SkyBlock菜单加载的延迟时间（游戏刻）。
+ghost.config.comment.autoCraftTableOpenDelay=自动合成时，点击工作台图标后，等待合成界面加载的延迟时间（游戏刻）。
+ghost.config.comment.autoCraftPickupStashWait=自动合成时，执行/pickupstash命令后，等待物品进入背包的延迟时间（游戏刻）。
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -378,7 +400,7 @@ ghostblock.commands.gconfig.usage.extended=用法: /gconfig [选项名] [值] �
 ghostblock.commands.gconfig.error.invalid_setting.all_options=错误: 未知的配置选项 '%1$s'。
 ghostblock.commands.gconfig.error.invalid_value.boolean=错误: 无效的布尔值 '%1$s'。请输入 'true' 或 'false'。
 ghostblock.commands.gconfig.error.invalid_value.integer=错误: 无效的整数值 '%1$s'。
-ghostblock.commands.gconfig.error.invalid_value.integer.positive=错误: 无效的整数值 '%1$s'。请输入一个大于 0 的整数。
+ghost.commands.gconfig.error.invalid_value.integer.positive=错误: 无效的整数值 '%1$s'。请输入一个大于 0 的整数。
 ghostblock.commands.gconfig.error.invalid_value.double=错误: 无效的浮点数值 '%1$s'。
 ghostblock.commands.gconfig.error.invalid_value.double.range=错误: 无效的浮点数值 '%1$s'。请输入一个在 %2$.2f 和 %3$.2f 之间的小数。
 ghostblock.commands.gconfig.error.generic_set_failed=错误: 设置配置选项 '%1$s' 失败。
@@ -452,6 +474,11 @@ ghost.commands.gconfig.help.setting.autoMineRandomMoveDuration=每次随机移�
 ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。
 ghost.commands.gconfig.help.setting.autoMineMiningMode=设置自动挖掘的模式。
 ghost.commands.gconfig.help.setting.autoMineAntiCheatCheck=启用自动挖掘的反作弊回弹检测。
+ghost.commands.gconfig.help.setting.autoCraftPlacementDelay=设置自动合成中每次放置物品间的延迟。
+ghost.commands.gconfig.help.setting.autoCraftCycleDelay=设置自动合成中每个完整循环间的延迟。
+ghost.commands.gconfig.help.setting.autoCraftMenuOpenDelay=设置打开SkyBlock菜单后的等待延迟。
+ghost.commands.gconfig.help.setting.autoCraftTableOpenDelay=设置打开合成界面后的等待延迟。
+ghost.commands.gconfig.help.setting.autoCraftPickupStashWait=设置/pickupstash命令后的等待延迟。
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
@@ -693,7 +720,7 @@ log.debug.fill.check.ebs.skipped=跳过 EBS 检查 (批处理模式: %b)。
 log.debug.fill.decision.final=最终决策: useBatch=%b, implicitBatchRequired=%b
 log.debug.fill.exec.batch=执行批处理填充。
 log.debug.fill.exec.batch.implicit.configSize=隐式批处理触发，使用配置的强制大小: %d
-log.debug.fill.exec.batch.implicit.defaultSize=隐式批处理触发，使用默认大小 100。
+log.gdebug.fill.exec.batch.implicit.defaultSize=隐式批处理触发，使用默认大小 100。
 log.debug.fill.exec.batch.task.started=启动填充任务 #%d，批次大小: %d
 log.debug.fill.exec.sync=执行同步填充。
 log.debug.fill.exec.sync.complete=同步填充耗时 %d ms，处理了 %d 个方块。

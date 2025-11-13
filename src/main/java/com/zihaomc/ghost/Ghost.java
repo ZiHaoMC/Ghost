@@ -1,10 +1,12 @@
 package com.zihaomc.ghost;
 
+import com.zihaomc.ghost.features.autocraft.AutoCraftCommand;
 import com.zihaomc.ghost.commands.AutoMineCommand;
 import com.zihaomc.ghost.commands.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.features.autocraft.AutoCraftHandler;
 import com.zihaomc.ghost.features.automine.AutoMineHandler;
 import com.zihaomc.ghost.handlers.*;
 import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
@@ -88,6 +90,9 @@ public class Ghost {
 
             MinecraftForge.EVENT_BUS.register(new AutoMineHandler());
             LogUtil.debug("log.handler.registered.autoMine");
+
+            MinecraftForge.EVENT_BUS.register(new AutoCraftHandler());
+            LogUtil.debug("log.handler.registered.autoCraft");
             
             MinecraftForge.EVENT_BUS.register(new GhostBlockEventHandler());
             LogUtil.debug("log.handler.registered.ghostBlockCommand");
@@ -127,6 +132,9 @@ public class Ghost {
 
             ClientCommandHandler.instance.registerCommand(new AutoMineCommand());
             LogUtil.debug("log.command.registered.autoMine");
+
+            ClientCommandHandler.instance.registerCommand(new AutoCraftCommand());
+            LogUtil.debug("log.command.registered.autoCraft");
 
         } else {
             LogUtil.debug("log.command.skipping.server");
