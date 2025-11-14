@@ -29,6 +29,7 @@ public class AutoCraftHandler {
         CHECK_SUPPLIES,
         GET_SUPPLIES,
         WAIT_FOR_SUPPLIES,
+        FINAL_CHECK,
         OPEN_MENU,
         WAIT_FOR_MENU_GUI,
         CLICK_CRAFT_TABLE,
@@ -188,7 +189,19 @@ public class AutoCraftHandler {
 
                 case WAIT_FOR_SUPPLIES:
                     LogUtil.info("[AutoCraft] Waiting for supplies to be picked up.");
-                    setState(State.CHECK_SUPPLIES);
+                    setState(State.FINAL_CHECK);
+                    break;
+
+                case FINAL_CHECK:
+                    int finalMithrilCount = getMithrilCount();
+                    LogUtil.info("[AutoCraft] Final supply check. Found " + finalMithrilCount + " Mithril. Required: " + REQUIRED_MITHRIL_AMOUNT);
+                    if (finalMithrilCount >= REQUIRED_MITHRIL_AMOUNT) {
+                        setState(State.OPEN_MENU);
+                    } else {
+                        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.insufficient_after_stash")));
+                        LogUtil.error("[AutoCraft] Insufficient Mithril after picking up stash. Stopping.");
+                        stop();
+                    }
                     break;
 
                 case OPEN_MENU:

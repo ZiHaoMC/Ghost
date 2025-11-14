@@ -141,6 +141,7 @@ ghost.autocraft.status.disabled=§c自动合成已停止。
 ghost.autocraft.status.running=§e自动合成功能已在运行中。
 ghost.autocraft.status.not_running=§e自动合成功能当前未运行。
 ghost.autocraft.error.no_mithril=§cMithril 不足，正在尝试执行 /pickupstash...
+ghost.autocraft.error.insufficient_after_stash=§c从收藏品中取出后 Mithril 仍然不足！自动合成已停止。
 ghost.autocraft.error.no_nether_star=§c错误: 物品栏第9格没有找到下界之星！自动合成已停止。
 ghost.autocraft.error.gui_timeout=§c错误: 打开界面超时，自动合成已停止。
 ghost.autocraft.error.craft_timeout=§c错误: 等待合成结果超时！
