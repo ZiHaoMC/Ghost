@@ -226,6 +226,24 @@ ghostblock.commands.error.invalid_coordinate_format=错误: 无效的坐标格�
 ghostblock.commands.task.cancelled_world_change=警告: 由于世界更改/卸载，所有活动任务已被取消。
 ghost.commands.error.internal_sync_place_failed=内部错误：同步放置方块时出错，请检查日志。 位置: %s
 
+# 自动挖矿Mithril优化
+ghost.config.comment.autoMineMithrilOptimization=如果启用，将为Hypixel Skyblock的Mithril和Titanium挖矿激活特殊逻辑。
+ghost.config.comment.autoMineTitaniumBlockIds=在优化模式下，被视作Titanium的方块ID列表 (例如: minecraft:stone:4)。
+ghost.config.comment.autoMineMithrilCleanupThreshold=当附近的Titanium矿石数量达到此阈值时，进入清理模式。
+ghost.config.comment.autoMineEnableToolSwitching=如果启用，Mod将为不同目标自动切换最强/最弱的工具。如果禁用，则仅验证当前手持工具的破坏等级。
+
+ghost.commands.gconfig.help.setting.autoMineMithrilOptimization=开关Mithril/Titanium挖矿优化逻辑。
+ghost.commands.gconfig.help.setting.autoMineEnableToolSwitching=开关在优化模式下的自动工具切换功能。
+ghost.commands.gconfig.help.setting.autoMineMithrilCleanupThreshold=设置触发清理模式所需的Titanium数量。
+
+ghost.automine.error.no_tool_found=未在快捷栏中找到破坏等级(Breaking Power) >= %s 的工具。自动挖矿已停止。
+ghost.automine.error.tool_too_weak=你当前的工具 (BP %s) 不足以挖掘目标 (需要 BP %s 来挖掘 %s)。自动挖矿已停止。
+ghost.automine.warning.no_titanium_tool=警告：快捷栏中未找到破坏等级 >= 5 的工具。将会忽略所有Titanium。
+ghost.automine.warning.no_mithril_targets=Mithril优化已启用，但目标列表中未发现Mithril矿石。优化功能在本轮挂机中将不会生效。
+ghost.automine.status.cleanup_start=Titanium数量达到阈值，进入清理模式...
+ghost.automine.status.cleanup_complete=清理完成，恢复Mithril优先挖掘。
+ghost.automine.warning.tool_too_weak_for_cleanup=你当前的工具破坏等级不足以清理Titanium (需要 BP 5+)。在本轮挂机中将会忽略所有Titanium。
+
 # ==================================
 # ===       /cgb 命令族       ===
 # ==================================

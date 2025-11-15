@@ -65,7 +65,7 @@ public class GhostConfigCommand extends CommandBase {
         }
 
         String command = args[0].toLowerCase();
-        
+
         // 处理 /gconfig help
         if ("help".equalsIgnoreCase(command)) {
             displayHelp(sender);
@@ -90,19 +90,19 @@ public class GhostConfigCommand extends CommandBase {
                 sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.gconfig.success.key_cleared"));
                 return;
             }
-            
+
             // 修改配置项至少需要提供一个值
             if (args.length < 2) {
                 throw new WrongUsageException(getCommandUsage(sender));
             }
-            
+
             // 拼接值，以支持带空格的字符串值
             String valueStr = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
             try {
                 // 从映射中获取并执行对应的 Lambda 更新器
                 GhostConfig.settingUpdaters.get(settingKey).accept(settingName, valueStr);
-                
+
                 // 为特定配置项提供特殊的反馈消息
                 if (settingKey.equals("niutransapikey")) {
                     sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.gconfig.success.key_set"));
@@ -137,17 +137,17 @@ public class GhostConfigCommand extends CommandBase {
         feedback.getChatStyle().setColor(newState ? EnumChatFormatting.GREEN : EnumChatFormatting.RED);
         sender.addChatMessage(feedback);
     }
-    
+
     /**
      * 在聊天框中显示所有当前的配置项及其值。
      */
     private void displayCurrentSettings(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.current_settings.header")
                 .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.AQUA)));
-        
+
         sender.addChatMessage(formatSettingLine("alwaysBatchFill", GhostConfig.FillCommand.alwaysBatchFill));
         sender.addChatMessage(formatSettingLine("forcedBatchSize", GhostConfig.FillCommand.forcedBatchSize));
-        
+
         sender.addChatMessage(formatSettingLine("enableAutoSave", GhostConfig.SaveOptions.enableAutoSave));
         String displayFileName = GhostConfig.SaveOptions.defaultSaveFileName;
         if (displayFileName == null || displayFileName.trim().isEmpty()) {
@@ -166,7 +166,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoSneakVerticalCheckDepth", String.format("%.2f", GhostConfig.AutoSneak.autoSneakVerticalCheckDepth)));
 
         sender.addChatMessage(formatSettingLine("enablePlayerESP", GhostConfig.PlayerESP.enablePlayerESP));
-        
+
         sender.addChatMessage(formatSettingLine("enableBedrockMiner", GhostConfig.BedrockMiner.enableBedrockMiner));
 
         sender.addChatMessage(formatSettingLine("fastPistonBreaking", GhostConfig.GameplayTweaks.fastPistonBreaking));
@@ -211,10 +211,13 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoMineRandomMoveIntervalVariability", GhostConfig.AutoMine.randomMoveIntervalVariability));
         sender.addChatMessage(formatSettingLine("autoMineMiningMode", GhostConfig.AutoMine.miningMode));
         sender.addChatMessage(formatSettingLine("autoMineAntiCheatCheck", GhostConfig.AutoMine.antiCheatCheck));
-        // --- 新增显示 ---
         sender.addChatMessage(formatSettingLine("autoMineVoidSafetyCheck", GhostConfig.AutoMine.enableVoidSafetyCheck));
         sender.addChatMessage(formatSettingLine("autoMineVoidSafetyYLimit", GhostConfig.AutoMine.voidSafetyYLimit));
-        
+
+        sender.addChatMessage(formatSettingLine("autoMineMithrilOptimization", GhostConfig.AutoMine.enableMithrilOptimization));
+        sender.addChatMessage(formatSettingLine("autoMineEnableToolSwitching", GhostConfig.AutoMine.enableAutomaticToolSwitching));
+        sender.addChatMessage(formatSettingLine("autoMineMithrilCleanupThreshold", GhostConfig.AutoMine.mithrilCleanupThreshold));
+
         sender.addChatMessage(formatSettingLine("autoCraftPlacementDelay", GhostConfig.AutoCraft.autoCraftPlacementDelayTicks));
         sender.addChatMessage(formatSettingLine("autoCraftCycleDelay", GhostConfig.AutoCraft.autoCraftCycleDelayTicks));
         sender.addChatMessage(formatSettingLine("autoCraftMenuOpenDelay", GhostConfig.AutoCraft.autoCraftMenuOpenDelayTicks));
@@ -303,7 +306,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
         sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
         sender.addChatMessage(new ChatComponentText(op + "  translationTargetLang " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationTargetLang")));
-        
+
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRotationSpeed " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.double_range", "1.0-180.0") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRotationSpeed")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineSpeedVariability " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.double_range", "0.0-20.0") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineSpeedVariability")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineEnableRandomSpeed " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineEnableRandomSpeed")));
@@ -321,9 +324,12 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveIntervalVariability " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "0-1000") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineMiningMode " + tx + "(SIMULATE/PACKET_NORMAL/PACKET_INSTANT) - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineMiningMode")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineAntiCheatCheck " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineAntiCheatCheck")));
-        // --- 新增显示 ---
         sender.addChatMessage(new ChatComponentText(op + "  autoMineVoidSafetyCheck " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineVoidSafetyCheck")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineVoidSafetyYLimit " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "0-255") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineVoidSafetyYLimit")));
+
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineMithrilOptimization " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineMithrilOptimization")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineEnableToolSwitching " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineEnableToolSwitching")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineMithrilCleanupThreshold " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-50") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineMithrilCleanupThreshold")));
         
         sender.addChatMessage(new ChatComponentText(op + "  autoCraftPlacementDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-100") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftPlacementDelay")));
         sender.addChatMessage(new ChatComponentText(op + "  autoCraftCycleDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-200") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftCycleDelay")));
@@ -381,11 +387,11 @@ public class GhostConfigCommand extends CommandBase {
             return CommandBase.getListOfStringsMatchingLastWord(args, settingNames);
         } else if (args.length == 2) {
             String settingName = args[0].toLowerCase();
-            
+
             if (isBooleanCommand(settingName)) {
                 return CommandBase.getListOfStringsMatchingLastWord(args, "true", "false");
             }
-            
+
             switch (settingName) {
                 case "translationsourcelang":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "auto", "zh", "en", "ja", "ko", "fr", "ru", "de");
@@ -430,10 +436,11 @@ public class GhostConfigCommand extends CommandBase {
                     return CommandBase.getListOfStringsMatchingLastWord(args, "10", "20", "50", "100");
                 case "automineminingmode":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "SIMULATE", "PACKET_NORMAL", "PACKET_INSTANT");
-                // --- 新增 ---
                 case "autominevoidsafetylimit":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "5", "10", "20");
-                
+                case "autominemithrilcleanupthreshold":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "3", "5", "8", "10");
+
                 case "autocraftplacementdelay":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "1", "3", "5", "10");
                 case "autocraftcycledelay":
@@ -448,18 +455,16 @@ public class GhostConfigCommand extends CommandBase {
         }
         return Collections.emptyList();
     }
-    
+
     /**
      * 辅助方法，用于判断一个设置项是否是布尔类型，以便提供正确的 tab 补全。
      * @param key 设置项的名称 (小写)
      * @return 如果是布尔类型则为 true
      */
     private boolean isBooleanCommand(String key) {
-        // 使用精确的key来判断，避免误判
         return key.startsWith("enable") || key.startsWith("always") || key.startsWith("disable") ||
                key.startsWith("show") || key.startsWith("hide") ||
-               // auto开头的布尔值需要单独列出
-               key.equals("autoShowCachedTranslation") || 
+               key.equals("autoShowCachedTranslation") ||
                key.equals("headlesspistonmode") || key.equals("blinkduringtaskstick") ||
                key.equals("fastpistonbreaking") || key.equals("fixguistatelossonresize") ||
                key.equals("automineserverrotation") || key.equals("automineinstantrotation") ||
@@ -467,6 +472,8 @@ public class GhostConfigCommand extends CommandBase {
                key.equals("automineenablerandomspeed") || key.equals("autominepreventdiggingdown") ||
                key.equals("automineenableveinmining") ||
                key.equals("automineanticheatcheck") ||
-               key.equals("autominevoidsafetycheck"); // 新增
+               key.equals("autominevoidsafetycheck") ||
+               key.equals("autominemithriloptimization") ||
+               key.equals("automineenabletoolswitching");
     }
 }

@@ -10,14 +10,21 @@ import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.event.ClickEvent;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.*;
+import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * "Auto Mine" 功能的核心处理器。
@@ -25,6 +32,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * 同时处理反作弊回弹检测。
  */
 public class AutoMineHandler {
+
+    // 您可以在这里调整切换工具后的等待时间（以游戏刻为单位，20 ticks = 1秒）
+    private static final int TOOL_SWITCH_DELAY_TICKS = 5;
 
     public enum MiningMode {
         SIMULATE,
@@ -37,7 +47,8 @@ public class AutoMineHandler {
         SWITCHING_TARGET,
         MINING,
         WAITING,
-        VALIDATING_BREAK // 新增状态：用于验证方块是否真的被破坏
+        VALIDATING_BREAK,
+        POST_SWITCH_DELAY // 新增：工具切换后的延迟状态
     }
 
     private static final Minecraft mc = Minecraft.getMinecraft();
@@ -45,6 +56,7 @@ public class AutoMineHandler {
     private static BlockPos currentTarget = null;
     private static State currentState = State.IDLE;
     private int waitTicks = 0;
+    private int delayTicks = 0; // 用于新状态的计时器
 
     private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
     private Long miningStartTime = null;
@@ -60,17 +72,27 @@ public class AutoMineHandler {
 
     private static IMiningStrategy currentStrategy = new SimulateMiningStrategy();
     private static MiningMode currentMiningMode = MiningMode.SIMULATE;
-    
+
     private static boolean isPausedByGui = false;
-    
-    // --- 反作弊回弹检测相关 ---
+
     private static BlockPos blockToValidate = null;
     private static int validationTicks = 0;
-    private static final int VALIDATION_DELAY_TICKS = 8; // 等待 8 ticks (0.4秒) 来确认方块破坏
+    private static final int VALIDATION_DELAY_TICKS = 8;
     private static boolean awaitingRollbackConfirmation = false;
-    private static int packetBreaksSinceStart = 0; // 新增：计数器，记录开始后数据包挖掘的次数
-    private static final int CHECKS_TO_PERFORM = 3; // 新增：只检查前3次挖掘
-    private static boolean checksTemporarilyDisabled = false; // 新增：在本轮游戏中临时禁用检查
+    private static int packetBreaksSinceStart = 0;
+    private static final int CHECKS_TO_PERFORM = 3;
+    private static boolean checksTemporarilyDisabled = false;
+
+    private static final Set<AutoMineTargetManager.BlockData> titaniumBlockTypes = new HashSet<>();
+    private static final Set<String> MITHRIL_ORE_IDS = new HashSet<>(Arrays.asList(
+            "minecraft:wool:7", "minecraft:prismarine", "minecraft:wool:11", "minecraft:stained_hardened_clay:9"
+    ));
+    private static int originalSlot = -1;
+    private static final Pattern BREAKING_POWER_PATTERN = Pattern.compile("Breaking Power (\\d+)");
+    private static boolean isCleanupMode = false;
+    private static boolean mithrilOptimizationIsActive = false;
+    private static boolean cleanupToolTooWeakNotified = false;
+    private static BlockPos lastSkippedBlock = null;
 
     public static void toggle() {
         if (awaitingRollbackConfirmation) {
@@ -78,24 +100,24 @@ public class AutoMineHandler {
             return;
         }
 
-        if (!isActive && AutoMineTargetManager.getCurrentTargetBlocks().isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
+        boolean hasAnyTargets = !AutoMineTargetManager.getCurrentTargetBlocks().isEmpty() || !AutoMineTargetManager.targetBlockTypes.isEmpty();
+        if (!isActive && !hasAnyTargets) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.no_targets_set")));
             return;
         }
 
         isActive = !isActive;
         isPausedByGui = false;
-        
+
         String status = isActive ? EnumChatFormatting.GREEN + LangUtil.translate("ghost.generic.enabled") : EnumChatFormatting.RED + LangUtil.translate("ghost.generic.disabled");
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.keybind.toggle.automine") + " " + status));
 
         if (isActive) {
+            validateAndActivateMithrilOptimization();
             currentState = State.SWITCHING_TARGET;
-            // <--- 核心修复点之一：只在开始时重置挖掘计数器 ---
             packetBreaksSinceStart = 0;
         } else {
             reset();
-            // <--- 核心修复点之二：只在手动停止时，才重置“临时禁用”状态，为下一次手动开启做准备 ---
             checksTemporarilyDisabled = false;
         }
     }
@@ -115,7 +137,12 @@ public class AutoMineHandler {
         if (currentStrategy != null) {
             currentStrategy.onStopMining();
         }
-        
+
+        if (originalSlot != -1) {
+            mc.thePlayer.inventory.currentItem = originalSlot;
+            originalSlot = -1;
+        }
+
         randomMoveTicks = 0;
         currentMoveDuration = 0;
         currentState = State.IDLE;
@@ -125,26 +152,23 @@ public class AutoMineHandler {
         lastMinedState = null;
         blockToValidate = null;
         validationTicks = 0;
-        // awaitingRollbackConfirmation 在 reset 时不清空，由用户选择决定
+        isCleanupMode = false;
+        mithrilOptimizationIsActive = false;
+        cleanupToolTooWeakNotified = false;
+        lastSkippedBlock = null;
     }
-    
+
     public static void setMiningMode(MiningMode mode) {
         if (currentMiningMode != mode) {
             currentMiningMode = mode;
             GhostConfig.setAutoMineMiningMode(mode.name());
-            
-            switch(mode) {
-                case SIMULATE:
-                    currentStrategy = new SimulateMiningStrategy();
-                    break;
-                case PACKET_NORMAL:
-                    currentStrategy = new PacketNormalMiningStrategy();
-                    break;
-                case PACKET_INSTANT:
-                    currentStrategy = new PacketInstantMiningStrategy();
-                    break;
+
+            switch (mode) {
+                case SIMULATE: currentStrategy = new SimulateMiningStrategy(); break;
+                case PACKET_NORMAL: currentStrategy = new PacketNormalMiningStrategy(); break;
+                case PACKET_INSTANT: currentStrategy = new PacketInstantMiningStrategy(); break;
             }
-            
+
             if (isActive) {
                 reset();
                 toggle();
@@ -166,70 +190,48 @@ public class AutoMineHandler {
 
     public static void setCurrentMiningMode_noMessage(MiningMode mode) {
         currentMiningMode = mode;
-        switch(mode) {
+        switch (mode) {
             case SIMULATE: currentStrategy = new SimulateMiningStrategy(); break;
             case PACKET_NORMAL: currentStrategy = new PacketNormalMiningStrategy(); break;
             case PACKET_INSTANT: currentStrategy = new PacketInstantMiningStrategy(); break;
         }
     }
 
-    public static MiningMode getMiningMode() {
-        return currentMiningMode;
-    }
+    public static MiningMode getMiningMode() { return currentMiningMode; }
+    public static void clearBlacklist() { unmineableBlacklist.clear(); }
+    public static boolean isActive() { return isActive; }
 
-    public static void clearBlacklist() {
-        unmineableBlacklist.clear();
-    }
-
-    public static boolean isActive() {
-        return isActive;
-    }
-    
-    /**
-     * 由策略类调用，用于启动方块破坏的验证流程。
-     * @param pos 刚刚尝试破坏的方块坐标。
-     */
     public static void startValidation(BlockPos pos) {
         packetBreaksSinceStart++;
-        // 核心改动：只有在总开关开启、临时禁用未开启、且检查次数未达上限时才进行验证
         if (GhostConfig.AutoMine.antiCheatCheck && !checksTemporarilyDisabled && packetBreaksSinceStart <= CHECKS_TO_PERFORM) {
             blockToValidate = pos;
             validationTicks = 0;
             currentState = State.VALIDATING_BREAK;
         } else {
-            // 否则直接跳过验证，进入下一个目标
             currentState = State.SWITCHING_TARGET;
         }
     }
-    
-    /**
-     * 由内部命令调用，处理用户对回弹警告的反馈。
-     * @param action 用户选择的操作 ("continue", "disable", 或 "stop")
-     */
+
     public static void onRollbackFeedback(String action) {
         if (!awaitingRollbackConfirmation) return;
-
         awaitingRollbackConfirmation = false;
 
         if ("continue".equalsIgnoreCase(action)) {
-            checksTemporarilyDisabled = true; // <--- 临时禁用检查
+            checksTemporarilyDisabled = true;
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.feedback.continue")));
-            toggle(); // 重新启动
+            toggle();
         } else if ("disable".equalsIgnoreCase(action)) {
-            GhostConfig.setAutoMineAntiCheatCheck(false); // <--- 永久禁用
+            GhostConfig.setAutoMineAntiCheatCheck(false);
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + LangUtil.translate("ghost.automine.feedback.disable")));
-            toggle(); // 重新启动
-        } else { // "stop"
+            toggle();
+        } else {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.feedback.stop")));
-            // 保持停止状态
         }
     }
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || mc.theWorld == null) {
-            return;
-        }
+        if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || mc.theWorld == null) return;
 
         if (currentMiningMode == MiningMode.SIMULATE) {
             if (mc.currentScreen != null) {
@@ -245,9 +247,8 @@ public class AutoMineHandler {
                 }
             }
         }
-        
-        handleMovementKeys();
 
+        handleMovementKeys();
         if (!isActive) {
             if (modIsControllingSneak) {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
@@ -260,7 +261,7 @@ public class AutoMineHandler {
             if (!mc.gameSettings.keyBindSneak.isKeyDown()) {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), true);
             }
-            modIsControllingSneak = true; 
+            modIsControllingSneak = true;
         } else {
             if (modIsControllingSneak) {
                 KeyBinding.setKeyBindState(mc.gameSettings.keyBindSneak.getKeyCode(), false);
@@ -268,36 +269,22 @@ public class AutoMineHandler {
             }
         }
 
-        boolean hasTargets = !AutoMineTargetManager.getCurrentTargetBlocks().isEmpty() || !AutoMineTargetManager.targetBlockTypes.isEmpty();
-        if (!hasTargets) {
-            reset();
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.no_targets_left")));
-            return;
-        }
-
         switch (currentState) {
-            case SWITCHING_TARGET:
-                handleSwitchingTarget();
-                break;
+            case SWITCHING_TARGET: handleSwitchingTarget(); break;
             case WAITING:
                 waitTicks++;
-                if (waitTicks >= 20) { 
-                    currentState = State.SWITCHING_TARGET;
-                }
+                if (waitTicks >= 20) currentState = State.SWITCHING_TARGET;
                 break;
-            case MINING:
-                handleMining();
-                break;
-            case VALIDATING_BREAK:
-                handleValidation();
-                break;
+            case MINING: handleMining(); break;
+            case VALIDATING_BREAK: handleValidation(); break;
+            case POST_SWITCH_DELAY: handlePostSwitchDelay(); break; // 处理新状态
         }
     }
-    
+
     private void handleSwitchingTarget() {
         if (currentStrategy != null) currentStrategy.onStopMining();
         miningStartTime = null;
-        
+
         BlockPos veinTarget = findVeinMineTarget();
         if (veinTarget != null) {
             currentTarget = veinTarget;
@@ -310,61 +297,77 @@ public class AutoMineHandler {
             if (currentStrategy != null) currentStrategy.onStartMining(currentTarget);
             currentState = State.MINING;
         } else {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.status.waiting")));
-            currentState = State.WAITING;
-            waitTicks = 0;
+            if (currentState != State.IDLE) {
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.status.waiting")));
+                currentState = State.WAITING;
+                waitTicks = 0;
+            }
         }
     }
-    
+
     private void handleMining() {
         if (currentTarget == null) {
-            currentState = State.SWITCHING_TARGET; 
+            currentState = State.SWITCHING_TARGET;
             return;
         }
 
-        // --- 新增逻辑：玩家手动覆盖 ---
+        if (needsToolSwitch()) {
+            if (handleToolSwitching()) {
+                // 切换成功，进入延迟状态而不是立即挖掘
+                currentState = State.POST_SWITCH_DELAY;
+                delayTicks = TOOL_SWITCH_DELAY_TICKS;
+                // 确保在延迟期间不发送挖掘数据包
+                if (currentStrategy != null) currentStrategy.onStopMining();
+                return;
+            } else {
+                // 切换失败，handleToolSwitching内部会重置
+                return;
+            }
+        }
+        
+        if (!isToolSufficientFor(currentTarget)) {
+            IBlockState state = mc.theWorld.getBlockState(currentTarget);
+            unmineableBlacklist.put(currentTarget, state.getBlock());
+            if (!currentTarget.equals(lastSkippedBlock)) {
+                int requiredPower = isTitanium(state) ? 5 : 4;
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + String.format("[Ghost] Skipping %s, tool is too weak (BP %d < %d)",
+                        state.getBlock().getLocalizedName(), getBreakingPower(mc.thePlayer.getCurrentEquippedItem()), requiredPower)));
+                lastSkippedBlock = currentTarget;
+            }
+            currentState = State.SWITCHING_TARGET;
+            return;
+        }
+        
         MovingObjectPosition mouseOver = mc.objectMouseOver;
         if (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
             BlockPos crosshairTargetPos = mouseOver.getBlockPos();
-            // 检查玩家是否正在看一个与当前目标不同，但同样有效的方块
             if (!crosshairTargetPos.equals(currentTarget) && isTargetValid(crosshairTargetPos)) {
-                // 如果是，则将玩家的目标作为新目标
                 currentStrategy.onStopMining();
                 currentTarget = crosshairTargetPos;
                 currentStrategy.onStartMining(currentTarget);
-                miningStartTime = null; // 重置挖掘计时器
-                return; // 立即返回，让下一个 tick 处理新目标的挖掘
+                miningStartTime = null;
+                return;
             }
         }
-        // --- 新增逻辑结束 ---
-        
+
         IBlockState targetBlockState = mc.theWorld.getBlockState(currentTarget);
         Block blockAtTarget = targetBlockState.getBlock();
         if (blockAtTarget != Blocks.air) {
             lastMinedState = targetBlockState;
         }
-
         if (blockAtTarget == Blocks.air || !isTargetValid(currentTarget) || checkTimeout(blockAtTarget)) {
             currentState = State.SWITCHING_TARGET;
             return;
         }
 
-        Vec3 bestPointToLookAt;
-
-        // 检查准星是否已经对准了我们的目标方块
-        if (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget)) {
-            // 如果是，就使用游戏返回的精确碰撞点，这对于非完整方块至关重要
-            bestPointToLookAt = mouseOver.hitVec;
-        } else {
-            // 否则，回退到我们原来的方法，去寻找一个方块上的可见点来引导视角
-            bestPointToLookAt = RotationUtil.getClosestVisiblePoint(currentTarget);
-        }
+        Vec3 bestPointToLookAt = (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget))
+                ? mouseOver.hitVec : RotationUtil.getClosestVisiblePoint(currentTarget);
 
         if (bestPointToLookAt == null) {
             currentState = State.SWITCHING_TARGET;
             return;
         }
-        
+
         if (currentStrategy != null) {
             currentStrategy.handleMiningTick(currentTarget, bestPointToLookAt);
         }
@@ -375,28 +378,35 @@ public class AutoMineHandler {
             currentState = State.SWITCHING_TARGET;
             return;
         }
-        
         validationTicks++;
-
         if (validationTicks >= VALIDATION_DELAY_TICKS) {
             IBlockState state = mc.theWorld.getBlockState(blockToValidate);
             if (state.getBlock() == Blocks.air) {
-                // 成功
                 currentState = State.SWITCHING_TARGET;
             } else {
-                // 失败，检测到回弹
                 handleRollbackDetected();
             }
             blockToValidate = null;
         }
     }
     
+    // 新增：处理工具切换后延迟的方法
+    private void handlePostSwitchDelay() {
+        // 确保在延迟期间不攻击
+        if (mc.gameSettings.keyBindAttack.isKeyDown()) {
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
+        }
+
+        delayTicks--;
+        if (delayTicks <= 0) {
+            // 延迟结束，回到挖掘状态
+            currentState = State.MINING;
+        }
+    }
+
     private void handleRollbackDetected() {
-        // 将导致回弹的方块加入黑名单
         unmineableBlacklist.put(blockToValidate, mc.theWorld.getBlockState(blockToValidate).getBlock());
-        // 立即停止所有活动
         reset();
-        
         awaitingRollbackConfirmation = true;
 
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "====================================================="));
@@ -408,36 +418,21 @@ public class AutoMineHandler {
 
         ChatComponentText optionsMessage = new ChatComponentText(EnumChatFormatting.WHITE + LangUtil.translate("ghost.automine.rollback.question"));
         
-        // 选项1: 继续 (临时禁用)
-        ChatComponentText continueButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.continue"));
-        continueButton.setChatStyle(
-            continueButton.getChatStyle()
-                .setColor(EnumChatFormatting.GREEN)
-                .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback continue"))
-        );
-
-        // 选项2: 永久禁用
-        ChatComponentText disableButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.disable"));
-        disableButton.setChatStyle(
-            disableButton.getChatStyle()
-                .setColor(EnumChatFormatting.GOLD)
-                .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback disable"))
-        );
-
-        // 选项3: 停止
-        ChatComponentText stopButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.stop"));
-        stopButton.setChatStyle(
-            stopButton.getChatStyle()
-                .setColor(EnumChatFormatting.RED)
-                .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback stop"))
-        );
-
-        optionsMessage.appendSibling(continueButton);
-        optionsMessage.appendSibling(new ChatComponentText("  "));
-        optionsMessage.appendSibling(disableButton);
-        optionsMessage.appendSibling(new ChatComponentText("  "));
-        optionsMessage.appendSibling(stopButton);
+        IChatComponent continueButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.continue"))
+                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN).setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback continue")));
         
+        IChatComponent disableButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.disable"))
+                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GOLD).setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback disable")));
+        
+        IChatComponent stopButton = new ChatComponentText(" " + LangUtil.translate("ghost.automine.rollback.option.stop"))
+                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.RED).setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/automine automine_internal_feedback stop")));
+        
+        optionsMessage.appendSibling(continueButton)
+                      .appendSibling(new ChatComponentText("  "))
+                      .appendSibling(disableButton)
+                      .appendSibling(new ChatComponentText("  "))
+                      .appendSibling(stopButton);
+
         mc.thePlayer.addChatMessage(optionsMessage);
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "====================================================="));
     }
@@ -455,7 +450,7 @@ public class AutoMineHandler {
         }
         return false;
     }
-    
+
     private void handleMovementKeys() {
         if (!isActive || !GhostConfig.AutoMine.enableRandomMovements) {
             if (currentMoveKey != null) {
@@ -466,7 +461,6 @@ public class AutoMineHandler {
             currentMoveDuration = 0;
             return;
         }
-    
         if (currentMoveDuration > 0) {
             currentMoveDuration--;
         } else {
@@ -474,39 +468,30 @@ public class AutoMineHandler {
                 KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), false);
                 currentMoveKey = null;
             }
-    
             if (randomMoveTicks > 0) {
                 randomMoveTicks--;
             } else {
                 int variability = GhostConfig.AutoMine.randomMoveIntervalVariability;
                 int baseInterval = GhostConfig.AutoMine.randomMoveInterval;
-                
                 randomMoveTicks = baseInterval + ThreadLocalRandom.current().nextInt(-variability, variability + 1);
                 randomMoveTicks = Math.max(10, randomMoveTicks);
-
                 currentMoveDuration = GhostConfig.AutoMine.randomMoveDuration;
-    
                 KeyBinding[] moveKeys = {mc.gameSettings.keyBindForward, mc.gameSettings.keyBindBack, mc.gameSettings.keyBindLeft, mc.gameSettings.keyBindRight};
                 currentMoveKey = moveKeys[ThreadLocalRandom.current().nextInt(moveKeys.length)];
                 KeyBinding.setKeyBindState(currentMoveKey.getKeyCode(), true);
             }
         }
     }
-    
+
     private BlockPos findVeinMineTarget() {
-        if (!GhostConfig.AutoMine.enableVeinMining || currentTarget == null || lastMinedState == null || lastMinedState.getBlock() == Blocks.air || AutoMineTargetManager.getCurrentTargetBlocks().contains(currentTarget)) {
-            return null;
-        }
-    
+        if (!GhostConfig.AutoMine.enableVeinMining || currentTarget == null || lastMinedState == null || lastMinedState.getBlock() == Blocks.air) return null;
         if (mc.theWorld.getBlockState(currentTarget).getBlock() == Blocks.air) {
             BlockPos lastPos = currentTarget;
             BlockPos bestNeighbor = null;
             double minScore = Double.MAX_VALUE;
-    
             for (EnumFacing facing : EnumFacing.values()) {
                 BlockPos neighborPos = lastPos.offset(facing);
                 IBlockState neighborState = mc.theWorld.getBlockState(neighborPos);
-    
                 if (neighborState == lastMinedState && isTargetValid(neighborPos)) {
                     double score = getAngleDifferenceToBlock(neighborPos);
                     if (score < minScore) {
@@ -517,122 +502,267 @@ public class AutoMineHandler {
             }
             return bestNeighbor;
         }
-        
         return null;
     }
 
     private BlockPos findBestTarget() {
-        Set<BlockPos> candidates = new HashSet<>();
+        Set<BlockPos> primaryCandidates = new HashSet<>();
+        Set<BlockPos> secondaryCandidates = new HashSet<>();
+        findAndCategorizeCandidates(primaryCandidates, secondaryCandidates);
 
-        for (BlockPos pos : AutoMineTargetManager.getCurrentTargetBlocks()) {
-            if (isTargetValid(pos)) {
-                candidates.add(pos);
+        if (!mithrilOptimizationIsActive || (primaryCandidates.isEmpty() && secondaryCandidates.isEmpty())) {
+            return findBestCandidate(primaryCandidates.isEmpty() ? secondaryCandidates : primaryCandidates);
+        }
+
+        boolean hasAbilityToCleanTitanium = GhostConfig.AutoMine.enableAutomaticToolSwitching
+                ? findToolByBreakingPower(5, true) != -1
+                : getBreakingPower(mc.thePlayer.getCurrentEquippedItem()) >= 5;
+
+        boolean shouldCleanTitanium = false;
+        if (hasAbilityToCleanTitanium && !secondaryCandidates.isEmpty()) {
+            boolean cleanupThresholdMet = secondaryCandidates.size() >= GhostConfig.AutoMine.mithrilCleanupThreshold;
+            if (cleanupThresholdMet || isCleanupMode || primaryCandidates.isEmpty()) {
+                shouldCleanTitanium = true;
+            }
+        } else {
+            if (isCleanupMode) {
+                 isCleanupMode = false;
+                 mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_complete")));
             }
         }
 
-        if (!AutoMineTargetManager.targetBlockTypes.isEmpty()) {
-            int radius = GhostConfig.AutoMine.searchRadius;
-            BlockPos playerPos = mc.thePlayer.getPosition();
-            for (BlockPos pos : BlockPos.getAllInBox(playerPos.add(-radius, -radius, -radius), playerPos.add(radius, radius, radius))) {
-                if (isBlockTypeTargeted(mc.theWorld.getBlockState(pos))) {
-                    if (isTargetValid(pos)) {
-                        candidates.add(pos);
-                    }
-                }
+        if (shouldCleanTitanium) {
+            if (!isCleanupMode) {
+                isCleanupMode = true;
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_start")));
+            }
+            return findBestCandidate(secondaryCandidates);
+        } else {
+            if (primaryCandidates.isEmpty() && !secondaryCandidates.isEmpty() && !cleanupToolTooWeakNotified) {
+                String warningMessage = "[Ghost] " + LangUtil.translate("ghost.automine.warning.tool_too_weak_for_cleanup");
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + warningMessage));
+                cleanupToolTooWeakNotified = true;
+            }
+            if (isCleanupMode) {
+                 isCleanupMode = false;
+                 mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_complete")));
+            }
+            return findBestCandidate(primaryCandidates);
+        }
+    }
+
+    private void findAndCategorizeCandidates(Set<BlockPos> primary, Set<BlockPos> secondary) {
+        int radius = GhostConfig.AutoMine.searchRadius;
+        BlockPos playerPos = mc.thePlayer.getPosition();
+        for (BlockPos pos : BlockPos.getAllInBox(playerPos.add(-radius, -radius, -radius), playerPos.add(radius, radius, radius))) {
+            if (!isTargetValid(pos)) continue;
+            
+            if (isCleanupMode) {
+                secondary.add(new BlockPos(pos));
+            } else {
+                primary.add(new BlockPos(pos));
             }
         }
+    }
 
-        if (candidates.isEmpty()) {
-            return null;
-        }
-
+    private BlockPos findBestCandidate(Set<BlockPos> candidates) {
+        if (candidates == null || candidates.isEmpty()) return null;
         BlockPos bestPos = null;
         double minScore = Double.MAX_VALUE;
-
         for (BlockPos candidate : candidates) {
             double angleDiff = getAngleDifferenceToBlock(candidate);
             double distanceSq = mc.thePlayer.getDistanceSq(candidate);
-            
             Block candidateBlock = mc.theWorld.getBlockState(candidate).getBlock();
             int weight = AutoMineTargetManager.targetBlockWeights.getOrDefault(candidateBlock, DEFAULT_WEIGHT);
-            
             double score = (angleDiff * 10.0 + distanceSq) / weight;
-
             if (score < minScore) {
                 minScore = score;
                 bestPos = candidate;
             }
         }
-
         return bestPos;
     }
-    
+
     private boolean isBlockTypeTargeted(IBlockState state) {
         Block block = state.getBlock();
         int meta = block.getMetaFromState(state);
-        
         AutoMineTargetManager.BlockData specificBlock = new AutoMineTargetManager.BlockData(block, meta);
         AutoMineTargetManager.BlockData wildcardBlock = new AutoMineTargetManager.BlockData(block, -1);
-
         return AutoMineTargetManager.targetBlockTypes.contains(specificBlock) || AutoMineTargetManager.targetBlockTypes.contains(wildcardBlock);
     }
 
     private double getAngleDifferenceToBlock(BlockPos pos) {
         Vec3 targetVec = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
         float[] rotations = RotationUtil.getRotations(targetVec);
-        
         EntityPlayerSP player = mc.thePlayer;
         float yawDiff = Math.abs(MathHelper.wrapAngleTo180_float(player.rotationYaw - rotations[0]));
         float pitchDiff = Math.abs(MathHelper.wrapAngleTo180_float(player.rotationPitch - rotations[1]));
-        
         return yawDiff * yawDiff + pitchDiff * pitchDiff;
     }
 
     private boolean isTargetValid(BlockPos pos) {
-        if (unmineableBlacklist.containsKey(pos)) {
-            Block blacklistedBlock = unmineableBlacklist.get(pos);
-            Block currentBlock = mc.theWorld.getBlockState(pos).getBlock();
-            if (currentBlock != blacklistedBlock) {
-                unmineableBlacklist.remove(pos);
-            } else {
-                return false;
-            }
-        }
-        
-        // --- 新增: 虚空/低高度安全检查 ---
-        if (GhostConfig.AutoMine.enableVoidSafetyCheck && pos.getY() < GhostConfig.AutoMine.voidSafetyYLimit) {
-            return false;
-        }
-
         IBlockState state = mc.theWorld.getBlockState(pos);
-        Block block = state.getBlock();
-
-        if (block == Blocks.air) {
+        if (unmineableBlacklist.containsKey(pos)) {
+            if (state.getBlock() != unmineableBlacklist.get(pos)) unmineableBlacklist.remove(pos);
+            else return false;
+        }
+        if (GhostConfig.AutoMine.enableVoidSafetyCheck && pos.getY() < GhostConfig.AutoMine.voidSafetyYLimit) return false;
+        if (state.getBlock() == Blocks.air) return false;
+        if (GhostConfig.AutoMine.preventDiggingDown && pos.getY() < MathHelper.floor_double(mc.thePlayer.posY)) return false;
+        if (state.getBlock().getBlockHardness(mc.theWorld, pos) < 0) {
+            unmineableBlacklist.put(pos, state.getBlock());
             return false;
         }
-        
-        if (GhostConfig.AutoMine.preventDiggingDown) {
-            int playerFootY = MathHelper.floor_double(mc.thePlayer.posY);
-            if (pos.getY() < playerFootY) {
-                return false;
+
+        boolean isPrimary = isBlockTypeTargeted(state);
+        boolean isSecondary = mithrilOptimizationIsActive && isTitanium(state);
+
+        if (mithrilOptimizationIsActive) {
+            if (isCleanupMode) {
+                if (!isSecondary) return false;
+            } else {
+                if (!isPrimary) return false;
             }
-        }
-
-        if (block.getBlockHardness(mc.theWorld, pos) < 0) {
-            unmineableBlacklist.put(pos, block); 
-            return false;
-        }
-        
-        if (!AutoMineTargetManager.getCurrentTargetBlocks().contains(pos) && !isBlockTypeTargeted(state)) {
-            return false;
+        } else {
+            if (!isPrimary) return false;
         }
 
         double reach = GhostConfig.AutoMine.maxReachDistance;
         Vec3 blockCenter = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        if (mc.thePlayer.getPositionEyes(1.0f).squareDistanceTo(blockCenter) > reach * reach) {
+        if (mc.thePlayer.getPositionEyes(1.0f).squareDistanceTo(blockCenter) > reach * reach) return false;
+        
+        return RotationUtil.getClosestVisiblePoint(pos) != null;
+    }
+
+    private static void updateTitaniumBlockTypes() {
+        titaniumBlockTypes.clear();
+        for (String id : GhostConfig.AutoMine.titaniumBlockIds) {
+            try {
+                String blockName = id;
+                int meta = -1;
+                String[] parts = id.split(":");
+                if (parts.length > 2) {
+                    try {
+                        meta = Integer.parseInt(parts[parts.length - 1]);
+                        blockName = String.join(":", Arrays.copyOf(parts, parts.length - 1));
+                    } catch (NumberFormatException e) {}
+                }
+                Block block = Block.getBlockFromName(blockName);
+                if (block != null) titaniumBlockTypes.add(new AutoMineTargetManager.BlockData(block, meta));
+            } catch (Exception e) {}
+        }
+    }
+
+    private boolean isTitanium(IBlockState state) {
+        Block block = state.getBlock();
+        int meta = block.getMetaFromState(state);
+        AutoMineTargetManager.BlockData specificBlock = new AutoMineTargetManager.BlockData(block, meta);
+        AutoMineTargetManager.BlockData wildcardBlock = new AutoMineTargetManager.BlockData(block, -1);
+        return titaniumBlockTypes.contains(specificBlock) || titaniumBlockTypes.contains(wildcardBlock);
+    }
+    
+    private boolean isToolSufficientFor(BlockPos target) {
+        if (!mithrilOptimizationIsActive) return true;
+        IBlockState targetState = mc.theWorld.getBlockState(target);
+        int requiredPower = isTitanium(targetState) ? 5 : 4;
+        return getBreakingPower(mc.thePlayer.getCurrentEquippedItem()) >= requiredPower;
+    }
+
+    private boolean needsToolSwitch() {
+        if (!mithrilOptimizationIsActive || !GhostConfig.AutoMine.enableAutomaticToolSwitching || currentTarget == null) return false;
+        
+        IBlockState targetState = mc.theWorld.getBlockState(currentTarget);
+        boolean isTargetTitanium = isTitanium(targetState);
+        int requiredPower = isTargetTitanium ? 5 : 4;
+        
+        int toolSlot = findToolByBreakingPower(requiredPower, isTargetTitanium);
+        
+        return toolSlot != -1 && mc.thePlayer.inventory.currentItem != toolSlot;
+    }
+
+    private boolean handleToolSwitching() {
+        if (!GhostConfig.AutoMine.enableAutomaticToolSwitching) return true;
+        
+        IBlockState targetState = mc.theWorld.getBlockState(currentTarget);
+        boolean isTargetTitanium = isTitanium(targetState);
+        int requiredPower = isTargetTitanium ? 5 : 4;
+
+        int toolSlot = findToolByBreakingPower(requiredPower, isTargetTitanium);
+        
+        if (toolSlot == -1) {
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] " + LangUtil.translate("ghost.automine.error.no_tool_found", requiredPower)));
+            reset();
             return false;
         }
+        if (mc.thePlayer.inventory.currentItem != toolSlot) {
+            if (originalSlot == -1) originalSlot = mc.thePlayer.inventory.currentItem;
+            mc.thePlayer.inventory.currentItem = toolSlot;
+        }
+        return true;
+    }
 
-        return RotationUtil.getClosestVisiblePoint(pos) != null;
+    private static int getBreakingPower(ItemStack stack) {
+        if (stack == null || stack.getTagCompound() == null) return 0;
+        NBTTagCompound display = stack.getTagCompound().getCompoundTag("display");
+        if (display.hasKey("Lore", Constants.NBT.TAG_LIST)) {
+            NBTTagList lore = display.getTagList("Lore", Constants.NBT.TAG_STRING);
+            for (int j = 0; j < lore.tagCount(); j++) {
+                String colorlessLine = EnumChatFormatting.getTextWithoutFormattingCodes(lore.getStringTagAt(j));
+                Matcher matcher = BREAKING_POWER_PATTERN.matcher(colorlessLine);
+                if (matcher.find()) {
+                    try { return Integer.parseInt(matcher.group(1)); } 
+                    catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+        return 0;
+    }
+
+    private static int findToolByBreakingPower(int requiredPower, boolean findStrongest) {
+        int bestSlot = -1;
+        int bestPower = findStrongest ? -1 : Integer.MAX_VALUE;
+
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.thePlayer.inventory.mainInventory[i];
+            if (stack == null) continue;
+            
+            int power = getBreakingPower(stack);
+            
+            if (power >= requiredPower) {
+                if (findStrongest) {
+                    if (power > bestPower) {
+                        bestPower = power;
+                        bestSlot = i;
+                    }
+                } else {
+                    if (power < bestPower) {
+                        bestPower = power;
+                        bestSlot = i;
+                    }
+                }
+            }
+        }
+        return bestSlot;
+    }
+
+    private static void validateAndActivateMithrilOptimization() {
+        mithrilOptimizationIsActive = false;
+        if (!GhostConfig.AutoMine.enableMithrilOptimization) return;
+        boolean hasMithrilInTargets = false;
+        for (AutoMineTargetManager.BlockData target : AutoMineTargetManager.targetBlockTypes) {
+            for (String mithrilId : MITHRIL_ORE_IDS) {
+                if (target.toString().equals(mithrilId)) {
+                    hasMithrilInTargets = true;
+                    break;
+                }
+            }
+            if (hasMithrilInTargets) break;
+        }
+        if (!hasMithrilInTargets) {
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[Ghost] " + LangUtil.translate("ghost.automine.warning.no_mithril_targets")));
+            return;
+        }
+        mithrilOptimizationIsActive = true;
+        updateTitaniumBlockTypes();
     }
 }

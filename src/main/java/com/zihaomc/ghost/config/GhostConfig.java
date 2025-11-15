@@ -136,9 +136,14 @@ public class GhostConfig {
         public static boolean enableVeinMining;
         public static String miningMode;
         public static boolean antiCheatCheck;
-        // --- 新增: 虚空安全检查 ---
         public static boolean enableVoidSafetyCheck;
         public static int voidSafetyYLimit;
+
+        // --- Hypixel Skyblock Mithril 挖掘优化 ---
+        public static boolean enableMithrilOptimization;
+        public static String[] titaniumBlockIds;
+        public static int mithrilCleanupThreshold;
+        public static boolean enableAutomaticToolSwitching; // 新增: 自动工具切换开关
     }
 
     public static class AutoCraft {
@@ -278,10 +283,14 @@ public class GhostConfig {
         AutoMine.enableVeinMining = loadBoolean(CATEGORY_AUTO_MINE, "enableVeinMining", true, "ghost.config.comment.autoMineEnableVeinMining");
         AutoMine.miningMode = loadString(CATEGORY_AUTO_MINE, "miningMode", "SIMULATE", "ghost.config.comment.autoMineMiningMode");
         AutoMine.antiCheatCheck = loadBoolean(CATEGORY_AUTO_MINE, "antiCheatCheck", true, "ghost.config.comment.autoMineAntiCheatCheck");
-        
-        // --- 加载虚空安全设置 ---
         AutoMine.enableVoidSafetyCheck = loadBoolean(CATEGORY_AUTO_MINE, "enableVoidSafetyCheck", true, "ghost.config.comment.autoMineVoidSafetyCheck");
         AutoMine.voidSafetyYLimit = loadInt(CATEGORY_AUTO_MINE, "voidSafetyYLimit", 1, 0, 255, "ghost.config.comment.autoMineVoidSafetyYLimit");
+
+        // --- 加载 Mithril 优化设置 ---
+        AutoMine.enableMithrilOptimization = loadBoolean(CATEGORY_AUTO_MINE, "enableMithrilOptimization", false, "ghost.config.comment.autoMineMithrilOptimization");
+        AutoMine.titaniumBlockIds = loadStringList(CATEGORY_AUTO_MINE, "titaniumBlockIds", new String[]{"minecraft:stone:4"}, "ghost.config.comment.autoMineTitaniumBlockIds");
+        AutoMine.mithrilCleanupThreshold = loadInt(CATEGORY_AUTO_MINE, "mithrilCleanupThreshold", 5, 1, 50, "ghost.config.comment.autoMineMithrilCleanupThreshold");
+        AutoMine.enableAutomaticToolSwitching = loadBoolean(CATEGORY_AUTO_MINE, "enableAutomaticToolSwitching", false, "ghost.config.comment.autoMineEnableToolSwitching");
     }
 
     private static void loadAutoCraftSettings() {
@@ -543,14 +552,27 @@ public class GhostConfig {
         updateAndSave(CATEGORY_AUTO_MINE, "antiCheatCheck", value, () -> AutoMine.antiCheatCheck = value);
     }
 
-    // --- 新增: 虚空安全检查设置 ---
     public static void setAutoMineEnableVoidSafetyCheck(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "enableVoidSafetyCheck", value, () -> AutoMine.enableVoidSafetyCheck = value);
     }
 
     public static void setAutoMineVoidSafetyYLimit(int value) {
-        if (value < 0 || value > 255) return; // 限制在有效的Y轴范围内
+        if (value < 0 || value > 255) return;
         updateAndSave(CATEGORY_AUTO_MINE, "voidSafetyYLimit", value, () -> AutoMine.voidSafetyYLimit = value);
+    }
+
+    // --- Mithril 优化设置的 Setter ---
+    public static void setAutoMineEnableMithrilOptimization(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "enableMithrilOptimization", value, () -> AutoMine.enableMithrilOptimization = value);
+    }
+
+    public static void setAutoMineMithrilCleanupThreshold(int value) {
+        if (value < 1 || value > 50) return;
+        updateAndSave(CATEGORY_AUTO_MINE, "mithrilCleanupThreshold", value, () -> AutoMine.mithrilCleanupThreshold = value);
+    }
+
+    public static void setAutoMineEnableAutomaticToolSwitching(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "enableAutomaticToolSwitching", value, () -> AutoMine.enableAutomaticToolSwitching = value);
     }
     
     public static void setAutoCraftPlacementDelayTicks(int value) {
@@ -635,10 +657,14 @@ public class GhostConfig {
         settingUpdaters.put("automineenableveinmining", (k, v) -> setAutoMineEnableVeinMining(parseBoolean(v)));
         settingUpdaters.put("automineminingmode", (k, v) -> setAutoMineMiningMode(v));
         settingUpdaters.put("automineanticheatcheck", (k, v) -> setAutoMineAntiCheatCheck(parseBoolean(v)));
-        // --- 新增: 注册命令更新器 ---
         settingUpdaters.put("autominevoidsafetycheck", (k, v) -> setAutoMineEnableVoidSafetyCheck(parseBoolean(v)));
         settingUpdaters.put("autominevoidsafetylimit", (k, v) -> setAutoMineVoidSafetyYLimit(parseInt(v)));
         
+        // --- 注册 Mithril 优化命令更新器 ---
+        settingUpdaters.put("autominemithriloptimization", (k, v) -> setAutoMineEnableMithrilOptimization(parseBoolean(v)));
+        settingUpdaters.put("autominemithrilcleanupthreshold", (k, v) -> setAutoMineMithrilCleanupThreshold(parseInt(v)));
+        settingUpdaters.put("automineenabletoolswitching", (k,v) -> setAutoMineEnableAutomaticToolSwitching(parseBoolean(v)));
+
         settingUpdaters.put("autocraftplacementdelay", (k, v) -> setAutoCraftPlacementDelayTicks(parseInt(v)));
         settingUpdaters.put("autocraftcycledelay", (k, v) -> setAutoCraftCycleDelayTicks(parseInt(v)));
         settingUpdaters.put("autocraftmenuopendelay", (k, v) -> setAutoCraftMenuOpenDelayTicks(parseInt(v)));
