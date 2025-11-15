@@ -10,13 +10,7 @@ import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.event.ClickEvent;
 import net.minecraft.init.Blocks;
-import net.minecraft.util.BlockPos;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.IChatComponent;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.Vec3;
+import net.minecraft.util.*;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -339,7 +333,18 @@ public class AutoMineHandler {
             return;
         }
 
-        Vec3 bestPointToLookAt = RotationUtil.getClosestVisiblePoint(currentTarget);
+        Vec3 bestPointToLookAt;
+
+        MovingObjectPosition mouseOver = mc.objectMouseOver;
+        // 检查准星是否已经对准了我们的目标方块
+        if (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget)) {
+            // 如果是，就使用游戏返回的精确碰撞点，这对于非完整方块至关重要
+            bestPointToLookAt = mouseOver.hitVec;
+        } else {
+            // 否则，回退到我们原来的方法，去寻找一个方块上的可见点来引导视角
+            bestPointToLookAt = RotationUtil.getClosestVisiblePoint(currentTarget);
+        }
+
         if (bestPointToLookAt == null) {
             currentState = State.SWITCHING_TARGET;
             return;
