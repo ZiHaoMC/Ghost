@@ -598,6 +598,11 @@ public class AutoMineHandler {
                 return false;
             }
         }
+        
+        // --- 新增: 虚空/低高度安全检查 ---
+        if (GhostConfig.AutoMine.enableVoidSafetyCheck && pos.getY() < GhostConfig.AutoMine.voidSafetyYLimit) {
+            return false;
+        }
 
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();

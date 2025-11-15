@@ -136,6 +136,9 @@ public class GhostConfig {
         public static boolean enableVeinMining;
         public static String miningMode;
         public static boolean antiCheatCheck;
+        // --- 新增: 虚空安全检查 ---
+        public static boolean enableVoidSafetyCheck;
+        public static int voidSafetyYLimit;
     }
 
     public static class AutoCraft {
@@ -275,6 +278,10 @@ public class GhostConfig {
         AutoMine.enableVeinMining = loadBoolean(CATEGORY_AUTO_MINE, "enableVeinMining", true, "ghost.config.comment.autoMineEnableVeinMining");
         AutoMine.miningMode = loadString(CATEGORY_AUTO_MINE, "miningMode", "SIMULATE", "ghost.config.comment.autoMineMiningMode");
         AutoMine.antiCheatCheck = loadBoolean(CATEGORY_AUTO_MINE, "antiCheatCheck", true, "ghost.config.comment.autoMineAntiCheatCheck");
+        
+        // --- 加载虚空安全设置 ---
+        AutoMine.enableVoidSafetyCheck = loadBoolean(CATEGORY_AUTO_MINE, "enableVoidSafetyCheck", true, "ghost.config.comment.autoMineVoidSafetyCheck");
+        AutoMine.voidSafetyYLimit = loadInt(CATEGORY_AUTO_MINE, "voidSafetyYLimit", 1, 0, 255, "ghost.config.comment.autoMineVoidSafetyYLimit");
     }
 
     private static void loadAutoCraftSettings() {
@@ -535,6 +542,16 @@ public class GhostConfig {
     public static void setAutoMineAntiCheatCheck(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "antiCheatCheck", value, () -> AutoMine.antiCheatCheck = value);
     }
+
+    // --- 新增: 虚空安全检查设置 ---
+    public static void setAutoMineEnableVoidSafetyCheck(boolean value) {
+        updateAndSave(CATEGORY_AUTO_MINE, "enableVoidSafetyCheck", value, () -> AutoMine.enableVoidSafetyCheck = value);
+    }
+
+    public static void setAutoMineVoidSafetyYLimit(int value) {
+        if (value < 0 || value > 255) return; // 限制在有效的Y轴范围内
+        updateAndSave(CATEGORY_AUTO_MINE, "voidSafetyYLimit", value, () -> AutoMine.voidSafetyYLimit = value);
+    }
     
     public static void setAutoCraftPlacementDelayTicks(int value) {
         if (value < 1 || value > 100) return;
@@ -618,6 +635,9 @@ public class GhostConfig {
         settingUpdaters.put("automineenableveinmining", (k, v) -> setAutoMineEnableVeinMining(parseBoolean(v)));
         settingUpdaters.put("automineminingmode", (k, v) -> setAutoMineMiningMode(v));
         settingUpdaters.put("automineanticheatcheck", (k, v) -> setAutoMineAntiCheatCheck(parseBoolean(v)));
+        // --- 新增: 注册命令更新器 ---
+        settingUpdaters.put("autominevoidsafetycheck", (k, v) -> setAutoMineEnableVoidSafetyCheck(parseBoolean(v)));
+        settingUpdaters.put("autominevoidsafetylimit", (k, v) -> setAutoMineVoidSafetyYLimit(parseInt(v)));
         
         settingUpdaters.put("autocraftplacementdelay", (k, v) -> setAutoCraftPlacementDelayTicks(parseInt(v)));
         settingUpdaters.put("autocraftcycledelay", (k, v) -> setAutoCraftCycleDelayTicks(parseInt(v)));

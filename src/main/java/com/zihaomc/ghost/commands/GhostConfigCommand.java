@@ -211,6 +211,9 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoMineRandomMoveIntervalVariability", GhostConfig.AutoMine.randomMoveIntervalVariability));
         sender.addChatMessage(formatSettingLine("autoMineMiningMode", GhostConfig.AutoMine.miningMode));
         sender.addChatMessage(formatSettingLine("autoMineAntiCheatCheck", GhostConfig.AutoMine.antiCheatCheck));
+        // --- 新增显示 ---
+        sender.addChatMessage(formatSettingLine("autoMineVoidSafetyCheck", GhostConfig.AutoMine.enableVoidSafetyCheck));
+        sender.addChatMessage(formatSettingLine("autoMineVoidSafetyYLimit", GhostConfig.AutoMine.voidSafetyYLimit));
         
         sender.addChatMessage(formatSettingLine("autoCraftPlacementDelay", GhostConfig.AutoCraft.autoCraftPlacementDelayTicks));
         sender.addChatMessage(formatSettingLine("autoCraftCycleDelay", GhostConfig.AutoCraft.autoCraftCycleDelayTicks));
@@ -318,6 +321,10 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRandomMoveIntervalVariability " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "0-1000") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineMiningMode " + tx + "(SIMULATE/PACKET_NORMAL/PACKET_INSTANT) - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineMiningMode")));
         sender.addChatMessage(new ChatComponentText(op + "  autoMineAntiCheatCheck " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineAntiCheatCheck")));
+        // --- 新增显示 ---
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineVoidSafetyCheck " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineVoidSafetyCheck")));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMineVoidSafetyYLimit " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "0-255") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineVoidSafetyYLimit")));
+        
         sender.addChatMessage(new ChatComponentText(op + "  autoCraftPlacementDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-100") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftPlacementDelay")));
         sender.addChatMessage(new ChatComponentText(op + "  autoCraftCycleDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-200") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftCycleDelay")));
         sender.addChatMessage(new ChatComponentText(op + "  autoCraftMenuOpenDelay " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.integer_range", "1-100") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoCraftMenuOpenDelay")));
@@ -423,6 +430,10 @@ public class GhostConfigCommand extends CommandBase {
                     return CommandBase.getListOfStringsMatchingLastWord(args, "10", "20", "50", "100");
                 case "automineminingmode":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "SIMULATE", "PACKET_NORMAL", "PACKET_INSTANT");
+                // --- 新增 ---
+                case "autominevoidsafetylimit":
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "5", "10", "20");
+                
                 case "autocraftplacementdelay":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "1", "3", "5", "10");
                 case "autocraftcycledelay":
@@ -455,6 +466,7 @@ public class GhostConfigCommand extends CommandBase {
                key.equals("autominesneak") || key.equals("automineenablerandommove") ||
                key.equals("automineenablerandomspeed") || key.equals("autominepreventdiggingdown") ||
                key.equals("automineenableveinmining") ||
-               key.equals("automineanticheatcheck");
+               key.equals("automineanticheatcheck") ||
+               key.equals("autominevoidsafetycheck"); // 新增
     }
 }
