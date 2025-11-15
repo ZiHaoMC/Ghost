@@ -41,6 +41,11 @@ public class SignTranslationHandler {
                     new Thread(() -> {
                         final String result = NiuTransUtil.translate(combinedText);
                         Minecraft.getMinecraft().addScheduledTask(() -> {
+                            // 安全检查：确保玩家仍在游戏中，以防止在切换世界时崩溃
+                            if (Minecraft.getMinecraft().thePlayer == null) {
+                                return;
+                            }
+                        
                             ChatComponentText resultMessage = new ChatComponentText("");
                             
                             if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {

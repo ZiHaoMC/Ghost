@@ -379,6 +379,11 @@ public class ChatSuggestEventHandler {
             
             // 调度回主线程来发送聊天消息
             Minecraft.getMinecraft().addScheduledTask(() -> {
+                // 安全检查：确保玩家仍在游戏中
+                if (Minecraft.getMinecraft().thePlayer == null) {
+                    return;
+                }
+            
                 // 只有成功翻译的结果才显示
                 if (!result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
                     ChatComponentText resultMessage = new ChatComponentText("");
