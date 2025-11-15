@@ -7,6 +7,7 @@ import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.commands.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.features.autocraft.AutoCraftHandler;
+import com.zihaomc.ghost.features.autocraft.AutoCraftRecipeManager;
 import com.zihaomc.ghost.features.automine.AutoMineHandler;
 import com.zihaomc.ghost.handlers.*;
 import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
@@ -107,6 +108,7 @@ public class Ghost {
         
         ItemTooltipTranslationHandler.loadCacheFromFile();
         AutoMineTargetManager.loadTargets();
+        AutoCraftRecipeManager.initialize(); // 在这里初始化所有自动合成配方
 
         if (event.getSide() == Side.CLIENT) {
             // --- 修正点: 将模式设置的逻辑移动到 init 阶段 ---

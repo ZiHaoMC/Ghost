@@ -135,14 +135,28 @@ ghost.automine.feedback.stop=自动挖掘将保持停止状态。
 # ==================================
 # ===      自动合成 (AutoCraft)    ===
 # ==================================
-ghost.autocraft.command.usage=§c用法: /autocraft <start|stop>
+ghost.autocraft.command.usage=§c用法: /autocraft <start|stop|add|remove|list|reload>
+ghost.autocraft.command.usage.start=§c用法: /autocraft start <配方名>
+ghost.autocraft.command.usage.add=§c用法: /autocraft add <配方Key> <材料名> <数量>\n§e提示: 材料名中的空格请用 '_' 代替。按Tab键可补全物品栏中的物品名称。\n§e数量支持表达式写法 (例如 64*5 或 64x5)。
+ghost.autocraft.command.usage.remove=§c用法: /autocraft remove <配方Key>
+ghost.autocraft.command.reload.success=§a自动合成配方已从文件重新加载。
+ghost.autocraft.command.add.success=§a成功添加配方: %s
+ghost.autocraft.command.remove.success=§a成功移除配方: %s
+ghost.autocraft.command.list.header=已注册的自动合成配方
+ghost.autocraft.command.list.empty=§e当前没有已注册的自动合成配方。
 ghost.autocraft.status.enabled=§a自动合成已启动。
+ghost.autocraft.status.enabled_for=§a自动合成已启动，配方: %s
 ghost.autocraft.status.disabled=§c自动合成已停止。
 ghost.autocraft.status.running=§e自动合成功能已在运行中。
 ghost.autocraft.status.not_running=§e自动合成功能当前未运行。
-ghost.autocraft.error.no_mithril=§cMithril 不足，正在尝试执行 /pickupstash...
-ghost.autocraft.error.insufficient_after_stash=§c从收藏品中取出后 Mithril 仍然不足！自动合成已停止。
+ghost.autocraft.error.insufficient_ingredient=§c材料 '%s' 不足，正在尝试执行 /pickupstash...
+ghost.autocraft.error.insufficient_after_stash=§c从收藏品中取出后材料 '%s' 仍然不足！自动合成已停止。
 ghost.autocraft.error.no_nether_star=§c错误: 物品栏第9格没有找到下界之星！自动合成已停止。
+ghost.autocraft.error.recipe_not_found=§c错误: 未找到名为 '%s' 的合成配方。
+ghost.autocraft.error.recipe_already_exists=§c错误: 名为 '%s' 的配方已存在。
+ghost.autocraft.error.invalid_amount_format=§c错误: 无效的数量格式 '%s'。请输入一个数字或 '64*5' 这样的表达式。
+ghost.autocraft.error.recipe_file_read_error=§c读取配方文件时出错，请检查日志。
+ghost.autocraft.error.recipe_invalid_in_file=§e警告: 配方文件中的配方 '%s' 无效 (无法识别材料名)，已跳过。
 ghost.autocraft.error.gui_timeout=§c错误: 打开界面超时，自动合成已停止。
 ghost.autocraft.error.craft_timeout=§c错误: 等待合成结果超时！
 ghost.autocraft.error.pickup_timeout=§c错误: 等待成品槽清空超时！

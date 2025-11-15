@@ -47,7 +47,11 @@ public class AutoCraftHandler {
     private static State lastState = State.IDLE;
     private static int tickCounter = 0;
     private static int timeoutCounter = 0;
-    private static int clickCount = 0;
+    
+    /**
+     * 追踪当前循环中已经放入合成槽的材料数量。
+     */
+    private static int ingredientsPlaced = 0;
 
     private static int slotToWatch = -1;
     private static int stackSizeToWatch = -1;
@@ -55,8 +59,11 @@ public class AutoCraftHandler {
     private static int retryCount = 0;
     private static final int MAX_RETRIES = 3;
 
-    private static final int REQUIRED_MITHRIL_AMOUNT = 320;
-    private static final Item MITHRIL_ITEM = Items.prismarine_crystals;
+    /**
+     * 当前正在执行的合成配方。
+     */
+    private static AutoCraftRecipe activeRecipe = null;
+
     private static final String CRAFT_GUI_NAME = "Craft Item";
     private static final String SKYBLOCK_MENU_NAME = "SkyBlock Menu";
 
@@ -65,28 +72,29 @@ public class AutoCraftHandler {
     private static final int WAIT_TIMEOUT_TICKS = 60;
     private static final int PLACEMENT_TIMEOUT_TICKS = 40;
 
-    public static void toggle() {
-        if (active) {
-            stop();
-        } else {
-            start();
-        }
-    }
-
-    private static void start() {
+    /**
+     * 根据指定的配方启动自动合成。
+     * @param recipe 要执行的配方。
+     */
+    public static void start(AutoCraftRecipe recipe) {
         if (currentState != State.IDLE) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.autocraft.status.running")));
             return;
         }
         active = true;
+        activeRecipe = recipe;
         retryCount = 0;
+        ingredientsPlaced = 0;
         setState(State.STARTING);
         tickCounter = 0;
-        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.autocraft.status.enabled")));
-        LogUtil.info("[AutoCraft] Service started.");
+        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.autocraft.status.enabled_for", activeRecipe.recipeKey)));
+        LogUtil.info("[AutoCraft] Service started for recipe: " + activeRecipe.recipeKey);
     }
 
-    private static void stop() {
+    /**
+     * 停止自动合成。
+     */
+    public static void stop() {
         if (currentState == State.IDLE) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.autocraft.status.not_running")));
             return;
@@ -95,6 +103,7 @@ public class AutoCraftHandler {
             mc.thePlayer.closeScreen();
         }
         active = false;
+        activeRecipe = null;
         setState(State.IDLE);
         tickCounter = 0;
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.status.disabled")));
@@ -127,17 +136,16 @@ public class AutoCraftHandler {
         setDelay(20);
         setState(State.CHECK_SUPPLIES);
     }
-
-    private static boolean isMithril(ItemStack stack) {
-        if (stack == null || stack.getItem() != MITHRIL_ITEM) return false;
+    
+    /**
+     * 检查一个物品栈是否是当前配方所需的输入材料。
+     * @param stack 要检查的物品栈。
+     * @return 如果是输入材料则返回 true。
+     */
+    private static boolean isIngredient(ItemStack stack) {
+        if (activeRecipe == null || stack == null) return false;
         String displayName = EnumChatFormatting.getTextWithoutFormattingCodes(stack.getDisplayName());
-        return "Mithril".equals(displayName);
-    }
-
-    private static boolean isEnchantedMithril(ItemStack stack) {
-        if (stack == null || stack.getItem() != MITHRIL_ITEM) return false;
-        String displayName = EnumChatFormatting.getTextWithoutFormattingCodes(stack.getDisplayName());
-        return "Enchanted Mithril".equals(displayName);
+        return activeRecipe.ingredientDisplayName.equals(displayName);
     }
 
     private static boolean isBarrier(ItemStack stack) {
@@ -146,7 +154,7 @@ public class AutoCraftHandler {
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || !active || mc.thePlayer == null || mc.theWorld == null) {
+        if (event.phase != TickEvent.Phase.END || !active || mc.thePlayer == null || mc.theWorld == null || activeRecipe == null) {
             return;
         }
         
@@ -170,12 +178,12 @@ public class AutoCraftHandler {
                         setDelay(10); 
                         break; 
                     }
-                    int mithrilCount = getMithrilCount();
-                    LogUtil.info("[AutoCraft] Checking supplies. Found " + mithrilCount + " Mithril. Required: " + REQUIRED_MITHRIL_AMOUNT);
-                    if (mithrilCount >= REQUIRED_MITHRIL_AMOUNT) {
+                    int ingredientCount = getIngredientCount();
+                    LogUtil.info("[AutoCraft] Checking supplies for " + activeRecipe.ingredientDisplayName + ". Found " + ingredientCount + ". Required: " + activeRecipe.requiredAmount);
+                    if (ingredientCount >= activeRecipe.requiredAmount) {
                         setState(State.OPEN_MENU);
                     } else {
-                        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.autocraft.error.no_mithril")));
+                        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.autocraft.error.insufficient_ingredient", activeRecipe.ingredientDisplayName)));
                         setState(State.GET_SUPPLIES);
                     }
                     break;
@@ -193,13 +201,13 @@ public class AutoCraftHandler {
                     break;
 
                 case FINAL_CHECK:
-                    int finalMithrilCount = getMithrilCount();
-                    LogUtil.info("[AutoCraft] Final supply check. Found " + finalMithrilCount + " Mithril. Required: " + REQUIRED_MITHRIL_AMOUNT);
-                    if (finalMithrilCount >= REQUIRED_MITHRIL_AMOUNT) {
+                    int finalIngredientCount = getIngredientCount();
+                    LogUtil.info("[AutoCraft] Final supply check for " + activeRecipe.ingredientDisplayName + ". Found " + finalIngredientCount + ". Required: " + activeRecipe.requiredAmount);
+                    if (finalIngredientCount >= activeRecipe.requiredAmount) {
                         setState(State.OPEN_MENU);
                     } else {
-                        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.insufficient_after_stash")));
-                        LogUtil.error("[AutoCraft] Insufficient Mithril after picking up stash. Stopping.");
+                        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.insufficient_after_stash", activeRecipe.ingredientDisplayName)));
+                        LogUtil.error("[AutoCraft] Insufficient " + activeRecipe.ingredientDisplayName + " after picking up stash. Stopping.");
                         stop();
                     }
                     break;
@@ -239,8 +247,8 @@ public class AutoCraftHandler {
 
                 case WAIT_FOR_CRAFT_GUI:
                      if (isCorrectGuiOpen(CRAFT_GUI_NAME)) {
-                        LogUtil.info("[AutoCraft] Craft Item GUI opened. Resetting click counter.");
-                        clickCount = 0; 
+                        LogUtil.info("[AutoCraft] Craft Item GUI opened. Resetting placed ingredients count.");
+                        ingredientsPlaced = 0; 
                         setState(State.DO_CRAFT);
                     } else {
                         setState(State.CLICK_CRAFT_TABLE);
@@ -253,29 +261,29 @@ public class AutoCraftHandler {
                         setState(State.OPEN_MENU); 
                         break; 
                     }
-                    LogUtil.info("[AutoCraft] In DO_CRAFT state. Click count: " + clickCount + "/5");
+                    LogUtil.info("[AutoCraft] In DO_CRAFT state. Placed: " + ingredientsPlaced + "/" + activeRecipe.requiredAmount);
 
-                    if (clickCount < 5) {
-                        int mithrilSlotId = findAnyMithrilSlot();
-                        LogUtil.info("[AutoCraft] Searching for Mithril... Found in actual container slot: " + mithrilSlotId);
-                        if (mithrilSlotId != -1) {
-                            ItemStack stackBeforeClick = mc.thePlayer.openContainer.getSlot(mithrilSlotId).getStack();
+                    if (ingredientsPlaced < activeRecipe.requiredAmount) {
+                        int ingredientSlotId = findAnyIngredientSlot();
+                        LogUtil.info("[AutoCraft] Searching for " + activeRecipe.ingredientDisplayName + "... Found in actual container slot: " + ingredientSlotId);
+                        if (ingredientSlotId != -1) {
+                            ItemStack stackBeforeClick = mc.thePlayer.openContainer.getSlot(ingredientSlotId).getStack();
                             if (stackBeforeClick != null) {
-                                slotToWatch = mithrilSlotId;
+                                slotToWatch = ingredientSlotId;
                                 stackSizeToWatch = stackBeforeClick.stackSize;
                                 LogUtil.info("[AutoCraft] Performing SHIFT+CLICK on slot " + slotToWatch + " which has " + stackSizeToWatch + " items.");
                                 mc.playerController.windowClick(mc.thePlayer.openContainer.windowId, slotToWatch, 0, 1, mc.thePlayer);
                                 timeoutCounter = PLACEMENT_TIMEOUT_TICKS;
                                 setState(State.WAIT_FOR_ITEM_PLACEMENT);
                             } else {
-                                LogUtil.warn("[AutoCraft] Slot " + mithrilSlotId + " became empty before click. Retrying search.");
+                                LogUtil.warn("[AutoCraft] Slot " + ingredientSlotId + " became empty before click. Retrying search.");
                             }
                         } else {
-                            LogUtil.warn("[AutoCraft] No Mithril found in inventory mid-craft! Returning to CHECK_SUPPLIES.");
+                            LogUtil.warn("[AutoCraft] No " + activeRecipe.ingredientDisplayName + " found in inventory mid-craft! Returning to CHECK_SUPPLIES.");
                             setState(State.CHECK_SUPPLIES); 
                         }
                     } else {
-                        LogUtil.info("[AutoCraft] 5 clicks completed. Moving to wait for craft result.");
+                        LogUtil.info("[AutoCraft] All required ingredients placed. Moving to wait for craft result.");
                         timeoutCounter = WAIT_TIMEOUT_TICKS;
                         setState(State.WAIT_FOR_CRAFT_RESULT);
                     }
@@ -293,8 +301,9 @@ public class AutoCraftHandler {
                     LogUtil.info("[AutoCraft] Waiting for placement confirmation on slot " + slotToWatch + ". Original size: " + stackSizeToWatch + ", Current size: " + currentStackSize + ". Timeout in: " + timeoutCounter);
 
                     if (currentStack == null || currentStackSize < stackSizeToWatch) {
-                        LogUtil.info("[AutoCraft] Placement confirmed for click #" + (clickCount + 1));
-                        clickCount++;
+                        int amountPlaced = stackSizeToWatch - currentStackSize;
+                        ingredientsPlaced += amountPlaced;
+                        LogUtil.info("[AutoCraft] Placement confirmed. " + amountPlaced + " items placed. Total placed: " + ingredientsPlaced);
                         slotToWatch = -1;
                         stackSizeToWatch = -1;
                         setDelay(GhostConfig.AutoCraft.autoCraftPlacementDelayTicks);
@@ -310,8 +319,8 @@ public class AutoCraftHandler {
                     if (!isCorrectGuiOpen(CRAFT_GUI_NAME)) { setState(State.OPEN_MENU); break; }
                     
                     ItemStack resultStack = mc.thePlayer.openContainer.getSlot(CRAFT_RESULT_SLOT).getStack();
-                    if (isEnchantedMithril(resultStack)) {
-                        LogUtil.info("[AutoCraft] Enchanted Mithril detected!");
+                    if (resultStack != null && !isBarrier(resultStack)) {
+                        LogUtil.info("[AutoCraft] Crafting result detected in output slot!");
                         setState(State.TAKE_PRODUCT);
                     } else if (timeoutCounter <= 0) {
                         handleRecoverableError("Crafting result timeout");
@@ -336,7 +345,7 @@ public class AutoCraftHandler {
                     if (isBarrier(slotContent)) {
                         LogUtil.info("[AutoCraft] Slot cleared. Pausing before next cycle.");
                         setDelay(GhostConfig.AutoCraft.autoCraftCycleDelayTicks);
-                        clickCount = 0;
+                        ingredientsPlaced = 0;
                         setState(State.DO_CRAFT);
                     } else if (timeoutCounter <= 0) {
                         handleRecoverableError("Pickup slot clear timeout");
@@ -350,24 +359,25 @@ public class AutoCraftHandler {
         }
     }
 
-    private static int getMithrilCount() {
+    private static int getIngredientCount() {
+        if (activeRecipe == null) return 0;
         int count = 0;
         InventoryPlayer inventory = mc.thePlayer.inventory;
         for (int i = 0; i < inventory.getSizeInventory(); i++) {
             ItemStack stack = inventory.getStackInSlot(i);
-            if (isMithril(stack)) {
+            if (isIngredient(stack)) {
                 count += stack.stackSize;
             }
         }
         return count;
     }
     
-    private static int findAnyMithrilSlot() {
-        if (mc.thePlayer.openContainer == null) {
+    private static int findAnyIngredientSlot() {
+        if (mc.thePlayer.openContainer == null || activeRecipe == null) {
             return -1;
         }
         for (Slot slot : mc.thePlayer.openContainer.inventorySlots) {
-            if (slot.getHasStack() && isMithril(slot.getStack()) && slot.inventory instanceof InventoryPlayer) {
+            if (slot.getHasStack() && isIngredient(slot.getStack()) && slot.inventory instanceof InventoryPlayer) {
                 return slot.slotNumber;
             }
         }

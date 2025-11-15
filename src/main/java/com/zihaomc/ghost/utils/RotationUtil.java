@@ -2,11 +2,10 @@ package com.zihaomc.ghost.utils;
 
 import com.zihaomc.ghost.config.GhostConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.BlockPos;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.Vec3;
+import net.minecraft.entity.Entity;
+import net.minecraft.util.*;
+
+import java.util.List;
 
 /**
  * 封装所有与玩家视角旋转和可见性检查相关的数学计算。
@@ -96,9 +95,9 @@ public class RotationUtil {
         
         // 1. 优先检查方块的精确中心点
         Vec3 centerPoint = new Vec3(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5);
-        MovingObjectPosition centerRayTrace = mc.theWorld.rayTraceBlocks(eyes, centerPoint, false, true, false);
-        if (centerRayTrace == null || centerRayTrace.typeOfHit == MovingObjectPosition.MovingObjectType.MISS || centerRayTrace.getBlockPos().equals(pos)) {
-            return centerPoint; // 中心点可见，直接返回
+        // 这里增加了对实体的检测
+        if (isPointVisible(eyes, centerPoint, pos) && !isObstructedByEntity(eyes, centerPoint)) {
+            return centerPoint; 
         }
 
         // 2. 如果中心点被遮挡，则遍历所有面寻找替代点
@@ -112,8 +111,8 @@ public class RotationUtil {
                 pos.getZ() + 0.5 + facing.getFrontOffsetZ() * 0.5
             );
 
-            MovingObjectPosition faceRayTrace = mc.theWorld.rayTraceBlocks(eyes, pointOnFace, false, true, false);
-            if (faceRayTrace == null || faceRayTrace.typeOfHit == MovingObjectPosition.MovingObjectType.MISS || faceRayTrace.getBlockPos().equals(pos)) {
+            // 这里也增加了对实体的检测
+            if (isPointVisible(eyes, pointOnFace, pos) && !isObstructedByEntity(eyes, pointOnFace)) {
                 float[] rotations = getRotations(pointOnFace);
                 float yawDiff = Math.abs(MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - rotations[0]));
                 float pitchDiff = Math.abs(MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch - rotations[1]));
@@ -127,5 +126,37 @@ public class RotationUtil {
         }
         
         return bestPoint;
+    }
+
+    /**
+     * 检查点是否在方块层面上可见（不考虑实体）。
+     */
+    private static boolean isPointVisible(Vec3 eyes, Vec3 target, BlockPos targetBlockPos) {
+        MovingObjectPosition rayTrace = mc.theWorld.rayTraceBlocks(eyes, target, false, true, false);
+        return rayTrace == null || rayTrace.typeOfHit == MovingObjectPosition.MovingObjectType.MISS || rayTrace.getBlockPos().equals(targetBlockPos);
+    }
+
+    /**
+     * 检查视线是否被实体阻挡。
+     */
+    private static boolean isObstructedByEntity(Vec3 start, Vec3 end) {
+        Vec3 direction = end.subtract(start);
+        
+        // 获取射线路径包围盒内的所有实体
+        List<Entity> entities = mc.theWorld.getEntitiesWithinAABBExcludingEntity(mc.thePlayer, 
+            mc.thePlayer.getEntityBoundingBox().addCoord(direction.xCoord, direction.yCoord, direction.zCoord).expand(1.0, 1.0, 1.0));
+            
+        for (Entity entity : entities) {
+            if (entity.canBeCollidedWith()) {
+                float borderSize = entity.getCollisionBorderSize();
+                AxisAlignedBB entityBB = entity.getEntityBoundingBox().expand(borderSize, borderSize, borderSize);
+                // 检查射线是否与实体包围盒相交
+                MovingObjectPosition intercept = entityBB.calculateIntercept(start, end);
+                if (intercept != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
