@@ -100,7 +100,7 @@ public class AutoMineCommand extends CommandBase {
             case "coord":
                 if (args.length < 5) throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.add.coord"));
                 BlockPos pos = parseBlockPos(sender, args, 2, false);
-                AutoMineTargetManager.targetBlocks.add(pos);
+                AutoMineTargetManager.getCurrentTargetBlocks().add(pos);
                 AutoMineTargetManager.saveCoordinates();
                 sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.add.coord.success", pos.getX(), pos.getY(), pos.getZ())));
                 break;
@@ -144,13 +144,14 @@ public class AutoMineCommand extends CommandBase {
         switch (removeType) {
             case "coord":
                 if (args.length < 3) throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.remove.coord"));
+                List<BlockPos> currentTargets = AutoMineTargetManager.getCurrentTargetBlocks();
                 int indexToRemove = parseInt(args[2], 1) - 1;
-                if (indexToRemove >= 0 && indexToRemove < AutoMineTargetManager.targetBlocks.size()) {
-                    BlockPos removed = AutoMineTargetManager.targetBlocks.remove(indexToRemove);
+                if (indexToRemove >= 0 && indexToRemove < currentTargets.size()) {
+                    BlockPos removed = currentTargets.remove(indexToRemove);
                     AutoMineTargetManager.saveCoordinates();
                     sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.remove.coord.success", removed.getX(), removed.getY(), removed.getZ())));
                 } else {
-                    throw new CommandException(LangUtil.translate("ghost.automine.command.remove.coord.error", AutoMineTargetManager.targetBlocks.size()));
+                    throw new CommandException(LangUtil.translate("ghost.automine.command.remove.coord.error", currentTargets.size()));
                 }
                 break;
             case "block":
@@ -216,7 +217,7 @@ public class AutoMineCommand extends CommandBase {
         String clearType = args[1].toLowerCase();
         switch (clearType) {
             case "coords":
-                AutoMineTargetManager.targetBlocks.clear();
+                AutoMineTargetManager.getCurrentTargetBlocks().clear();
                 AutoMineTargetManager.saveCoordinates();
                 sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.clear.coords.success")));
                 break;
@@ -238,7 +239,7 @@ public class AutoMineCommand extends CommandBase {
                 throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.clear"));
         }
 
-        if (AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty() && AutoMineHandler.isActive()) {
+        if (AutoMineTargetManager.getCurrentTargetBlocks().isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty() && AutoMineHandler.isActive()) {
             AutoMineHandler.toggle();
         }
     }
@@ -303,8 +304,10 @@ public class AutoMineCommand extends CommandBase {
 
     private void handleList(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.header_main")));
+        
+        List<BlockPos> currentTargets = AutoMineTargetManager.getCurrentTargetBlocks();
 
-        boolean hasCoords = !AutoMineTargetManager.targetBlocks.isEmpty();
+        boolean hasCoords = !currentTargets.isEmpty();
         boolean hasBlocks = !AutoMineTargetManager.targetBlockTypes.isEmpty();
         boolean hasWeights = !AutoMineTargetManager.targetBlockWeights.isEmpty();
         boolean hasGroups = !AutoMineTargetManager.customBlockGroups.isEmpty();
@@ -316,8 +319,8 @@ public class AutoMineCommand extends CommandBase {
 
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.header_coords")));
         if (hasCoords) {
-            for (int i = 0; i < AutoMineTargetManager.targetBlocks.size(); i++) {
-                BlockPos p = AutoMineTargetManager.targetBlocks.get(i);
+            for (int i = 0; i < currentTargets.size(); i++) {
+                BlockPos p = currentTargets.get(i);
                 sender.addChatMessage(new ChatComponentText(String.format("§e%d. §f(%d, %d, %d)", i + 1, p.getX(), p.getY(), p.getZ())));
             }
         } else {
@@ -421,7 +424,7 @@ public class AutoMineCommand extends CommandBase {
                 case "remove":
                     if ("coord".equals(type) && args.length == 3) {
                         List<String> indices = new ArrayList<>();
-                        for (int i = 1; i <= AutoMineTargetManager.targetBlocks.size(); i++) indices.add(String.valueOf(i));
+                        for (int i = 1; i <= AutoMineTargetManager.getCurrentTargetBlocks().size(); i++) indices.add(String.valueOf(i));
                         return getListOfStringsMatchingLastWord(args, indices);
                     }
                     if ("block".equals(type) && args.length == 3) {

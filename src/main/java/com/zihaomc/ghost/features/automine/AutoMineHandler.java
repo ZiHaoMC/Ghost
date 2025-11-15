@@ -78,7 +78,7 @@ public class AutoMineHandler {
             return;
         }
 
-        if (!isActive && AutoMineTargetManager.targetBlocks.isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
+        if (!isActive && AutoMineTargetManager.getCurrentTargetBlocks().isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty()) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.no_targets_set")));
             return;
         }
@@ -268,7 +268,7 @@ public class AutoMineHandler {
             }
         }
 
-        boolean hasTargets = !AutoMineTargetManager.targetBlocks.isEmpty() || !AutoMineTargetManager.targetBlockTypes.isEmpty();
+        boolean hasTargets = !AutoMineTargetManager.getCurrentTargetBlocks().isEmpty() || !AutoMineTargetManager.targetBlockTypes.isEmpty();
         if (!hasTargets) {
             reset();
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.no_targets_left")));
@@ -494,7 +494,7 @@ public class AutoMineHandler {
     }
     
     private BlockPos findVeinMineTarget() {
-        if (!GhostConfig.AutoMine.enableVeinMining || currentTarget == null || lastMinedState == null || lastMinedState.getBlock() == Blocks.air || AutoMineTargetManager.targetBlocks.contains(currentTarget)) {
+        if (!GhostConfig.AutoMine.enableVeinMining || currentTarget == null || lastMinedState == null || lastMinedState.getBlock() == Blocks.air || AutoMineTargetManager.getCurrentTargetBlocks().contains(currentTarget)) {
             return null;
         }
     
@@ -524,7 +524,7 @@ public class AutoMineHandler {
     private BlockPos findBestTarget() {
         Set<BlockPos> candidates = new HashSet<>();
 
-        for (BlockPos pos : AutoMineTargetManager.targetBlocks) {
+        for (BlockPos pos : AutoMineTargetManager.getCurrentTargetBlocks()) {
             if (isTargetValid(pos)) {
                 candidates.add(pos);
             }
@@ -618,7 +618,7 @@ public class AutoMineHandler {
             return false;
         }
         
-        if (!AutoMineTargetManager.targetBlocks.contains(pos) && !isBlockTypeTargeted(state)) {
+        if (!AutoMineTargetManager.getCurrentTargetBlocks().contains(pos) && !isBlockTypeTargeted(state)) {
             return false;
         }
 

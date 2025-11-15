@@ -3,19 +3,16 @@ package com.zihaomc.ghost.features.automine;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ResourceLocation;
 
 import java.io.*;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -31,8 +28,8 @@ public class AutoMineTargetManager {
     private static final String TARGET_GROUPS_FILE_NAME = "automine_groups.json";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    /** 内存中的坐标目标列表 */
-    public static final List<BlockPos> targetBlocks = new ArrayList<>();
+    /** 内存中的坐标目标列表, 按世界区分 */
+    public static final Map<String, List<BlockPos>> worldTargetBlocks = new ConcurrentHashMap<>();
     /** 内存中的方块类型目标集合 (包含 metadata) */
     public static final Set<BlockData> targetBlockTypes = new HashSet<>();
     /** 内存中的方块权重映射 */
@@ -116,16 +113,46 @@ public class AutoMineTargetManager {
         loadBlockGroups();
     }
 
+    /**
+     * 获取当前所在世界的世界标识符。
+     * @return 世界标识符字符串，如果不在世界中则返回 null。
+     */
+    private static String getCurrentWorldId() {
+        if (Minecraft.getMinecraft() != null && Minecraft.getMinecraft().theWorld != null) {
+            return GhostBlockData.getWorldIdentifier(Minecraft.getMinecraft().theWorld);
+        }
+        return null;
+    }
+
+    /**
+     * 获取当前世界的坐标目标列表。
+     * 如果当前世界没有列表，会为其创建一个新的空列表。
+     * @return 当前世界的目标坐标列表。如果不在世界中，则返回一个不可变的空列表。
+     */
+    public static List<BlockPos> getCurrentTargetBlocks() {
+        String worldId = getCurrentWorldId();
+        if (worldId == null) {
+            return Collections.emptyList();
+        }
+        return worldTargetBlocks.computeIfAbsent(worldId, k -> new ArrayList<>());
+    }
+    
     private static void loadCoordinates() {
         File targetsFile = getCoordsFile();
         if (!targetsFile.exists()) return;
         try (Reader reader = new FileReader(targetsFile)) {
-            Type type = new TypeToken<List<AutoMineTargetEntry>>(){}.getType();
-            List<AutoMineTargetEntry> loadedEntries = GSON.fromJson(reader, type);
-            if (loadedEntries != null) {
-                targetBlocks.clear();
-                targetBlocks.addAll(loadedEntries.stream().map(entry -> new BlockPos(entry.x, entry.y, entry.z)).collect(Collectors.toList()));
-                LogUtil.info("log.automine.targets.loaded", targetBlocks.size());
+            Type type = new TypeToken<Map<String, List<AutoMineTargetEntry>>>(){}.getType();
+            Map<String, List<AutoMineTargetEntry>> loadedMap = GSON.fromJson(reader, type);
+            if (loadedMap != null) {
+                worldTargetBlocks.clear();
+                for (Map.Entry<String, List<AutoMineTargetEntry>> worldEntry : loadedMap.entrySet()) {
+                    List<BlockPos> blockPosList = worldEntry.getValue().stream()
+                        .map(entry -> new BlockPos(entry.x, entry.y, entry.z))
+                        .collect(Collectors.toList());
+                    worldTargetBlocks.put(worldEntry.getKey(), blockPosList);
+                }
+                long totalTargets = worldTargetBlocks.values().stream().mapToLong(List::size).sum();
+                LogUtil.info("log.automine.targets.loaded", totalTargets);
             }
         } catch (Exception e) {
             LogUtil.error("log.automine.targets.load_failed", e.getMessage());
@@ -215,13 +242,21 @@ public class AutoMineTargetManager {
 
     public static void saveCoordinates() {
         File targetsFile = getCoordsFile();
-        if (targetBlocks.isEmpty()) {
+        worldTargetBlocks.entrySet().removeIf(entry -> entry.getValue() == null || entry.getValue().isEmpty());
+
+        if (worldTargetBlocks.isEmpty()) {
             if (targetsFile.exists()) targetsFile.delete();
             return;
         }
         try (Writer writer = new FileWriter(targetsFile)) {
-            List<AutoMineTargetEntry> entriesToSave = targetBlocks.stream().map(AutoMineTargetEntry::new).collect(Collectors.toList());
-            GSON.toJson(entriesToSave, writer);
+            Map<String, List<AutoMineTargetEntry>> mapToSave = new HashMap<>();
+            for (Map.Entry<String, List<BlockPos>> worldEntry : worldTargetBlocks.entrySet()) {
+                List<AutoMineTargetEntry> targetEntries = worldEntry.getValue().stream()
+                    .map(AutoMineTargetEntry::new)
+                    .collect(Collectors.toList());
+                mapToSave.put(worldEntry.getKey(), targetEntries);
+            }
+            GSON.toJson(mapToSave, writer);
         } catch (IOException e) {
             LogUtil.error("log.automine.targets.save_failed", e.getMessage());
         }
