@@ -321,6 +321,22 @@ public class AutoMineHandler {
             currentState = State.SWITCHING_TARGET; 
             return;
         }
+
+        // --- 新增逻辑：玩家手动覆盖 ---
+        MovingObjectPosition mouseOver = mc.objectMouseOver;
+        if (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+            BlockPos crosshairTargetPos = mouseOver.getBlockPos();
+            // 检查玩家是否正在看一个与当前目标不同，但同样有效的方块
+            if (!crosshairTargetPos.equals(currentTarget) && isTargetValid(crosshairTargetPos)) {
+                // 如果是，则将玩家的目标作为新目标
+                currentStrategy.onStopMining();
+                currentTarget = crosshairTargetPos;
+                currentStrategy.onStartMining(currentTarget);
+                miningStartTime = null; // 重置挖掘计时器
+                return; // 立即返回，让下一个 tick 处理新目标的挖掘
+            }
+        }
+        // --- 新增逻辑结束 ---
         
         IBlockState targetBlockState = mc.theWorld.getBlockState(currentTarget);
         Block blockAtTarget = targetBlockState.getBlock();
@@ -335,7 +351,6 @@ public class AutoMineHandler {
 
         Vec3 bestPointToLookAt;
 
-        MovingObjectPosition mouseOver = mc.objectMouseOver;
         // 检查准星是否已经对准了我们的目标方块
         if (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget)) {
             // 如果是，就使用游戏返回的精确碰撞点，这对于非完整方块至关重要
