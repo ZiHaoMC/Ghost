@@ -33,7 +33,6 @@ import java.util.regex.Pattern;
  */
 public class AutoMineHandler {
 
-    // 您可以在这里调整切换工具后的等待时间（以游戏刻为单位，20 ticks = 1秒）
     private static final int TOOL_SWITCH_DELAY_TICKS = 5;
 
     public enum MiningMode {
@@ -48,15 +47,16 @@ public class AutoMineHandler {
         MINING,
         WAITING,
         VALIDATING_BREAK,
-        POST_SWITCH_DELAY // 新增：工具切换后的延迟状态
+        POST_SWITCH_DELAY
     }
 
     private static final Minecraft mc = Minecraft.getMinecraft();
     private static boolean isActive = false;
     private static BlockPos currentTarget = null;
+    private static IBlockState initialTargetState = null; // 新增：用于记录开始挖掘时的方块状态
     private static State currentState = State.IDLE;
     private int waitTicks = 0;
-    private int delayTicks = 0; // 用于新状态的计时器
+    private int delayTicks = 0;
 
     private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
     private Long miningStartTime = null;
@@ -147,6 +147,7 @@ public class AutoMineHandler {
         currentMoveDuration = 0;
         currentState = State.IDLE;
         currentTarget = null;
+        initialTargetState = null;
         isActive = false;
         unmineableBlacklist.clear();
         lastMinedState = null;
@@ -277,13 +278,14 @@ public class AutoMineHandler {
                 break;
             case MINING: handleMining(); break;
             case VALIDATING_BREAK: handleValidation(); break;
-            case POST_SWITCH_DELAY: handlePostSwitchDelay(); break; // 处理新状态
+            case POST_SWITCH_DELAY: handlePostSwitchDelay(); break;
         }
     }
 
     private void handleSwitchingTarget() {
         if (currentStrategy != null) currentStrategy.onStopMining();
         miningStartTime = null;
+        initialTargetState = null; // 重置初始状态
 
         BlockPos veinTarget = findVeinMineTarget();
         if (veinTarget != null) {
@@ -294,6 +296,7 @@ public class AutoMineHandler {
         }
 
         if (currentTarget != null) {
+            initialTargetState = mc.theWorld.getBlockState(currentTarget); // 记录下我们决定要挖的方块
             if (currentStrategy != null) currentStrategy.onStartMining(currentTarget);
             currentState = State.MINING;
         } else {
@@ -311,16 +314,22 @@ public class AutoMineHandler {
             return;
         }
 
+        // --- “防偷换”检查 ---
+        // 检查当前位置的方块是否还是我们最初打算挖的那个。
+        // 如果不是（变成了空气、或者被服务器换成了别的方块），必须立刻返回大脑重新决策。
+        IBlockState currentStateAtTarget = mc.theWorld.getBlockState(currentTarget);
+        if (initialTargetState == null || !currentStateAtTarget.equals(initialTargetState)) {
+            currentState = State.SWITCHING_TARGET;
+            return;
+        }
+
         if (needsToolSwitch()) {
             if (handleToolSwitching()) {
-                // 切换成功，进入延迟状态而不是立即挖掘
                 currentState = State.POST_SWITCH_DELAY;
                 delayTicks = TOOL_SWITCH_DELAY_TICKS;
-                // 确保在延迟期间不发送挖掘数据包
                 if (currentStrategy != null) currentStrategy.onStopMining();
                 return;
             } else {
-                // 切换失败，handleToolSwitching内部会重置
                 return;
             }
         }
@@ -338,32 +347,40 @@ public class AutoMineHandler {
             return;
         }
         
-        MovingObjectPosition mouseOver = mc.objectMouseOver;
-        if (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            BlockPos crosshairTargetPos = mouseOver.getBlockPos();
-            if (!crosshairTargetPos.equals(currentTarget) && isTargetValid(crosshairTargetPos)) {
-                currentStrategy.onStopMining();
-                currentTarget = crosshairTargetPos;
-                currentStrategy.onStartMining(currentTarget);
-                miningStartTime = null;
-                return;
+        if (!mithrilOptimizationIsActive) {
+            MovingObjectPosition mouseOver = mc.objectMouseOver;
+            if (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+                BlockPos crosshairTargetPos = mouseOver.getBlockPos();
+                
+                if (!crosshairTargetPos.equals(currentTarget) && isTargetValid(crosshairTargetPos)) {
+                    currentStrategy.onStopMining();
+                    currentTarget = crosshairTargetPos;
+                    initialTargetState = mc.theWorld.getBlockState(currentTarget); // 更新初始状态
+                    currentStrategy.onStartMining(currentTarget);
+                    miningStartTime = null;
+                    return;
+                }
             }
         }
 
-        IBlockState targetBlockState = mc.theWorld.getBlockState(currentTarget);
-        Block blockAtTarget = targetBlockState.getBlock();
+        // 此时，currentStateAtTarget就是initialTargetState，无需重新获取
+        Block blockAtTarget = currentStateAtTarget.getBlock();
         if (blockAtTarget != Blocks.air) {
-            lastMinedState = targetBlockState;
+            lastMinedState = currentStateAtTarget;
         }
-        if (blockAtTarget == Blocks.air || !isTargetValid(currentTarget) || checkTimeout(blockAtTarget)) {
+
+        // 因为我们已经在顶部做了最严格的检查，这里的检查可以简化
+        if (checkTimeout(blockAtTarget)) {
             currentState = State.SWITCHING_TARGET;
             return;
         }
-
+        
+        MovingObjectPosition mouseOver = mc.objectMouseOver;
         Vec3 bestPointToLookAt = (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget))
                 ? mouseOver.hitVec : RotationUtil.getClosestVisiblePoint(currentTarget);
 
         if (bestPointToLookAt == null) {
+            // 如果看不见了，也应该重新寻找目标
             currentState = State.SWITCHING_TARGET;
             return;
         }
@@ -390,16 +407,13 @@ public class AutoMineHandler {
         }
     }
     
-    // 新增：处理工具切换后延迟的方法
     private void handlePostSwitchDelay() {
-        // 确保在延迟期间不攻击
         if (mc.gameSettings.keyBindAttack.isKeyDown()) {
             KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), false);
         }
 
         delayTicks--;
         if (delayTicks <= 0) {
-            // 延迟结束，回到挖掘状态
             currentState = State.MINING;
         }
     }
@@ -492,7 +506,7 @@ public class AutoMineHandler {
             for (EnumFacing facing : EnumFacing.values()) {
                 BlockPos neighborPos = lastPos.offset(facing);
                 IBlockState neighborState = mc.theWorld.getBlockState(neighborPos);
-                if (neighborState == lastMinedState && isTargetValid(neighborPos)) {
+                if (neighborState.equals(lastMinedState) && isTargetValid(neighborPos)) {
                     double score = getAngleDifferenceToBlock(neighborPos);
                     if (score < minScore) {
                         minScore = score;
@@ -506,61 +520,75 @@ public class AutoMineHandler {
     }
 
     private BlockPos findBestTarget() {
-        Set<BlockPos> primaryCandidates = new HashSet<>();
-        Set<BlockPos> secondaryCandidates = new HashSet<>();
-        findAndCategorizeCandidates(primaryCandidates, secondaryCandidates);
-
-        if (!mithrilOptimizationIsActive || (primaryCandidates.isEmpty() && secondaryCandidates.isEmpty())) {
-            return findBestCandidate(primaryCandidates.isEmpty() ? secondaryCandidates : primaryCandidates);
+        if (!mithrilOptimizationIsActive) {
+            Set<BlockPos> allCandidates = new HashSet<>();
+            for (BlockPos pos : BlockPos.getAllInBox(mc.thePlayer.getPosition().add(-GhostConfig.AutoMine.searchRadius, -GhostConfig.AutoMine.searchRadius, -GhostConfig.AutoMine.searchRadius), mc.thePlayer.getPosition().add(GhostConfig.AutoMine.searchRadius, GhostConfig.AutoMine.searchRadius, GhostConfig.AutoMine.searchRadius))) {
+                if (isTargetValid(pos)) {
+                    allCandidates.add(new BlockPos(pos));
+                }
+            }
+            return findBestCandidate(allCandidates);
         }
 
-        boolean hasAbilityToCleanTitanium = GhostConfig.AutoMine.enableAutomaticToolSwitching
-                ? findToolByBreakingPower(5, true) != -1
-                : getBreakingPower(mc.thePlayer.getCurrentEquippedItem()) >= 5;
+        Set<BlockPos> mithrilCandidates = new HashSet<>();
+        Set<BlockPos> titaniumCandidates = new HashSet<>();
+        findAndCategorizeMithrilAndTitanium(mithrilCandidates, titaniumCandidates);
 
-        boolean shouldCleanTitanium = false;
-        if (hasAbilityToCleanTitanium && !secondaryCandidates.isEmpty()) {
-            boolean cleanupThresholdMet = secondaryCandidates.size() >= GhostConfig.AutoMine.mithrilCleanupThreshold;
-            if (cleanupThresholdMet || isCleanupMode || primaryCandidates.isEmpty()) {
-                shouldCleanTitanium = true;
-            }
+        boolean hasAbilityToMineTitanium;
+        if (GhostConfig.AutoMine.enableAutomaticToolSwitching) {
+            boolean hasBP5plus = findToolByBreakingPower(5, true) != -1;
+            boolean hasBP4 = findToolByBreakingPower(4, false) != -1;
+            hasAbilityToMineTitanium = hasBP5plus && hasBP4;
         } else {
-            if (isCleanupMode) {
-                 isCleanupMode = false;
-                 mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_complete")));
+            hasAbilityToMineTitanium = getBreakingPower(mc.thePlayer.getCurrentEquippedItem()) >= 5;
+        }
+
+        boolean shouldEnterCleanupMode = false;
+        if (hasAbilityToMineTitanium && !titaniumCandidates.isEmpty()) {
+            boolean cleanupThresholdMet = titaniumCandidates.size() >= GhostConfig.AutoMine.mithrilCleanupThreshold;
+            boolean noMithrilLeft = mithrilCandidates.isEmpty();
+            
+            if (cleanupThresholdMet || isCleanupMode || noMithrilLeft) {
+                shouldEnterCleanupMode = true;
             }
         }
 
-        if (shouldCleanTitanium) {
+        if (shouldEnterCleanupMode) {
             if (!isCleanupMode) {
                 isCleanupMode = true;
                 mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_start")));
             }
-            return findBestCandidate(secondaryCandidates);
+            return findBestCandidate(titaniumCandidates);
         } else {
-            if (primaryCandidates.isEmpty() && !secondaryCandidates.isEmpty() && !cleanupToolTooWeakNotified) {
+            if (isCleanupMode) {
+                isCleanupMode = false;
+                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_complete")));
+            }
+            
+            if (mithrilCandidates.isEmpty() && !titaniumCandidates.isEmpty() && !hasAbilityToMineTitanium && !cleanupToolTooWeakNotified) {
                 String warningMessage = "[Ghost] " + LangUtil.translate("ghost.automine.warning.tool_too_weak_for_cleanup");
                 mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + warningMessage));
                 cleanupToolTooWeakNotified = true;
             }
-            if (isCleanupMode) {
-                 isCleanupMode = false;
-                 mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_complete")));
-            }
-            return findBestCandidate(primaryCandidates);
+            
+            return findBestCandidate(mithrilCandidates);
         }
     }
 
-    private void findAndCategorizeCandidates(Set<BlockPos> primary, Set<BlockPos> secondary) {
+    private void findAndCategorizeMithrilAndTitanium(Set<BlockPos> mithrilOut, Set<BlockPos> titaniumOut) {
         int radius = GhostConfig.AutoMine.searchRadius;
         BlockPos playerPos = mc.thePlayer.getPosition();
+        
         for (BlockPos pos : BlockPos.getAllInBox(playerPos.add(-radius, -radius, -radius), playerPos.add(radius, radius, radius))) {
             if (!isTargetValid(pos)) continue;
             
-            if (isCleanupMode) {
-                secondary.add(new BlockPos(pos));
-            } else {
-                primary.add(new BlockPos(pos));
+            IBlockState state = mc.theWorld.getBlockState(pos);
+            
+            if (mithrilOptimizationIsActive && isTitanium(state)) {
+                titaniumOut.add(new BlockPos(pos));
+            } 
+            else if (isBlockTypeTargeted(state)) {
+                mithrilOut.add(new BlockPos(pos));
             }
         }
     }
@@ -602,6 +630,7 @@ public class AutoMineHandler {
 
     private boolean isTargetValid(BlockPos pos) {
         IBlockState state = mc.theWorld.getBlockState(pos);
+        
         if (unmineableBlacklist.containsKey(pos)) {
             if (state.getBlock() != unmineableBlacklist.get(pos)) unmineableBlacklist.remove(pos);
             else return false;
@@ -614,17 +643,11 @@ public class AutoMineHandler {
             return false;
         }
 
-        boolean isPrimary = isBlockTypeTargeted(state);
-        boolean isSecondary = mithrilOptimizationIsActive && isTitanium(state);
+        boolean isMithrilTarget = isBlockTypeTargeted(state);
+        boolean isTitaniumTarget = mithrilOptimizationIsActive && isTitanium(state);
 
-        if (mithrilOptimizationIsActive) {
-            if (isCleanupMode) {
-                if (!isSecondary) return false;
-            } else {
-                if (!isPrimary) return false;
-            }
-        } else {
-            if (!isPrimary) return false;
+        if (!isMithrilTarget && !isTitaniumTarget) {
+            return false;
         }
 
         double reach = GhostConfig.AutoMine.maxReachDistance;
