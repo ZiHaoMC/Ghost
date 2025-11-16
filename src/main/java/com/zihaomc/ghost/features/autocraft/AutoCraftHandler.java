@@ -14,6 +14,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -28,8 +29,8 @@ public class AutoCraftHandler {
         STARTING,
         CHECK_SUPPLIES,
         GET_SUPPLIES,
-        WAIT_FOR_SUPPLIES,
-        FINAL_CHECK,
+        WAITING_FOR_STASH_MESSAGE, // 等待服务器/pickupstash命令的确认消息
+        CHECK_SUPPLIES_AFTER_STASH, // 收到消息后进行最终检查
         OPEN_MENU,
         WAIT_FOR_MENU_GUI,
         CLICK_CRAFT_TABLE,
@@ -71,6 +72,7 @@ public class AutoCraftHandler {
     private static final int CRAFT_TABLE_SLOT = 31;
     private static final int WAIT_TIMEOUT_TICKS = 60;
     private static final int PLACEMENT_TIMEOUT_TICKS = 40;
+    private static final int STASH_MESSAGE_TIMEOUT_TICKS = 80; // 等待/pickupstash消息的超时时间，4秒
 
     /**
      * 根据指定的配方启动自动合成。
@@ -152,6 +154,23 @@ public class AutoCraftHandler {
         return stack != null && stack.getItem() == Item.getItemFromBlock(Blocks.barrier);
     }
 
+    /**
+     * 监听聊天消息事件，用于捕捉/pickupstash的完成信号。
+     */
+    @SubscribeEvent
+    public void onChatReceived(ClientChatReceivedEvent event) {
+        if (currentState != State.WAITING_FOR_STASH_MESSAGE) {
+            return;
+        }
+        String message = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
+        if (message.contains("You picked up") && message.contains("from your material stash")) {
+            LogUtil.info("[AutoCraft] Stash pickup confirmation message received.");
+            // 收到消息后，等待一个极短的时间（3 ticks）确保客户端物品栏数据包已处理
+            setDelay(3);
+            setState(State.CHECK_SUPPLIES_AFTER_STASH);
+        }
+    }
+
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || !active || mc.thePlayer == null || mc.theWorld == null || activeRecipe == null) {
@@ -191,16 +210,21 @@ public class AutoCraftHandler {
                 case GET_SUPPLIES:
                     LogUtil.info("[AutoCraft] Sending /pickupstash command.");
                     mc.thePlayer.sendChatMessage("/pickupstash");
-                    setDelay(GhostConfig.AutoCraft.autoCraftPickupStashWaitTicks);
-                    setState(State.WAIT_FOR_SUPPLIES);
+                    timeoutCounter = STASH_MESSAGE_TIMEOUT_TICKS; // 设置超时
+                    setState(State.WAITING_FOR_STASH_MESSAGE);
                     break;
 
-                case WAIT_FOR_SUPPLIES:
-                    LogUtil.info("[AutoCraft] Waiting for supplies to be picked up.");
-                    setState(State.FINAL_CHECK);
+                case WAITING_FOR_STASH_MESSAGE:
+                    timeoutCounter--;
+                    if (timeoutCounter <= 0) {
+                        LogUtil.error("[AutoCraft] Timed out waiting for /pickupstash confirmation message.");
+                        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.stash_timeout")));
+                        stop();
+                    }
                     break;
 
-                case FINAL_CHECK:
+                case CHECK_SUPPLIES_AFTER_STASH:
+                    LogUtil.info("[AutoCraft] Performing final supply check after stash pickup.");
                     int finalIngredientCount = getIngredientCount();
                     LogUtil.info("[AutoCraft] Final supply check for " + activeRecipe.ingredientDisplayName + ". Found " + finalIngredientCount + ". Required: " + activeRecipe.requiredAmount);
                     if (finalIngredientCount >= activeRecipe.requiredAmount) {
