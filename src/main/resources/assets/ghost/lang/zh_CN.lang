@@ -160,6 +160,7 @@ ghost.autocraft.error.recipe_invalid_in_file=§e警告: 配方文件中的配方
 ghost.autocraft.error.gui_timeout=§c错误: 打开界面超时，自动合成已停止。
 ghost.autocraft.error.craft_timeout=§c错误: 等待合成结果超时！
 ghost.autocraft.error.pickup_timeout=§c错误: 等待成品槽清空超时！
+ghost.autocraft.error.stash_timeout=§c错误: 等待 /pickupstash 确认消息超时。自动合成已停止。
 log.handler.registered.autoCraft=自动合成事件处理器 (AutoCraftHandler) 已注册。
 log.command.registered.autoCraft=AutoCraftCommand (/autocraft) 已注册。
 
@@ -321,17 +322,17 @@ ghostblock.commands.undo.record_created_clear=已为文件删除操作创建撤�
 ghostblock.commands.undo.restoring_user_files=正在恢复用户文件至先前状态...
 ghostblock.commands.undo.user_file_restored=已恢复用户文件 '%1$s'。
 ghostblock.commands.undo.error.data_file_empty=警告: 撤销数据文件为空或未找到，无法恢复方块。
+ghost.commands.undo.error.data_file_empty_ghost=§e警告: 撤销数据文件为空或未找到，无法恢复幽灵方块。
+ghost.commands.undo.restoring_ghost_blocks=§7正在恢复幽灵方块...
+ghost.commands.undo.error.restore_ghost_failed=§c错误: 恢复幽灵方块 (%1$d, %2$d, %3$d) 失败: %4$s
+ghost.commands.undo.auto_file_restored=§a已将 %1$d 个幽灵方块记录恢复到自动清除文件。
+ghost.commands.undo.success_clear=§a成功撤销清除操作，恢复了 %1$d 个幽灵方块。
 ghostblock.commands.undo.restoring_blocks=正在恢复原始方块...
 ghostblock.commands.undo.error.restore_failed=错误: 恢复方块 (%1$d, %2$d, %3$d) 失败: %4$s
 ghostblock.commands.undo.error_block_lookup=错误: 无法找到方块ID '%1$s' 用于恢复位置 (%2$d, %3$d, %4$d)。
 ghostblock.commands.undo.success_set=成功撤销操作，恢复了 %1$d 个原始方块。
 ghostblock.commands.undo.success_clear_file=成功撤销文件删除操作。
 ghostblock.commands.undo.warning.no_files_to_restore=撤销记录有效，但没有文件需要恢复。
-ghost.commands.undo.error.data_file_empty_ghost=警告: 撤销数据文件为空或未找到，无法恢复幽灵方块。
-ghost.commands.undo.restoring_ghost_blocks=正在恢复幽灵方块...
-ghost.commands.undo.error.restore_ghost_failed=错误: 恢复幽灵方块 (%1$d, %2$d, %3$d) 失败: %4$s
-ghost.commands.undo.auto_file_restored=已将 %1$d 个幽灵方块记录恢复到自动清除文件。
-ghost.commands.undo.success_clear=成功撤销清除操作，恢复了 %1$d 个幽灵方块。
 ghostblock.commands.undo.invalid_index=错误: 无效的编号。请输入 1 到 %d 之间的数字。
 
 # history 命令
@@ -419,6 +420,8 @@ ghost.config.comment.autoMineRandomMoveInterval=随机移动的平均间隔时�
 ghost.config.comment.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
 ghost.config.comment.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。最终间隔将在 [interval - variability, interval + variability] 之间。
 ghost.config.comment.autoMineMiningMode=设置自动挖掘的模式。SIMULATE: 模拟玩家按键; PACKET_NORMAL: 发送数据包挖掘并等待方块消失; PACKET_INSTANT: 发送数据包后立即切换目标。
+ghost.config.comment.autoMineVoidSafetyCheck=启用自动挖掘的虚空安全检查，防止掉入虚空。
+ghost.config.comment.autoMineVoidSafetyYLimit=虚空安全检查的Y轴限制。自动挖掘将不会挖掘此Y轴值以下的方块。
 ghost.config.comment.autoMineAntiCheatCheck=启用自动挖掘数据包模式下的反作弊回弹检测。默认开启，以提高安全性。
 ghost.config.comment.autoCraftPlacementDelay=自动合成时，每次放置单个物品并确认成功后的等待时间（游戏刻, 20刻=1秒）。用于防止服务器速率限制。
 ghost.config.comment.autoCraftCycleDelay=自动合成时，完成一次完整合成循环（拿取成品）后，开始下一次循环前的等待时间（游戏刻, 20刻=1秒）。
@@ -864,3 +867,7 @@ log.automine.targets.save_failed=保存 AutoMine 目标时出错: %s
 log.automine.weights.loaded=成功加载 %d 个自动挖掘方块权重。
 log.automine.weights.load_failed=加载自动挖掘方块权重失败: %s
 log.automine.weights.save_failed=保存自动挖掘方块权重失败: %s
+log.automine.groups.loaded=已加载 %d 个自动挖掘方块组。
+log.automine.groups.load_failed=加载自动挖掘方块组失败: %s
+log.automine.groups.save_failed=保存自动挖掘方块组失败: %s
+log.handler.registered.guiStateSave=GUI状态保存事件处理器 (GuiStateSaveHandler) 已在 PreInit 中注册。
