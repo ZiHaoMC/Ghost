@@ -25,16 +25,13 @@ public class NoteInputHandler {
     public void handleKeyboardInput() throws IOException {
         if (Keyboard.getEventKeyState()) {
             if (GhostConfig.ChatFeatures.disableTwitchAtKey && Keyboard.getEventCharacter() == '@') {
-                history.saveState(editor.getTextContent(), true);
+                // 手动处理 @ 键以绕过 Twitch 功能
                 editor.insertText("@");
-                return;
-            }
-            if (Keyboard.getEventKey() == Keyboard.KEY_RETURN) {
-                history.saveState(editor.getTextContent(), false);
-                editor.insertText("\n");
+                history.saveState(editor.getTextContent(), true);
                 return;
             }
         }
+        // 让父类处理其他按键，最终会调用下面的 keyTyped 方法
         guiNote.superHandleKeyboardInput();
     }
 
@@ -49,51 +46,77 @@ public class NoteInputHandler {
             return;
         }
 
+        // 保存修改前的文本，用于之后判断文本是否真的发生了变化
+        String originalText = editor.getTextContent();
+
         switch (keyCode) {
             case Keyboard.KEY_BACK:
-                history.saveState(editor.getTextContent(), true);
                 if (editor.hasSelection()) editor.deleteSelection();
                 else editor.deleteCharBackwards();
+                // 只有当文本确实被修改时，才保存历史记录
+                if (!originalText.equals(editor.getTextContent())) {
+                    history.saveState(editor.getTextContent(), true); // true表示这是一个可合并的打字操作
+                }
                 break;
             case Keyboard.KEY_DELETE:
-                history.saveState(editor.getTextContent(), true);
                 if (editor.hasSelection()) editor.deleteSelection();
                 else editor.deleteCharForwards();
+                if (!originalText.equals(editor.getTextContent())) {
+                    history.saveState(editor.getTextContent(), true);
+                }
                 break;
+            // 以下按键不修改文本，所以不需要保存历史
             case Keyboard.KEY_LEFT: editor.moveCursorBy(-1, GuiScreen.isShiftKeyDown()); break;
             case Keyboard.KEY_RIGHT: editor.moveCursorBy(1, GuiScreen.isShiftKeyDown()); break;
             case Keyboard.KEY_HOME: editor.setCursorPosition(0, GuiScreen.isShiftKeyDown()); break;
             case Keyboard.KEY_END: editor.setCursorPosition(editor.getTextContent().length(), GuiScreen.isShiftKeyDown()); break;
             
-            // --- 新增：处理Tab键 ---
             case Keyboard.KEY_TAB:
-                history.saveState(editor.getTextContent(), false); // Tab 视为一个独立操作
-                editor.insertText("    "); // 插入四个空格
+                editor.insertText("    ");
+                history.saveState(editor.getTextContent(), false); // false表示这是一个独立操作，不可合并
+                break;
+            
+            case Keyboard.KEY_RETURN:
+                editor.insertText("\n");
+                history.saveState(editor.getTextContent(), false);
                 break;
 
             default:
                 if (typedChar == '§' || typedChar == '&' || net.minecraft.util.ChatAllowedCharacters.isAllowedCharacter(typedChar)) {
-                    history.saveState(editor.getTextContent(), true);
                     editor.insertText(Character.toString(typedChar));
+                    history.saveState(editor.getTextContent(), true);
                 }
         }
     }
 
     private void handleCtrlKeys(int keyCode) {
-        if (keyCode == Keyboard.KEY_A) editor.selectAll();
-        else if (keyCode == Keyboard.KEY_C) GuiScreen.setClipboardString(editor.getSelectedText());
-        else if (keyCode == Keyboard.KEY_X) {
-            history.saveState(editor.getTextContent(), false);
-            GuiScreen.setClipboardString(editor.getSelectedText());
-            editor.deleteSelection();
-        } else if (keyCode == Keyboard.KEY_V) {
-            String clipboard = GuiScreen.getClipboardString();
-            history.saveState(editor.getTextContent(), clipboard.length() < 5);
-            editor.insertText(clipboard);
-        } else if (keyCode == Keyboard.KEY_Z && !GuiScreen.isShiftKeyDown()) {
-            guiNote.handleUndo();
-        } else if (keyCode == Keyboard.KEY_Y || (keyCode == Keyboard.KEY_Z && GuiScreen.isShiftKeyDown())) {
-            guiNote.handleRedo();
+        switch (keyCode) {
+            case Keyboard.KEY_A:
+                editor.selectAll();
+                break;
+            case Keyboard.KEY_C:
+                GuiScreen.setClipboardString(editor.getSelectedText());
+                break;
+            case Keyboard.KEY_X: // 剪切
+                GuiScreen.setClipboardString(editor.getSelectedText());
+                editor.deleteSelection();
+                history.saveState(editor.getTextContent(), false);
+                break;
+            case Keyboard.KEY_V: // 粘贴
+                String clipboard = GuiScreen.getClipboardString();
+                editor.insertText(clipboard);
+                history.saveState(editor.getTextContent(), false);
+                break;
+            case Keyboard.KEY_Z: // 撤销/重做
+                if (!GuiScreen.isShiftKeyDown()) {
+                    guiNote.handleUndo();
+                } else {
+                    guiNote.handleRedo();
+                }
+                break;
+            case Keyboard.KEY_Y: // 重做
+                guiNote.handleRedo();
+                break;
         }
     }
 
