@@ -367,10 +367,23 @@ public class AutoCraftHandler {
 
                     ItemStack slotContent = mc.thePlayer.openContainer.getSlot(CRAFT_RESULT_SLOT).getStack();
                     if (isBarrier(slotContent)) {
-                        LogUtil.info("[AutoCraft] Slot cleared. Pausing before next cycle.");
-                        setDelay(GhostConfig.AutoCraft.autoCraftCycleDelayTicks);
-                        ingredientsPlaced = 0;
-                        setState(State.DO_CRAFT);
+                        LogUtil.info("[AutoCraft] Slot cleared. Checking supplies for next cycle.");
+                        
+                        // 优化：在进入下一次合成循环前立即检查材料是否充足
+                        // 如果不足，直接跳转到补货流程，而不是进入 DO_CRAFT 状态空转或报错
+                        if (getIngredientCount() < activeRecipe.requiredAmount) {
+                            LogUtil.info("[AutoCraft] Insufficient supplies for next cycle. Triggering supply check.");
+                            // 需要关闭当前的 GUI 以便 CHECK_SUPPLIES 或 GET_SUPPLIES 正常运作
+                            if (mc.currentScreen != null) {
+                                mc.thePlayer.closeScreen();
+                            }
+                            setState(State.CHECK_SUPPLIES);
+                        } else {
+                            LogUtil.info("[AutoCraft] Supplies sufficient. Pausing before next cycle.");
+                            setDelay(GhostConfig.AutoCraft.autoCraftCycleDelayTicks);
+                            ingredientsPlaced = 0;
+                            setState(State.DO_CRAFT);
+                        }
                     } else if (timeoutCounter <= 0) {
                         handleRecoverableError("Pickup slot clear timeout");
                     }
