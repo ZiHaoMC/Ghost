@@ -39,7 +39,7 @@ import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.features.chat.GuiChatWrapper;
 import com.zihaomc.ghost.utils.LogUtil;
-import com.zihaomc.ghost.utils.NiuTransUtil;
+import com.zihaomc.ghost.utils.TranslationUtil;
 
 /**
  * 1.在聊天消息（尤其是错误消息和成功命令反馈）后添加 “建议命令” 按钮。
@@ -375,7 +375,7 @@ public class ChatSuggestEventHandler {
     // ====================
     private void triggerAutomaticChatTranslation(String originalText) {
         new Thread(() -> {
-            final String result = NiuTransUtil.translate(originalText);
+            final String result = TranslationUtil.translate(originalText);
             
             // 调度回主线程来发送聊天消息
             Minecraft.getMinecraft().addScheduledTask(() -> {
@@ -385,7 +385,7 @@ public class ChatSuggestEventHandler {
                 }
             
                 // 只有成功翻译的结果才显示
-                if (!result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                if (!result.startsWith(TranslationUtil.ERROR_PREFIX)) {
                     ChatComponentText resultMessage = new ChatComponentText("");
                     ChatComponentText resultPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.translation") + " ");
                     resultPrefix.getChatStyle().setColor(EnumChatFormatting.AQUA);

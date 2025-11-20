@@ -4,7 +4,7 @@ import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.features.automine.AutoMineHandler;
 import com.zihaomc.ghost.features.note.GuiNote;
 import com.zihaomc.ghost.utils.ColorFormatting;
-import com.zihaomc.ghost.utils.NiuTransUtil;
+import com.zihaomc.ghost.utils.TranslationUtil;
 import com.zihaomc.ghost.LangUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiChat;
@@ -240,13 +240,13 @@ public class KeybindHandler {
         // 在新线程中执行网络请求
         new Thread(() -> {
             try {
-                String translationResult = NiuTransUtil.translate(textToTranslate);
+                String translationResult = TranslationUtil.translate(textToTranslate);
                 List<String> finalFormattedLines = new ArrayList<>();
                 
                 if (translationResult == null || translationResult.trim().isEmpty()) {
                     finalFormattedLines.add(EnumChatFormatting.RED + LangUtil.translate("ghost.error.translation.network"));
-                } else if (translationResult.startsWith(NiuTransUtil.ERROR_PREFIX)) {
-                    String errorContent = translationResult.substring(NiuTransUtil.ERROR_PREFIX.length());
+                } else if (translationResult.startsWith(TranslationUtil.ERROR_PREFIX)) {
+                    String errorContent = translationResult.substring(TranslationUtil.ERROR_PREFIX.length());
                     finalFormattedLines.add(EnumChatFormatting.RED + errorContent);
                 } else {
                     // 翻译成功，开始重新应用颜色格式

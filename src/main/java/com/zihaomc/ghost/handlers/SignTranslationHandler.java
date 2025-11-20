@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.handlers;
 
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.utils.NiuTransUtil;
+import com.zihaomc.ghost.utils.TranslationUtil;
 import com.zihaomc.ghost.LangUtil;
 import net.minecraft.block.BlockSign;
 import net.minecraft.client.Minecraft;
@@ -39,7 +39,7 @@ public class SignTranslationHandler {
                     Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.sign.translating")));
 
                     new Thread(() -> {
-                        final String result = NiuTransUtil.translate(combinedText);
+                        final String result = TranslationUtil.translate(combinedText);
                         Minecraft.getMinecraft().addScheduledTask(() -> {
                             // 安全检查：确保玩家仍在游戏中，以防止在切换世界时崩溃
                             if (Minecraft.getMinecraft().thePlayer == null) {
@@ -48,9 +48,9 @@ public class SignTranslationHandler {
                         
                             ChatComponentText resultMessage = new ChatComponentText("");
                             
-                            if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                            if (result.startsWith(TranslationUtil.ERROR_PREFIX)) {
                                 // 错误消息
-                                String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
+                                String errorContent = result.substring(TranslationUtil.ERROR_PREFIX.length());
                                 ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
                                 errorPrefix.getChatStyle().setColor(EnumChatFormatting.RED);
                                 ChatComponentText errorText = new ChatComponentText(errorContent);

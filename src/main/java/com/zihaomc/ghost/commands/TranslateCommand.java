@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.commands;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.utils.NiuTransUtil;
+import com.zihaomc.ghost.utils.TranslationUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
@@ -59,7 +59,7 @@ public class TranslateCommand extends CommandBase {
         sender.addChatMessage(translatingMessage);
 
         new Thread(() -> {
-            final String result = NiuTransUtil.translate(sourceText);
+            final String result = TranslationUtil.translate(sourceText);
             Minecraft.getMinecraft().addScheduledTask(() -> {
                 // 安全检查：确保玩家仍在游戏中，以防止在切换世界时崩溃
                 if (Minecraft.getMinecraft().thePlayer == null) {
@@ -68,9 +68,9 @@ public class TranslateCommand extends CommandBase {
                 
                 ChatComponentText resultMessage = new ChatComponentText("");
                 
-                if (result.startsWith(NiuTransUtil.ERROR_PREFIX)) {
+                if (result.startsWith(TranslationUtil.ERROR_PREFIX)) {
                     // 错误消息：使用通用前缀和红色
-                    String errorContent = result.substring(NiuTransUtil.ERROR_PREFIX.length());
+                    String errorContent = result.substring(TranslationUtil.ERROR_PREFIX.length());
                     ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
                     errorPrefix.getChatStyle().setColor(EnumChatFormatting.RED);
                     ChatComponentText errorText = new ChatComponentText(errorContent);

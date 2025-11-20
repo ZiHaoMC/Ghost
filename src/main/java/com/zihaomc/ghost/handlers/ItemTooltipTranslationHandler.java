@@ -5,7 +5,7 @@ import com.zihaomc.ghost.data.TranslationCacheManager;
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.utils.ColorFormatting;
 import com.zihaomc.ghost.utils.LogUtil;
-import com.zihaomc.ghost.utils.NiuTransUtil;
+import com.zihaomc.ghost.utils.TranslationUtil;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;

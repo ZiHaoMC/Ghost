@@ -104,6 +104,7 @@ public class GhostConfig {
         public static String niuTransApiKey;
         public static String translationSourceLang;
         public static String translationTargetLang;
+        public static String translationProvider; // 新增：翻译提供商选择
     }
 
     public static class NoteTaking {
@@ -143,7 +144,7 @@ public class GhostConfig {
         public static boolean enableMithrilOptimization;
         public static String[] titaniumBlockIds;
         public static int mithrilCleanupThreshold;
-        public static boolean enableAutomaticToolSwitching; // 新增: 自动工具切换开关
+        public static boolean enableAutomaticToolSwitching;
     }
 
     public static class AutoCraft {
@@ -251,6 +252,7 @@ public class GhostConfig {
         Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
         Translation.translationSourceLang = loadString(CATEGORY_TRANSLATION, "translationSourceLang", "auto", "ghostblock.config.translationSourceLang.tooltip");
         Translation.translationTargetLang = loadString(CATEGORY_TRANSLATION, "translationTargetLang", "zh", "ghostblock.config.translationTargetLang.tooltip");
+        Translation.translationProvider = loadString(CATEGORY_TRANSLATION, "translationProvider", "NIUTRANS", "ghost.config.comment.translationProvider");
     }
     
     private static void loadNoteTakingSettings() {
@@ -450,6 +452,10 @@ public class GhostConfig {
         updateAndSave(CATEGORY_TRANSLATION, "translationTargetLang", value, () -> Translation.translationTargetLang = value);
     }
 
+    public static void setTranslationProvider(String value) {
+        updateAndSave(CATEGORY_TRANSLATION, "translationProvider", value, () -> Translation.translationProvider = value);
+    }
+
     public static void setEnableAdvancedEditing(boolean value) {
         updateAndSave(CATEGORY_NOTE, "enableAdvancedEditing", value, () -> NoteTaking.enableAdvancedEditing = value);
     }
@@ -633,6 +639,7 @@ public class GhostConfig {
         settingUpdaters.put("niutransapikey", (k, v) -> setNiuTransApiKey(v));
         settingUpdaters.put("translationsourcelang", (k, v) -> setTranslationSourceLang(v));
         settingUpdaters.put("translationtargetlang", (k, v) -> setTranslationTargetLang(v));
+        settingUpdaters.put("translationprovider", (k, v) -> setTranslationProvider(v)); // 注册新命令
         settingUpdaters.put("enablenotefeature", (k, v) -> setEnableNoteFeature(parseBoolean(v)));
         settingUpdaters.put("enableadvancedediting", (k, v) -> setEnableAdvancedEditing(parseBoolean(v)));
         settingUpdaters.put("enablemarkdownrendering", (k, v) -> setEnableMarkdownRendering(parseBoolean(v)));
