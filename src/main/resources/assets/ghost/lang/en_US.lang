@@ -18,7 +18,7 @@ ghost.generic.enabled=§aEnabled
 ghost.generic.disabled=§cDisabled
 ghost.generic.toggle.feedback=%s is now %s
 ghost.generic.prefix.default=[Ghost] 
-ghost.generic.prefix.translation=[Translate]
+ghost.generic.prefix.translation=[T]
 commands.generic.player.unsupported=This command can only be executed by a player.
 commands.generic.block.notFound=Error: Block named '%s' not found.
 
