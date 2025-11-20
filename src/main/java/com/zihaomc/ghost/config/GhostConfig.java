@@ -101,10 +101,20 @@ public class GhostConfig {
         public static boolean autoShowCachedTranslation;
         public static boolean showTranslationOnly;
         public static boolean hideTranslationKeybindTooltip;
+        
         public static String niuTransApiKey;
+        
         public static String translationSourceLang;
         public static String translationTargetLang;
-        public static String translationProvider; // 新增：翻译提供商选择
+        
+        /** 
+         * 翻译提供商选择:
+         * NIUTRANS (需要Key)
+         * GOOGLE (免费, GTX接口)
+         * BING (免费, 模拟网页)
+         * MYMEMORY (免费)
+         */
+        public static String translationProvider; 
     }
 
     public static class NoteTaking {
@@ -249,10 +259,14 @@ public class GhostConfig {
         Translation.autoShowCachedTranslation = loadBoolean(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true, "ghost.config.comment.autoShowCachedTranslation");
         Translation.showTranslationOnly = loadBoolean(CATEGORY_TRANSLATION, "showTranslationOnly", false, "ghost.config.comment.showTranslationOnly");
         Translation.hideTranslationKeybindTooltip = loadBoolean(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false, "ghost.config.comment.hideTranslationKeybindTooltip");
+        
         Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
+        
         Translation.translationSourceLang = loadString(CATEGORY_TRANSLATION, "translationSourceLang", "auto", "ghostblock.config.translationSourceLang.tooltip");
         Translation.translationTargetLang = loadString(CATEGORY_TRANSLATION, "translationTargetLang", "zh", "ghostblock.config.translationTargetLang.tooltip");
-        Translation.translationProvider = loadString(CATEGORY_TRANSLATION, "translationProvider", "NIUTRANS", "ghost.config.comment.translationProvider");
+        
+        // 默认使用 GOOGLE (GTX)，因为它免费且稳定
+        Translation.translationProvider = loadString(CATEGORY_TRANSLATION, "translationProvider", "GOOGLE", "ghost.config.comment.translationProvider");
     }
     
     private static void loadNoteTakingSettings() {
@@ -451,9 +465,10 @@ public class GhostConfig {
     public static void setTranslationTargetLang(String value) {
         updateAndSave(CATEGORY_TRANSLATION, "translationTargetLang", value, () -> Translation.translationTargetLang = value);
     }
-
+    
     public static void setTranslationProvider(String value) {
-        updateAndSave(CATEGORY_TRANSLATION, "translationProvider", value, () -> Translation.translationProvider = value);
+        // 统一转为大写，方便处理
+        updateAndSave(CATEGORY_TRANSLATION, "translationProvider", value.toUpperCase(), () -> Translation.translationProvider = value.toUpperCase());
     }
 
     public static void setEnableAdvancedEditing(boolean value) {
@@ -639,7 +654,10 @@ public class GhostConfig {
         settingUpdaters.put("niutransapikey", (k, v) -> setNiuTransApiKey(v));
         settingUpdaters.put("translationsourcelang", (k, v) -> setTranslationSourceLang(v));
         settingUpdaters.put("translationtargetlang", (k, v) -> setTranslationTargetLang(v));
-        settingUpdaters.put("translationprovider", (k, v) -> setTranslationProvider(v)); // 注册新命令
+        
+        // 注册新的 translationProvider 命令处理器
+        settingUpdaters.put("translationprovider", (k, v) -> setTranslationProvider(v));
+        
         settingUpdaters.put("enablenotefeature", (k, v) -> setEnableNoteFeature(parseBoolean(v)));
         settingUpdaters.put("enableadvancedediting", (k, v) -> setEnableAdvancedEditing(parseBoolean(v)));
         settingUpdaters.put("enablemarkdownrendering", (k, v) -> setEnableMarkdownRendering(parseBoolean(v)));

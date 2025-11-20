@@ -307,7 +307,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(op + "  niuTransApiKey " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.niuTransApiKey")));
         sender.addChatMessage(new ChatComponentText(op + "  translationSourceLang " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationSourceLang")));
         sender.addChatMessage(new ChatComponentText(op + "  translationTargetLang " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.text") + " - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationTargetLang")));
-        sender.addChatMessage(new ChatComponentText(op + "  translationProvider " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.text") + " (NIUTRANS/GOOGLE) - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationProvider")));
+        sender.addChatMessage(new ChatComponentText(op + "  translationProvider " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.text") + " (NIUTRANS/GOOGLE/BING/MYMEMORY) - " + LangUtil.translate("ghostblock.commands.gconfig.help.setting.translationProvider")));
 
 
         sender.addChatMessage(new ChatComponentText(op + "  autoMineRotationSpeed " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.double_range", "1.0-180.0") + " - " + LangUtil.translate("ghost.commands.gconfig.help.setting.autoMineRotationSpeed")));
@@ -365,6 +365,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig fixGuiStateLossOnResize false"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig niuTransApiKey your_api_key_here"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig translationTargetLang en"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig translationProvider GOOGLE"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineRotationSpeed 10.0"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineTimeout 10"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineSpeedVariability 5.0"));
@@ -401,7 +402,7 @@ public class GhostConfigCommand extends CommandBase {
                 case "translationtargetlang":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "zh", "en", "ja", "ko", "fr", "ru", "de");
                 case "translationprovider":
-                    return CommandBase.getListOfStringsMatchingLastWord(args, "NIUTRANS", "GOOGLE");
+                    return CommandBase.getListOfStringsMatchingLastWord(args, "NIUTRANS", "GOOGLE", "BING", "MYMEMORY");
                 case "forcedbatchsize":
                     return CommandBase.getListOfStringsMatchingLastWord(args, "100", "500", "1000");
                 case "defaultsavename":
