@@ -363,6 +363,21 @@ ghost.commands.cghostblock.help.subcommand.undo=撤销上一次或指定的 set/
 ghostblock.commands.cghostblock.help.subcommand.history=显示可供撤销的操作历史记录。
 ghostblock.commands.cghostblock.help.aliases=别名
 
+# 翻译
+
+ghost.tooltip.switch_provider=点击切换翻译源: %s
+ghost.config.comment.showProviderSwitchButtons=是否在翻译结果后显示切换翻译源的按钮
+ghost.config.comment.translationProvider=当前使用的翻译提供商 (GOOGLE/BING/MYMEMORY/NIUTRANS)
+ghostblock.commands.gconfig.help.setting.showProviderSwitchButtons=翻译后显示切换源按钮
+ghostblock.commands.gconfig.help.setting.translationProvider=默认翻译源
+
+# 翻译错误信息
+ghost.error.translation.api_response=%s API 错误 (状态码: %d)
+ghost.error.translation.bing.failed_domains=Bing 翻译在所有域名上均连接失败
+ghost.error.translation.bing.tokens=无法获取 Bing 翻译 Token
+ghost.error.translation.bing.empty=Bing 返回了空结果
+ghost.log.bing.switch_host=Bing 翻译域名已切换至: %s
+
 # ==================================
 # ===     Mod 配置文件文本     ===
 # ==================================

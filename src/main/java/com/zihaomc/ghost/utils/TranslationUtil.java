@@ -21,26 +21,32 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * 统一翻译工具类 (最终优化版)。
+ * 统一翻译工具类 (极速优化版)。
  * 特性：
  * 1. 多源支持 (Google GTX, Bing Web, MyMemory, NiuTrans)
  * 2. 智能域名切换 (Bing cn/www)
  * 3. 智能重试机制 (MyMemory)
  * 4. LRU 内存缓存 (防止重复请求)
- * 5. 代码逻辑解耦
+ * 5. 线程池管理 (防止卡顿)
+ * 6. Bing Token 预热 (加速首次翻译)
  */
 public class TranslationUtil {
 
     private static final Gson GSON = new Gson();
     public static final String ERROR_PREFIX = "GHOST_TRANSLATION_ERROR:";
 
+    // --- 线程池优化 ---
+    // 使用缓存线程池，复用线程，减少 new Thread() 的开销，显著提升高频翻译时的性能
+    private static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool();
+
     // --- 内存缓存 (LRU) ---
-    // 最多缓存 500 条最近的翻译结果，防止刷屏导致 API 封禁
     private static final int CACHE_SIZE = 500;
     private static final Map<String, String> MEMORY_CACHE = Collections.synchronizedMap(
         new LinkedHashMap<String, String>(CACHE_SIZE + 1, 0.75f, true) {
@@ -67,36 +73,51 @@ public class TranslationUtil {
         CookieManager cookieManager = new CookieManager();
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
         CookieHandler.setDefault(cookieManager);
+        
+        // --- 预热优化 ---
+        // 在类加载时（游戏启动或首次调用时）就在后台悄悄获取 Bing Token
+        // 这样玩家第一次点击翻译时就不需要等待 Token 获取，直接秒翻
+        runAsynchronously(() -> {
+            try {
+                // 优先尝试 cn，因为国内用户更多
+                String tempHost = "cn.bing.com"; 
+                fetchTokensFromHost(tempHost);
+                // 如果获取成功，直接把当前 Host 设为 cn，避免之后的自动切换尝试
+                bingBaseHost = tempHost; 
+                // LogUtil.info("Bing token pre-fetched successfully from " + tempHost);
+            } catch (Exception e) {
+                // cn 失败则尝试 www，静默失败也无所谓，反正真正翻译时会重试
+                try {
+                    fetchTokensFromHost("www.bing.com");
+                    bingBaseHost = "www.bing.com";
+                } catch (Exception ignored) {}
+            }
+        });
     }
 
     /**
-     * 使用默认配置的提供商进行翻译
+     * 统一的异步执行入口，替代 new Thread().start()
+     * 使用线程池管理，效率更高
      */
+    public static void runAsynchronously(Runnable task) {
+        THREAD_POOL.submit(task);
+    }
+
     public static String translate(String sourceText) {
         return translate(sourceText, null);
     }
 
-    /**
-     * 指定提供商进行翻译
-     * @param sourceText 原文
-     * @param providerOverride 指定的提供商 (GOOGLE, BING, etc.)，如果为 null 则使用配置文件
-     * @return 翻译结果
-     */
     public static String translate(String sourceText, String providerOverride) {
         if (sourceText == null || sourceText.trim().isEmpty()) return sourceText;
 
-        // 确定使用的提供商
         String provider = (providerOverride != null) ? providerOverride.toUpperCase() : GhostConfig.Translation.translationProvider.toUpperCase();
         
-        // 1. 检查缓存
-        // Key 由 提供商 + 源语言 + 目标语言 + 原文 组成，确保唯一性
         String cacheKey = provider + "|" + GhostConfig.Translation.translationSourceLang + "|" + GhostConfig.Translation.translationTargetLang + "|" + sourceText;
         
         if (MEMORY_CACHE.containsKey(cacheKey)) {
             return MEMORY_CACHE.get(cacheKey);
         }
 
-        // 2. 执行翻译
         String result;
         try {
             switch (provider) {
@@ -119,44 +140,49 @@ public class TranslationUtil {
             return sourceText; 
         }
 
-        // 3. 结果处理与缓存
         if (result != null) {
             if (result.startsWith(ERROR_PREFIX) || result.contains("Please select two distinct languages")) {
-                return sourceText; // 失败返回原文，不缓存错误
+                return sourceText;
             }
-            // 成功，写入缓存
             MEMORY_CACHE.put(cacheKey, result);
         }
         
         return result;
     }
 
-    // --- Google GTX ---
+    // --- Google GTX (优化版: 使用 clients5 节点) ---
     private static String translateGoogleGTX(String sourceText) throws Exception {
         String[] langs = mapLanguageCodes("GOOGLE");
         String encodedText = URLEncoder.encode(sourceText, "UTF-8");
         
-        String urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + langs[0] + "&tl=" + langs[1] + "&dt=t&q=" + encodedText;
+        // 优化：使用 clients5.google.com，通常比 translate.googleapis.com 响应更快且限制更少
+        // client=dict-chrome-ex 是浏览器扩展使用的标识
+        String urlStr = "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=" + langs[0] + "&tl=" + langs[1] + "&q=" + encodedText;
         
         HttpURLConnection conn = createConnection(urlStr, "GET");
         conn.setRequestProperty("User-Agent", USER_AGENT);
 
         if (conn.getResponseCode() == 200) {
             String response = readResponse(conn);
-            JsonArray rootArray = GSON.fromJson(response, JsonArray.class);
-            if (rootArray != null && rootArray.size() > 0) {
-                JsonArray sentencesArray = rootArray.get(0).getAsJsonArray();
-                StringBuilder resultBuilder = new StringBuilder();
-                for (JsonElement sentenceElement : sentencesArray) {
-                    JsonArray sentence = sentenceElement.getAsJsonArray();
-                    if (sentence.size() > 0 && !sentence.get(0).isJsonNull()) {
-                        resultBuilder.append(sentence.get(0).getAsString());
+            // clients5 返回的格式通常比较简单，有时是嵌套数组
+            JsonElement root = GSON.fromJson(response, JsonElement.class);
+            
+            if (root.isJsonArray()) {
+                JsonArray rootArray = root.getAsJsonArray();
+                if (rootArray.size() > 0) {
+                    JsonElement firstItem = rootArray.get(0);
+                    // 格式 1: [["翻译结果", "原文", ...]]
+                    if (firstItem.isJsonArray()) {
+                         return firstItem.getAsJsonArray().get(0).getAsString();
+                    } 
+                    // 格式 2: ["翻译结果"]
+                    else if (firstItem.isJsonPrimitive()) {
+                         return firstItem.getAsString();
                     }
                 }
-                return resultBuilder.toString();
             }
         }
-        return ERROR_PREFIX + "Google API Error: " + conn.getResponseCode();
+        return ERROR_PREFIX + LangUtil.translate("ghost.error.translation.api_response", "Google", conn.getResponseCode());
     }
 
     // --- MyMemory ---
@@ -203,7 +229,7 @@ public class TranslationUtil {
                 return json.get("responseDetails").getAsString();
             }
         }
-        return ERROR_PREFIX + "MyMemory API Error: " + conn.getResponseCode();
+        return ERROR_PREFIX + LangUtil.translate("ghost.error.translation.api_response", "MyMemory", conn.getResponseCode());
     }
 
     // --- Bing Web ---
@@ -216,15 +242,17 @@ public class TranslationUtil {
             try {
                 return performBingTranslationInternal(sourceText);
             } catch (Exception ex) {
-                return ERROR_PREFIX + "Bing failed on both domains.";
+                return ERROR_PREFIX + LangUtil.translate("ghost.error.translation.bing.failed_domains");
             }
         }
     }
 
     private static String performBingTranslationInternal(String sourceText) throws Exception {
+        // 这里会检查 Token 是否过期 (10分钟)
         refreshBingTokenIfNeeded();
+        
         if (bingIG == null || bingKey == null || bingToken == null) {
-            throw new Exception("Failed to fetch tokens");
+            throw new Exception(LangUtil.translate("ghost.error.translation.bing.tokens"));
         }
 
         String[] langs = mapLanguageCodes("BING");
@@ -249,23 +277,26 @@ public class TranslationUtil {
                     return firstObj.getAsJsonArray("translations").get(0).getAsJsonObject().get("text").getAsString();
                 }
             }
-            throw new Exception("Bing returned empty body");
+            throw new Exception(LangUtil.translate("ghost.error.translation.bing.empty"));
         }
-        throw new Exception("Bing HTTP Error: " + conn.getResponseCode());
+        throw new Exception(LangUtil.translate("ghost.error.translation.api_response", "Bing", conn.getResponseCode()));
     }
 
     private static void refreshBingTokenIfNeeded() {
+        // 检查 Token 是否为 null 或者是否已经超过 10 分钟
         if (bingIG == null || (System.currentTimeMillis() - bingTokenTime > 600000)) {
             try {
-                fetchTokensFromHost();
+                fetchTokensFromHost(bingBaseHost);
             } catch (Exception e) {
+                // 仅记录错误，不抛出异常，让调用者（performBingTranslationInternal）处理
+                // 如果这里失败，performBingTranslationInternal 会检测到 bingIG 仍为 null 并抛出异常，触发外层的域名切换
                 LogUtil.error("ghost.log.bing.token_error", e.getMessage());
             }
         }
     }
 
-    private static void fetchTokensFromHost() throws Exception {
-        String urlStr = "https://" + bingBaseHost + "/translator";
+    private static void fetchTokensFromHost(String host) throws Exception {
+        String urlStr = "https://" + host + "/translator";
         HttpURLConnection conn = createConnection(urlStr, "GET");
         conn.setRequestProperty("User-Agent", USER_AGENT);
         
@@ -281,19 +312,20 @@ public class TranslationUtil {
                 bingKey = paramMatcher.group(1);
                 bingToken = paramMatcher.group(2);
             }
+            
             if (bingIG != null && bingKey != null && bingToken != null) {
                 bingTokenTime = System.currentTimeMillis();
             } else {
-                throw new Exception("Token parse failed on " + bingBaseHost);
+                throw new Exception("Token parse failed on " + host);
             }
         } else {
-            throw new Exception("HTTP " + conn.getResponseCode() + " on " + bingBaseHost);
+            throw new Exception("HTTP " + conn.getResponseCode() + " on " + host);
         }
     }
 
     private static void toggleBingHost() {
         bingBaseHost = "www.bing.com".equals(bingBaseHost) ? "cn.bing.com" : "www.bing.com";
-        LogUtil.info("Bing host switched to: " + bingBaseHost);
+        LogUtil.info("ghost.log.bing.switch_host", bingBaseHost);
     }
 
     // --- NiuTrans ---
@@ -320,7 +352,7 @@ public class TranslationUtil {
             if (json.has("tgt_text")) return json.get("tgt_text").getAsString();
             if (json.has("error_msg")) return ERROR_PREFIX + json.get("error_msg").getAsString();
         }
-        return ERROR_PREFIX + "NiuTrans Error: " + conn.getResponseCode();
+        return ERROR_PREFIX + LangUtil.translate("ghost.error.translation.api_response", "NiuTrans", conn.getResponseCode());
     }
 
     // --- Helpers ---
@@ -343,8 +375,9 @@ public class TranslationUtil {
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod(method);
-        conn.setConnectTimeout(5000);
-        conn.setReadTimeout(10000);
+        conn.setConnectTimeout(3000); // 3秒连接超时
+        conn.setReadTimeout(5000);    // 5秒读取超时
+        conn.setRequestProperty("Connection", "keep-alive"); // 开启 Keep-Alive
         if ("POST".equals(method)) {
             conn.setDoOutput(true);
         }

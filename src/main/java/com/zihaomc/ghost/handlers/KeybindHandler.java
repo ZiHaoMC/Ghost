@@ -33,7 +33,7 @@ public class KeybindHandler {
     public static KeyBinding toggleBedrockMiner;
     public static KeyBinding translateItemKey;
     public static KeyBinding openNoteGui;
-    public static KeyBinding toggleAutoMine; // 用于切换自动挖掘功能的按键
+    public static KeyBinding toggleAutoMine; 
 
     private static String noteContentToRestore = null;
 
@@ -45,7 +45,6 @@ public class KeybindHandler {
         toggleBedrockMiner = new KeyBinding("key.ghost.toggleBedrockMiner", Keyboard.KEY_NONE, category);
         translateItemKey = new KeyBinding("key.ghost.translateItem", Keyboard.KEY_T, category);
         openNoteGui = new KeyBinding("key.ghost.openNote", Keyboard.KEY_N, category);
-        // 初始化 AutoMine 的按键绑定
         toggleAutoMine = new KeyBinding("key.ghost.toggleAutoMine", Keyboard.KEY_NONE, category);
 
         ClientRegistry.registerKeyBinding(toggleAutoSneak);
@@ -53,7 +52,6 @@ public class KeybindHandler {
         ClientRegistry.registerKeyBinding(toggleBedrockMiner);
         ClientRegistry.registerKeyBinding(translateItemKey);
         ClientRegistry.registerKeyBinding(openNoteGui);
-        // 注册 AutoMine 的按键绑定
         ClientRegistry.registerKeyBinding(toggleAutoMine);
     }
 
@@ -89,9 +87,7 @@ public class KeybindHandler {
             }
         }
 
-        // 处理 AutoMine 的按键事件
         if (toggleAutoMine != null && toggleAutoMine.isPressed()) {
-            // 确保不在任何GUI界面中
             if (Minecraft.getMinecraft().currentScreen == null) {
                 AutoMineHandler.toggle();
             }
@@ -185,15 +181,11 @@ public class KeybindHandler {
         }
     }
     
-    /**
-     * 这个方法现在是所有翻译请求的统一入口，无论是手动按键还是自动翻译。
-     */
     public void handleToggleOrTranslatePress() {
         if (!GhostConfig.Translation.enableItemTranslation && !GhostConfig.Translation.enableAutomaticTranslation) {
             return;
         }
         
-        // 获取原始带格式的名称和纯文本名称
         String originalFormattedName = ItemTooltipTranslationHandler.lastHoveredItemOriginalName;
         String unformattedName = ItemTooltipTranslationHandler.lastHoveredItemName;
 
@@ -201,7 +193,6 @@ public class KeybindHandler {
             return;
         }
 
-        // 如果已有翻译，则切换显示/隐藏状态
         if (ItemTooltipTranslationHandler.translationCache.containsKey(unformattedName)) {
             if (ItemTooltipTranslationHandler.hiddenTranslations.contains(unformattedName)) {
                 ItemTooltipTranslationHandler.hiddenTranslations.remove(unformattedName);
@@ -211,17 +202,14 @@ public class KeybindHandler {
             return;
         }
 
-        // 如果正在翻译中，则忽略
         if (ItemTooltipTranslationHandler.pendingTranslations.contains(unformattedName)) {
             return;
         }
 
-        // 获取 Lore 文本
         List<String> unformattedLore = ItemTooltipTranslationHandler.lastHoveredItemLore;
         List<String> originalFormattedLore = ItemTooltipTranslationHandler.lastHoveredItemOriginalLore;
         if (unformattedLore == null || originalFormattedLore == null) return;
         
-        // 构造用于 API 请求的纯文本
         StringBuilder plainTextBuilder = new StringBuilder(unformattedName);
         for (String line : unformattedLore) {
             plainTextBuilder.append("\n").append(line);
@@ -237,8 +225,8 @@ public class KeybindHandler {
         requestMessage.getChatStyle().setColor(EnumChatFormatting.DARK_GRAY);
         Minecraft.getMinecraft().thePlayer.addChatMessage(requestMessage);
 
-        // 在新线程中执行网络请求
-        new Thread(() -> {
+        // 使用线程池执行
+        TranslationUtil.runAsynchronously(() -> {
             try {
                 String translationResult = TranslationUtil.translate(textToTranslate);
                 List<String> finalFormattedLines = new ArrayList<>();
@@ -249,21 +237,17 @@ public class KeybindHandler {
                     String errorContent = translationResult.substring(TranslationUtil.ERROR_PREFIX.length());
                     finalFormattedLines.add(EnumChatFormatting.RED + errorContent);
                 } else {
-                    // 翻译成功，开始重新应用颜色格式
                     String[] translatedParts = translationResult.split("\n");
                     
-                    // 1. 重新格式化物品名称
                     String reformattedName = ColorFormatting.reapply(originalFormattedName, translatedParts[0]);
                     finalFormattedLines.add(reformattedName);
                     
-                    // 2. 重新格式化 Lore 的每一行
                     int loreLinesToProcess = Math.min(originalFormattedLore.size(), translatedParts.length - 1);
                     for (int i = 0; i < loreLinesToProcess; i++) {
                         String originalLoreLine = originalFormattedLore.get(i);
                         String translatedLoreLine = translatedParts[i + 1];
                         finalFormattedLines.add(ColorFormatting.reapply(originalLoreLine, translatedLoreLine));
                     }
-                     // 如果翻译结果的行数比原文多，直接添加剩余行（无格式）
                     if (translatedParts.length - 1 > loreLinesToProcess) {
                         for (int i = loreLinesToProcess + 1; i < translatedParts.length; i++) {
                             finalFormattedLines.add(translatedParts[i]);
@@ -271,13 +255,12 @@ public class KeybindHandler {
                     }
                 }
                 
-                // 将最终处理好的、带格式的翻译结果存入缓存
                 ItemTooltipTranslationHandler.translationCache.put(unformattedName, finalFormattedLines);
 
             } finally {
                 ItemTooltipTranslationHandler.pendingTranslations.remove(unformattedName);
             }
-        }).start();
+        });
     }
 
     private void sendToggleMessage(String featureNameKey, boolean enabled) {
