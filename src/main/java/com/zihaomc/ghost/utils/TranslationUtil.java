@@ -17,36 +17,48 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * 统一翻译工具类。
- * 支持多种翻译源：
- * 1. GOOGLE (GTX): 谷歌翻译免费接口
- * 2. BING (Web): 模拟必应网页版 (支持 www.bing.com 和 cn.bing.com 自动切换)
- * 3. MYMEMORY: 免费翻译记忆库 (包含智能重试机制)
- * 4. NIUTRANS: 小牛翻译
+ * 统一翻译工具类 (最终优化版)。
+ * 特性：
+ * 1. 多源支持 (Google GTX, Bing Web, MyMemory, NiuTrans)
+ * 2. 智能域名切换 (Bing cn/www)
+ * 3. 智能重试机制 (MyMemory)
+ * 4. LRU 内存缓存 (防止重复请求)
+ * 5. 代码逻辑解耦
  */
 public class TranslationUtil {
 
     private static final Gson GSON = new Gson();
     public static final String ERROR_PREFIX = "GHOST_TRANSLATION_ERROR:";
 
+    // --- 内存缓存 (LRU) ---
+    // 最多缓存 500 条最近的翻译结果，防止刷屏导致 API 封禁
+    private static final int CACHE_SIZE = 500;
+    private static final Map<String, String> MEMORY_CACHE = Collections.synchronizedMap(
+        new LinkedHashMap<String, String>(CACHE_SIZE + 1, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, String> eldest) {
+                return size() > CACHE_SIZE;
+            }
+        }
+    );
+
     // --- 必应翻译专用 ---
-    // 默认使用国际版，如果失败会自动切换到 cn.bing.com 并记住选择
     private static String bingBaseHost = "www.bing.com";
-    
     private static String bingIG = null;
     private static String bingIID = null;
     private static String bingKey = null;
     private static String bingToken = null;
     private static long bingTokenTime = 0;
     
-    // 保留 User-Agent 是为了防止最基本的 HTTP 403 拒绝
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final Pattern BING_IG_PATTERN = Pattern.compile("IG:\"([A-F0-9]+)\"");
     private static final Pattern BING_PARAMS_PATTERN = Pattern.compile("params_AbusePreventionHelper\\s*=\\s*\\[([0-9]+),\\s*\"([^\"]+)\",\\s*[^]]+\\]");
@@ -57,10 +69,35 @@ public class TranslationUtil {
         CookieHandler.setDefault(cookieManager);
     }
 
+    /**
+     * 使用默认配置的提供商进行翻译
+     */
     public static String translate(String sourceText) {
-        String provider = GhostConfig.Translation.translationProvider.toUpperCase();
-        String result;
+        return translate(sourceText, null);
+    }
 
+    /**
+     * 指定提供商进行翻译
+     * @param sourceText 原文
+     * @param providerOverride 指定的提供商 (GOOGLE, BING, etc.)，如果为 null 则使用配置文件
+     * @return 翻译结果
+     */
+    public static String translate(String sourceText, String providerOverride) {
+        if (sourceText == null || sourceText.trim().isEmpty()) return sourceText;
+
+        // 确定使用的提供商
+        String provider = (providerOverride != null) ? providerOverride.toUpperCase() : GhostConfig.Translation.translationProvider.toUpperCase();
+        
+        // 1. 检查缓存
+        // Key 由 提供商 + 源语言 + 目标语言 + 原文 组成，确保唯一性
+        String cacheKey = provider + "|" + GhostConfig.Translation.translationSourceLang + "|" + GhostConfig.Translation.translationTargetLang + "|" + sourceText;
+        
+        if (MEMORY_CACHE.containsKey(cacheKey)) {
+            return MEMORY_CACHE.get(cacheKey);
+        }
+
+        // 2. 执行翻译
+        String result;
         try {
             switch (provider) {
                 case "GOOGLE":
@@ -82,10 +119,13 @@ public class TranslationUtil {
             return sourceText; 
         }
 
+        // 3. 结果处理与缓存
         if (result != null) {
             if (result.startsWith(ERROR_PREFIX) || result.contains("Please select two distinct languages")) {
-                return sourceText;
+                return sourceText; // 失败返回原文，不缓存错误
             }
+            // 成功，写入缓存
+            MEMORY_CACHE.put(cacheKey, result);
         }
         
         return result;
@@ -93,11 +133,10 @@ public class TranslationUtil {
 
     // --- Google GTX ---
     private static String translateGoogleGTX(String sourceText) throws Exception {
-        String fromLang = GhostConfig.Translation.translationSourceLang;
-        String toLang = GhostConfig.Translation.translationTargetLang;
+        String[] langs = mapLanguageCodes("GOOGLE");
         String encodedText = URLEncoder.encode(sourceText, "UTF-8");
         
-        String urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + fromLang + "&tl=" + toLang + "&dt=t&q=" + encodedText;
+        String urlStr = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + langs[0] + "&tl=" + langs[1] + "&dt=t&q=" + encodedText;
         
         HttpURLConnection conn = createConnection(urlStr, "GET");
         conn.setRequestProperty("User-Agent", USER_AGENT);
@@ -122,11 +161,9 @@ public class TranslationUtil {
 
     // --- MyMemory ---
     private static String translateMyMemory(String sourceText) throws Exception {
-        String fromLangConfig = GhostConfig.Translation.translationSourceLang;
-        String toLangConfig = GhostConfig.Translation.translationTargetLang;
-        
-        String toLang = "zh".equals(toLangConfig) ? "zh-CN" : toLangConfig;
-        String fromLang = "auto".equals(fromLangConfig) ? "Autodetect" : fromLangConfig;
+        String[] langs = mapLanguageCodes("MYMEMORY");
+        String fromLang = langs[0];
+        String toLang = langs[1];
 
         boolean containsChinese = sourceText.codePoints().anyMatch(codepoint ->
                 Character.UnicodeScript.of(codepoint) == Character.UnicodeScript.HAN);
@@ -169,17 +206,14 @@ public class TranslationUtil {
         return ERROR_PREFIX + "MyMemory API Error: " + conn.getResponseCode();
     }
 
-    // --- Bing Web (已移除多余的 Referer/Origin 头) ---
+    // --- Bing Web ---
     private static String translateBingWeb(String sourceText) {
         try {
             return performBingTranslationInternal(sourceText);
         } catch (Exception e) {
-            // 第一次失败，切换域名
             toggleBingHost();
             bingIG = null;
-            
             try {
-                // 第二次尝试
                 return performBingTranslationInternal(sourceText);
             } catch (Exception ex) {
                 return ERROR_PREFIX + "Bing failed on both domains.";
@@ -189,25 +223,18 @@ public class TranslationUtil {
 
     private static String performBingTranslationInternal(String sourceText) throws Exception {
         refreshBingTokenIfNeeded();
-        
         if (bingIG == null || bingKey == null || bingToken == null) {
             throw new Exception("Failed to fetch tokens");
         }
 
-        String fromLang = GhostConfig.Translation.translationSourceLang;
-        String toLang = GhostConfig.Translation.translationTargetLang;
-        if ("zh".equals(toLang)) toLang = "zh-Hans";
-        if ("auto".equals(fromLang)) fromLang = "auto-detect";
-
-        String urlStr = "https://" + bingBaseHost + "/ttranslatev3?isVertical=1&&IG=" + bingIG + "&IID=" + bingIID;
+        String[] langs = mapLanguageCodes("BING");
         
+        String urlStr = "https://" + bingBaseHost + "/ttranslatev3?isVertical=1&&IG=" + bingIG + "&IID=" + bingIID;
         HttpURLConnection conn = createConnection(urlStr, "POST");
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
         conn.setRequestProperty("User-Agent", USER_AGENT);
         
-        // 已移除 Referer 和 Origin 头
-        
-        String postData = "fromLang=" + fromLang + "&to=" + toLang + "&token=" + bingToken + "&key=" + bingKey + "&text=" + URLEncoder.encode(sourceText, "UTF-8");
+        String postData = "fromLang=" + langs[0] + "&to=" + langs[1] + "&token=" + bingToken + "&key=" + bingKey + "&text=" + URLEncoder.encode(sourceText, "UTF-8");
         
         try (OutputStream os = conn.getOutputStream()) {
             os.write(postData.getBytes(StandardCharsets.UTF_8));
@@ -224,7 +251,6 @@ public class TranslationUtil {
             }
             throw new Exception("Bing returned empty body");
         }
-        
         throw new Exception("Bing HTTP Error: " + conn.getResponseCode());
     }
 
@@ -255,7 +281,6 @@ public class TranslationUtil {
                 bingKey = paramMatcher.group(1);
                 bingToken = paramMatcher.group(2);
             }
-            
             if (bingIG != null && bingKey != null && bingToken != null) {
                 bingTokenTime = System.currentTimeMillis();
             } else {
@@ -267,11 +292,7 @@ public class TranslationUtil {
     }
 
     private static void toggleBingHost() {
-        if ("www.bing.com".equals(bingBaseHost)) {
-            bingBaseHost = "cn.bing.com";
-        } else {
-            bingBaseHost = "www.bing.com";
-        }
+        bingBaseHost = "www.bing.com".equals(bingBaseHost) ? "cn.bing.com" : "www.bing.com";
         LogUtil.info("Bing host switched to: " + bingBaseHost);
     }
 
@@ -303,6 +324,21 @@ public class TranslationUtil {
     }
 
     // --- Helpers ---
+    
+    private static String[] mapLanguageCodes(String provider) {
+        String s = GhostConfig.Translation.translationSourceLang;
+        String t = GhostConfig.Translation.translationTargetLang;
+
+        if ("BING".equals(provider)) {
+            if ("zh".equals(t)) t = "zh-Hans";
+            if ("auto".equals(s)) s = "auto-detect";
+        } else if ("MYMEMORY".equals(provider)) {
+            if ("zh".equals(t)) t = "zh-CN";
+            if ("auto".equals(s)) s = "Autodetect";
+        }
+        return new String[]{s, t};
+    }
+
     private static HttpURLConnection createConnection(String urlStr, String method) throws Exception {
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();

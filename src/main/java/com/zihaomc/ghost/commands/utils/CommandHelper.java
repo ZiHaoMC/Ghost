@@ -2,6 +2,7 @@ package com.zihaomc.ghost.commands.utils;
 
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.commands.data.CommandState.BlockStateProxy;
+import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
@@ -16,6 +17,8 @@ import net.minecraft.init.Blocks;
 import net.minecraft.util.*;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.event.ClickEvent;
+import net.minecraft.event.HoverEvent;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -35,6 +38,70 @@ public class CommandHelper {
     public static final EnumChatFormatting LABEL_COLOR = EnumChatFormatting.GRAY;
     public static final EnumChatFormatting VALUE_COLOR = EnumChatFormatting.YELLOW;
     public static final EnumChatFormatting FINISH_COLOR = EnumChatFormatting.GREEN;
+
+    /**
+     * 创建翻译源切换按钮的文本组件。
+     * 显示为 [G] [B] [M] 等缩写，鼠标悬停显示全称。
+     * 
+     * @param sourceText 原始待翻译文本
+     * @param currentProvider 当前使用的提供商
+     * @return 包含所有其他提供商按钮的 IChatComponent
+     */
+    public static IChatComponent createProviderSwitchButtons(String sourceText, String currentProvider) {
+        // 检查配置开关，如果关闭则不生成按钮
+        if (!GhostConfig.Translation.showProviderSwitchButtons) {
+            return new ChatComponentText("");
+        }
+
+        ChatComponentText buttons = new ChatComponentText(" "); // 稍微留点空隙
+        String[] providers = {"GOOGLE", "BING", "MYMEMORY", "NIUTRANS"};
+        
+        // 转义原文中的引号，防止构建命令时格式错误
+        String escapedText = sourceText.replace("\"", "\\\"");
+
+        for (String provider : providers) {
+            // 跳过当前正在使用的提供商
+            if (provider.equalsIgnoreCase(currentProvider)) continue;
+
+            // 获取缩写 (例如 GOOGLE -> G)
+            String abbr = getProviderAbbreviation(provider);
+            
+            // 创建按钮文本组件
+            ChatComponentText button = new ChatComponentText("[" + abbr + "] ");
+            
+            // 构建点击执行的命令: /gtranslate -p PROVIDER "原文"
+            String command = "/gtranslate -p " + provider + " \"" + escapedText + "\"";
+            
+            // 构建独立的悬浮提示文本 (例如: "切换源: GOOGLE")
+            String tooltipStr = LangUtil.translate("ghost.tooltip.switch_provider", provider);
+            ChatComponentText tooltipComponent = new ChatComponentText(tooltipStr);
+            tooltipComponent.getChatStyle().setColor(EnumChatFormatting.YELLOW);
+
+            // 设置独立的样式
+            ChatStyle style = new ChatStyle()
+                    .setColor(EnumChatFormatting.DARK_GRAY) // 按钮本身显示为深灰色，不抢眼
+                    .setBold(false)
+                    .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
+                    .setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltipComponent));
+            
+            button.setChatStyle(style);
+            buttons.appendSibling(button);
+        }
+        return buttons;
+    }
+
+    /**
+     * 获取提供商的单字母缩写
+     */
+    private static String getProviderAbbreviation(String provider) {
+        switch (provider.toUpperCase()) {
+            case "GOOGLE": return "G";
+            case "BING": return "B";
+            case "MYMEMORY": return "M";
+            case "NIUTRANS": return "N";
+            default: return provider.substring(0, 1).toUpperCase();
+        }
+    }
 
     /**
      * 格式化带[Ghost]前缀的消息（默认灰色）。
@@ -63,7 +130,7 @@ public class CommandHelper {
     }
 
     /**
-     * [重构] 解析方块状态字符串 (例如 "minecraft:stone:1" 或 "wool:11")。
+     * 解析方块状态字符串 (例如 "minecraft:stone:1" 或 "wool:11")。
      * @param sender 命令发送者，用于 getBlockByText
      * @param input  输入字符串
      * @return BlockStateProxy 实例

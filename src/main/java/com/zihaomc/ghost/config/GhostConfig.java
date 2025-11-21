@@ -102,6 +102,9 @@ public class GhostConfig {
         public static boolean showTranslationOnly;
         public static boolean hideTranslationKeybindTooltip;
         
+        // *** 关键修复点：必须包含这个变量 ***
+        public static boolean showProviderSwitchButtons;
+        
         public static String niuTransApiKey;
         
         public static String translationSourceLang;
@@ -260,12 +263,12 @@ public class GhostConfig {
         Translation.showTranslationOnly = loadBoolean(CATEGORY_TRANSLATION, "showTranslationOnly", false, "ghost.config.comment.showTranslationOnly");
         Translation.hideTranslationKeybindTooltip = loadBoolean(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false, "ghost.config.comment.hideTranslationKeybindTooltip");
         
-        Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
+        // *** 关键修复点：加载这个变量 ***
+        Translation.showProviderSwitchButtons = loadBoolean(CATEGORY_TRANSLATION, "showProviderSwitchButtons", true, "ghost.config.comment.showProviderSwitchButtons");
         
+        Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
         Translation.translationSourceLang = loadString(CATEGORY_TRANSLATION, "translationSourceLang", "auto", "ghostblock.config.translationSourceLang.tooltip");
         Translation.translationTargetLang = loadString(CATEGORY_TRANSLATION, "translationTargetLang", "zh", "ghostblock.config.translationTargetLang.tooltip");
-        
-        // 默认使用 GOOGLE (GTX)，因为它免费且稳定
         Translation.translationProvider = loadString(CATEGORY_TRANSLATION, "translationProvider", "GOOGLE", "ghost.config.comment.translationProvider");
     }
     
@@ -465,10 +468,14 @@ public class GhostConfig {
     public static void setTranslationTargetLang(String value) {
         updateAndSave(CATEGORY_TRANSLATION, "translationTargetLang", value, () -> Translation.translationTargetLang = value);
     }
-    
+
     public static void setTranslationProvider(String value) {
-        // 统一转为大写，方便处理
-        updateAndSave(CATEGORY_TRANSLATION, "translationProvider", value.toUpperCase(), () -> Translation.translationProvider = value.toUpperCase());
+        updateAndSave(CATEGORY_TRANSLATION, "translationProvider", value, () -> Translation.translationProvider = value);
+    }
+    
+    // *** 关键修复点：包含这个 Setter ***
+    public static void setShowProviderSwitchButtons(boolean value) {
+        updateAndSave(CATEGORY_TRANSLATION, "showProviderSwitchButtons", value, () -> Translation.showProviderSwitchButtons = value);
     }
 
     public static void setEnableAdvancedEditing(boolean value) {
@@ -654,9 +661,10 @@ public class GhostConfig {
         settingUpdaters.put("niutransapikey", (k, v) -> setNiuTransApiKey(v));
         settingUpdaters.put("translationsourcelang", (k, v) -> setTranslationSourceLang(v));
         settingUpdaters.put("translationtargetlang", (k, v) -> setTranslationTargetLang(v));
-        
-        // 注册新的 translationProvider 命令处理器
         settingUpdaters.put("translationprovider", (k, v) -> setTranslationProvider(v));
+        
+        // *** 关键修复点：注册这个命令 ***
+        settingUpdaters.put("showproviderswitchbuttons", (k, v) -> setShowProviderSwitchButtons(parseBoolean(v)));
         
         settingUpdaters.put("enablenotefeature", (k, v) -> setEnableNoteFeature(parseBoolean(v)));
         settingUpdaters.put("enableadvancedediting", (k, v) -> setEnableAdvancedEditing(parseBoolean(v)));

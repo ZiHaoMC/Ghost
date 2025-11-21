@@ -40,6 +40,7 @@ import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.features.chat.GuiChatWrapper;
 import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.TranslationUtil;
+import com.zihaomc.ghost.commands.utils.CommandHelper; // 新增导入，用于创建切换按钮
 
 /**
  * 1.在聊天消息（尤其是错误消息和成功命令反馈）后添加 “建议命令” 按钮。
@@ -62,7 +63,7 @@ public class ChatSuggestEventHandler {
     private static String originalChatText = null;
     private static GuiChat activeGuiChatInstance = null;
     
-    // 新增一个 Field 变量来存储对 GuiChat.defaultInputFieldText 字段的引用
+    // 存储对 GuiChat.defaultInputFieldText 字段的引用
     private static Field defaultInputFieldTextField = null;
     
     // ==================
@@ -90,7 +91,6 @@ public class ChatSuggestEventHandler {
     // ========================
     
     /**
-     * [修改后的核心逻辑]
      * 监听GUI打开事件，用于将原生的GuiChat替换为我们自己的包装类。
      * 这是实现功能注入的关键。
      */
@@ -108,12 +108,11 @@ public class ChatSuggestEventHandler {
             String startingText = "";
             try {
                 // 优先尝试从 defaultInputFieldText 字段获取初始文本。
-                // 这是 Minecraft 在打开聊天框时预设文本（如'/'）的方式。
                 if (defaultInputFieldTextField != null) {
                     startingText = (String) defaultInputFieldTextField.get(event.gui);
                 }
                 
-                // 如果上面的方法失败或返回空，再尝试从已存在的输入框获取，作为备用方案（例如窗口大小调整时）。
+                // 如果上面的方法失败或返回空，再尝试从已存在的输入框获取
                 if ((startingText == null || startingText.isEmpty()) && chatInputField != null) {
                     GuiTextField textField = (GuiTextField) chatInputField.get(event.gui);
                     if (textField != null) {
@@ -125,16 +124,12 @@ public class ChatSuggestEventHandler {
                 // 反射失败或字段为空，忽略
             }
 
-            // 如果最终还是 null，确保它是空字符串，防止崩溃
             if (startingText == null) {
                 startingText = "";
             }
 
-            // 创建我们自己的包装类实例，并传入获取到的初始文本
-            GuiChatWrapper newGui = new GuiChatWrapper(startingText);
-            
-            // 将事件中的GUI替换为我们的实例
-            event.gui = newGui;
+            // 创建我们自己的包装类实例
+            event.gui = new GuiChatWrapper(startingText);
         }
     }
 
@@ -373,24 +368,42 @@ public class ChatSuggestEventHandler {
     // ====================
     // === 辅助方法 ===
     // ====================
+    
+    /**
+     * 自动翻译逻辑。
+     * 修改点：使用当前配置的提供商，并在结果后追加切换按钮。
+     */
     private void triggerAutomaticChatTranslation(String originalText) {
+        String currentProvider = GhostConfig.Translation.translationProvider.toUpperCase();
+        
         new Thread(() -> {
-            final String result = TranslationUtil.translate(originalText);
+            // 使用当前配置的 Provider
+            final String result = TranslationUtil.translate(originalText, currentProvider);
             
-            // 调度回主线程来发送聊天消息
             Minecraft.getMinecraft().addScheduledTask(() -> {
                 // 安全检查：确保玩家仍在游戏中
                 if (Minecraft.getMinecraft().thePlayer == null) {
                     return;
                 }
             
-                // 只有成功翻译的结果才显示
+                // 只有当翻译结果不是错误（或未被拦截的错误）时才显示
                 if (!result.startsWith(TranslationUtil.ERROR_PREFIX)) {
                     ChatComponentText resultMessage = new ChatComponentText("");
                     ChatComponentText resultPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.translation") + " ");
                     resultPrefix.getChatStyle().setColor(EnumChatFormatting.AQUA);
+                    
+                    // 添加当前 Provider 标识 (例如 [GOOGLE])
+                    ChatComponentText providerTag = new ChatComponentText(EnumChatFormatting.YELLOW + "[" + currentProvider + "] " + EnumChatFormatting.RESET);
+                    
                     ChatComponentText resultContent = new ChatComponentText(result);
-                    resultMessage.appendSibling(resultPrefix).appendSibling(resultContent);
+                    
+                    resultMessage.appendSibling(resultPrefix)
+                                 .appendSibling(providerTag)
+                                 .appendSibling(resultContent);
+                                 
+                    // --- 核心修改：追加切换按钮 ---
+                    // 使用 CommandHelper 检查开关并添加按钮
+                    resultMessage.appendSibling(CommandHelper.createProviderSwitchButtons(originalText, currentProvider));
                     
                     // 向玩家自己发送一条新的聊天消息
                     Minecraft.getMinecraft().thePlayer.addChatMessage(resultMessage);
@@ -403,7 +416,10 @@ public class ChatSuggestEventHandler {
         try {
             String buttonText = String.format(" %s", LangUtil.translate("ghostblock.chat.button.translate"));
             ChatComponentText buttonComponent = new ChatComponentText(buttonText);
+            
+            // 这里使用默认的 /gtranslate 命令，它会使用默认 Provider
             String command = "/gtranslate \"" + textToTranslate.replace("\"", "\\\"") + "\"";
+            
             ClickEvent clickEvent = new ClickEvent(ClickEvent.Action.RUN_COMMAND, command);
             String hoverText = LangUtil.translate("ghostblock.chat.button.translate.hover");
             IChatComponent hoverComponent = new ChatComponentText(hoverText).setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GRAY));
