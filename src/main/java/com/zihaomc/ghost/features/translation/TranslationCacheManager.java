@@ -1,4 +1,4 @@
-package com.zihaomc.ghost.data;
+package com.zihaomc.ghost.features.translation;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

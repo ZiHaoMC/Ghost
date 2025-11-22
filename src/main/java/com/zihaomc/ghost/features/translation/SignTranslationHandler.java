@@ -1,7 +1,6 @@
-package com.zihaomc.ghost.handlers;
+package com.zihaomc.ghost.features.translation;
 
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.utils.TranslationUtil;
 import com.zihaomc.ghost.LangUtil;
 import net.minecraft.block.BlockSign;
 import net.minecraft.client.Minecraft;

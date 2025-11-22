@@ -1,4 +1,4 @@
-package com.zihaomc.ghost.utils;
+package com.zihaomc.ghost.features.translation;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.utils.LogUtil;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

@@ -1,9 +1,8 @@
-package com.zihaomc.ghost.commands;
+package com.zihaomc.ghost.features.translation;
 
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.commands.utils.CommandHelper;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.utils.TranslationUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;

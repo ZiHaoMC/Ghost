@@ -39,7 +39,7 @@ import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.features.chat.GuiChatWrapper;
 import com.zihaomc.ghost.utils.LogUtil;
-import com.zihaomc.ghost.utils.TranslationUtil;
+import com.zihaomc.ghost.features.translation.TranslationUtil;
 import com.zihaomc.ghost.commands.utils.CommandHelper;
 
 /**

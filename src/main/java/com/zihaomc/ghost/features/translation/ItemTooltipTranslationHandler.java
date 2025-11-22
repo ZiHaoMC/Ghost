@@ -1,11 +1,10 @@
-package com.zihaomc.ghost.handlers;
+package com.zihaomc.ghost.features.translation;
 
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.data.TranslationCacheManager;
+import com.zihaomc.ghost.handlers.KeybindHandler;
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.utils.ColorFormatting;
 import com.zihaomc.ghost.utils.LogUtil;
-import com.zihaomc.ghost.utils.TranslationUtil;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.GuiOpenEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
@@ -13,7 +12,6 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.input.Keyboard;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

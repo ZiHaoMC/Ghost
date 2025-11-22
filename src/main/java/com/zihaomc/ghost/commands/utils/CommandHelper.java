@@ -5,6 +5,7 @@ import com.zihaomc.ghost.commands.data.CommandState.BlockStateProxy;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
+import com.zihaomc.ghost.features.translation.TranslationUtil; // 新增导入
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;

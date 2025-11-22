@@ -1,4 +1,4 @@
-package com.zihaomc.ghost.handlers;
+package com.zihaomc.ghost.features.translation;
 
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraftforge.event.world.WorldEvent;
