@@ -10,6 +10,9 @@ import com.zihaomc.ghost.features.autocraft.AutoCraftHandler;
 import com.zihaomc.ghost.features.autocraft.AutoCraftRecipeManager;
 import com.zihaomc.ghost.features.automine.AutoMineHandler;
 import com.zihaomc.ghost.handlers.*;
+import com.zihaomc.ghost.features.chat.ChatInputHandler; // 新增
+import com.zihaomc.ghost.features.chat.CommandSuggestionHandler; // 新增
+import com.zihaomc.ghost.features.translation.ChatTranslationHandler; // 新增
 import com.zihaomc.ghost.features.translation.CacheSavingHandler;
 import com.zihaomc.ghost.features.translation.ItemTooltipTranslationHandler;
 import com.zihaomc.ghost.features.translation.SignTranslationHandler;
@@ -65,12 +68,25 @@ public class Ghost {
 
         if (event.getSide() == Side.CLIENT) {
             ItemTooltipTranslationHandler.loadCacheFromFile();
+            
+            // --- 事件总线注册 ---
+            
+            // 1. 缓存保存
             MinecraftForge.EVENT_BUS.register(new CacheSavingHandler());
             LogUtil.debug("log.feature.cache.init");
             
-            MinecraftForge.EVENT_BUS.register(new ChatSuggestEventHandler());
-            LogUtil.debug("log.handler.registered.chatSuggest");
+            // 2. 聊天相关 (拆分后)
+            MinecraftForge.EVENT_BUS.register(new ChatInputHandler());
+            MinecraftForge.EVENT_BUS.register(new CommandSuggestionHandler());
+            LogUtil.debug("log.handler.registered.chatSuggest"); // 日志信息可以保持，或者改为更详细的
 
+            // 3. 翻译相关
+            MinecraftForge.EVENT_BUS.register(new ChatTranslationHandler());
+            MinecraftForge.EVENT_BUS.register(new SignTranslationHandler());
+            MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
+            LogUtil.debug("log.handler.registered.translation"); // 合并翻译相关的日志
+
+            // 4. 其他功能
             MinecraftForge.EVENT_BUS.register(new AutoSneakHandler());
             LogUtil.debug("log.handler.registered.autoSneak");
 
@@ -86,12 +102,6 @@ public class Ghost {
             MinecraftForge.EVENT_BUS.register(new KeybindHandler());
             LogUtil.debug("log.handler.registered.keybind");
             
-            MinecraftForge.EVENT_BUS.register(new SignTranslationHandler());
-            LogUtil.debug("log.handler.registered.signTranslation");
-
-            MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
-            LogUtil.debug("log.handler.registered.itemTooltip");
-
             MinecraftForge.EVENT_BUS.register(new AutoMineHandler());
             LogUtil.debug("log.handler.registered.autoMine");
 
