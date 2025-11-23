@@ -1,11 +1,11 @@
-package com.zihaomc.ghost.commands.handlers;
+package com.zihaomc.ghost.features.ghostblock.handlers;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.data.CommandState;
-import com.zihaomc.ghost.commands.data.CommandState.ClearConfirmation;
-import com.zihaomc.ghost.commands.data.CommandState.UndoRecord;
-import com.zihaomc.ghost.commands.tasks.ClearTask;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.ClearConfirmation;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.UndoRecord;
+import com.zihaomc.ghost.features.ghostblock.tasks.ClearTask;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
 import com.zihaomc.ghost.utils.LogUtil;
@@ -31,9 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 处理 /cgb clear 子命令的逻辑。
- */
 public class ClearHandler implements ICommandHandler {
 
     @Override
@@ -60,17 +57,17 @@ public class ClearHandler implements ICommandHandler {
         if (currentArgIndex >= 2) {
             String clearType = args[1].toLowerCase();
             if ("file".equals(clearType)) {
-                List<String> allFiles = CommandHelper.getAvailableFileNames();
+                List<String> allFiles = GhostBlockHelper.getAvailableFileNames();
                 List<String> enteredFiles = Arrays.asList(args).subList(2, args.length -1);
-                List<String> availableForCompletion = allFiles.stream().filter(file -> !CommandHelper.containsIgnoreCase(enteredFiles, file)).collect(Collectors.toList());
+                List<String> availableForCompletion = allFiles.stream().filter(file -> !GhostBlockHelper.containsIgnoreCase(enteredFiles, file)).collect(Collectors.toList());
                 return CommandBase.getListOfStringsMatchingLastWord(args, availableForCompletion);
             } else if ("block".equals(clearType)) {
                 List<String> suggestions = new ArrayList<>();
                 String lastFullArg = (args.length > 2) ? args[args.length - 2].toLowerCase() : "";
-                boolean hasBatchFlag = CommandHelper.hasFlag(args, "-b", "--batch");
-                boolean hasConfirmFlag = CommandHelper.hasFlag(args, "confirm");
+                boolean hasBatchFlag = GhostBlockHelper.hasFlag(args, "-b", "--batch");
+                boolean hasConfirmFlag = GhostBlockHelper.hasFlag(args, "confirm");
                 if (lastFullArg.equals("-b") || lastFullArg.equals("--batch")) {
-                    if (!CommandHelper.isNumber(args[args.length-1])) {
+                    if (!GhostBlockHelper.isNumber(args[args.length-1])) {
                         suggestions.addAll(Arrays.asList("100", "500", "1000"));
                     }
                     if (!hasConfirmFlag) suggestions.add("confirm");
@@ -96,7 +93,7 @@ public class ClearHandler implements ICommandHandler {
         for (String fileName : fileNames) {
             String baseFileName = fileName.toLowerCase().endsWith(".json") ? fileName.substring(0, fileName.length() - 5) : fileName;
             if (baseFileName.startsWith("clear_") || baseFileName.startsWith("undo_")) {
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.load.ignored_internal_file", fileName));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.load.ignored_internal_file", fileName));
                 continue;
             }
             File file = GhostBlockData.getDataFile(world, baseFileName);
@@ -116,7 +113,7 @@ public class ClearHandler implements ICommandHandler {
             }
         }
         if (!missingFiles.isEmpty()) {
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, LangUtil.translate("ghostblock.commands.clear.missing_files", String.join(", ", missingFiles))));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, LangUtil.translate("ghostblock.commands.clear.missing_files", String.join(", ", missingFiles))));
         }
 
         String confirmCommand = "/cgb confirm_clear " + String.join(" ", validFileNamesForMessage);
@@ -128,11 +125,10 @@ public class ClearHandler implements ICommandHandler {
                                 .setChatClickEvent(new ClickEvent(Action.RUN_COMMAND, confirmCommand))));
 
         sender.addChatMessage(message);
-        CommandState.pendingConfirmations.put(sender.getName(), new ClearConfirmation(targetFiles, System.currentTimeMillis()));
+        GhostBlockState.pendingConfirmations.put(sender.getName(), new ClearConfirmation(targetFiles, System.currentTimeMillis()));
     }
 
     private void handleClearBlock(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
-        // 拼接完整的命令字符串，用于历史记录
         String fullCommand = "/cgb " + String.join(" ", args);
         
         boolean batchMode = false;
@@ -144,10 +140,10 @@ public class ClearHandler implements ICommandHandler {
             if (flag.equals("-b") || flag.equals("--batch")) {
                 batchMode = true;
                 i++;
-                if (i < args.length && CommandHelper.isNumber(args[i])) {
+                if (i < args.length && GhostBlockHelper.isNumber(args[i])) {
                     try {
                         batchSize = Integer.parseInt(args[i]);
-                        CommandHelper.validateBatchSize(batchSize);
+                        GhostBlockHelper.validateBatchSize(batchSize);
                         i++;
                     } catch (NumberFormatException | CommandException e) {
                          throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_batch_size"));
@@ -161,35 +157,32 @@ public class ClearHandler implements ICommandHandler {
             }
         }
 
-        String autoFileName = CommandHelper.getAutoClearFileName(world);
+        String autoFileName = GhostBlockHelper.getAutoClearFileName(world);
         List<GhostBlockEntry> entries = GhostBlockData.loadData(world, Collections.singletonList(autoFileName));
         File autoFile = GhostBlockData.getDataFile(world, autoFileName);
 
         if (entries.isEmpty()) {
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.clear.block.no_blocks"));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.clear.block.no_blocks"));
             return;
         }
 
         if (!confirmed) {
             sendConfirmationMessage(sender, batchMode, batchSize);
         } else {
-            // 预先生成 TaskId
-            Integer taskId = batchMode ? CommandState.taskIdCounter.incrementAndGet() : null;
+            Integer taskId = batchMode ? GhostBlockState.taskIdCounter.incrementAndGet() : null;
 
-            // 创建详细描述字符串, 格式: "count"
             String details = String.valueOf(entries.size());
             
-            // 传入 taskId、命令字符串和 details
             createClearUndoRecord(world, entries, taskId, fullCommand, details);
 
             if (taskId != null) {
-                CommandState.activeClearTasks.add(new ClearTask(world, entries, batchSize, sender, taskId, autoFile));
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY,"ghostblock.commands.clear.batch_started", taskId, entries.size(), batchSize));
+                GhostBlockState.activeClearTasks.add(new ClearTask(world, entries, batchSize, sender, taskId, autoFile));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GRAY,"ghostblock.commands.clear.batch_started", taskId, entries.size(), batchSize));
             } else {
                 clearAllGhostBlocksSync(sender, world, entries);
                 if (autoFile.exists() && !autoFile.delete()) {
                     LogUtil.error("log.error.worldLoad.clearFile.deleteFailed", autoFile.getPath());
-                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED, "ghostblock.commands.clear.block.delete_failed", autoFile.getName()));
+                    sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED, "ghostblock.commands.clear.block.delete_failed", autoFile.getName()));
                 }
             }
         }
@@ -214,19 +207,17 @@ public class ClearHandler implements ICommandHandler {
                 LogUtil.printStackTrace("log.error.clear.task.restore.failed", e, entry.x + "," + entry.y + "," + entry.z, e.getMessage());
             }
         }
-        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.clear.block.success", restored));
+        sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.clear.block.success", restored));
         if (failed > 0) {
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED, "ghostblock.commands.clear.block.partial_fail", restored, failed));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED, "ghostblock.commands.clear.block.partial_fail", restored, failed));
         }
     }
     
-    // 接收 taskId、commandString 和 details 参数
     private void createClearUndoRecord(WorldClient world, List<GhostBlockEntry> clearedEntries, Integer taskId, String commandString, String details) {
         String baseId = GhostBlockData.getWorldBaseIdentifier(world);
         String undoFileName = "undo_clear_block_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis();
         GhostBlockData.saveData(world, clearedEntries, undoFileName, true);
-        // 传入所有参数到 UndoRecord
-        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.CLEAR_BLOCK, taskId, commandString, details));
+        GhostBlockState.undoHistory.add(0, new UndoRecord(undoFileName, new HashMap<>(), UndoRecord.OperationType.CLEAR_BLOCK, taskId, commandString, details));
         LogUtil.info("log.info.undo.created.clearBlock", undoFileName);
     }
 

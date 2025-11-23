@@ -2,7 +2,7 @@ package com.zihaomc.ghost;
 
 import com.zihaomc.ghost.features.autocraft.AutoCraftCommand;
 import com.zihaomc.ghost.commands.AutoMineCommand;
-import com.zihaomc.ghost.commands.GhostBlockCommand;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.features.translation.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
@@ -10,9 +10,10 @@ import com.zihaomc.ghost.features.autocraft.AutoCraftHandler;
 import com.zihaomc.ghost.features.autocraft.AutoCraftRecipeManager;
 import com.zihaomc.ghost.features.automine.AutoMineHandler;
 import com.zihaomc.ghost.handlers.*;
-import com.zihaomc.ghost.features.chat.ChatInputHandler; // 新增
-import com.zihaomc.ghost.features.chat.CommandSuggestionHandler; // 新增
-import com.zihaomc.ghost.features.translation.ChatTranslationHandler; // 新增
+import com.zihaomc.ghost.features.ghostblock.GhostBlockEventHandler;
+import com.zihaomc.ghost.features.chat.ChatInputHandler;
+import com.zihaomc.ghost.features.chat.CommandSuggestionHandler;
+import com.zihaomc.ghost.features.translation.ChatTranslationHandler;
 import com.zihaomc.ghost.features.translation.CacheSavingHandler;
 import com.zihaomc.ghost.features.translation.ItemTooltipTranslationHandler;
 import com.zihaomc.ghost.features.translation.SignTranslationHandler;
@@ -75,16 +76,16 @@ public class Ghost {
             MinecraftForge.EVENT_BUS.register(new CacheSavingHandler());
             LogUtil.debug("log.feature.cache.init");
             
-            // 2. 聊天相关 (拆分后)
+            // 2. 聊天相关
             MinecraftForge.EVENT_BUS.register(new ChatInputHandler());
             MinecraftForge.EVENT_BUS.register(new CommandSuggestionHandler());
-            LogUtil.debug("log.handler.registered.chatSuggest"); // 日志信息可以保持，或者改为更详细的
+            LogUtil.debug("log.handler.registered.chatSuggest");
 
             // 3. 翻译相关
             MinecraftForge.EVENT_BUS.register(new ChatTranslationHandler());
             MinecraftForge.EVENT_BUS.register(new SignTranslationHandler());
             MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
-            LogUtil.debug("log.handler.registered.translation"); // 合并翻译相关的日志
+            LogUtil.debug("log.handler.registered.translation");
 
             // 4. 其他功能
             MinecraftForge.EVENT_BUS.register(new AutoSneakHandler());
@@ -121,12 +122,10 @@ public class Ghost {
         
         ItemTooltipTranslationHandler.loadCacheFromFile();
         AutoMineTargetManager.loadTargets();
-        AutoCraftRecipeManager.initialize(); // 在这里初始化所有自动合成配方
+        AutoCraftRecipeManager.initialize();
 
         if (event.getSide() == Side.CLIENT) {
-            // --- 修正点: 将模式设置的逻辑移动到 init 阶段 ---
             try {
-                // 这里只设置内部变量，不发送任何聊天消息
                 AutoMineHandler.MiningMode mode = AutoMineHandler.MiningMode.valueOf(GhostConfig.AutoMine.miningMode.toUpperCase());
                 AutoMineHandler.setCurrentMiningMode_noMessage(mode);
             } catch (IllegalArgumentException e) {

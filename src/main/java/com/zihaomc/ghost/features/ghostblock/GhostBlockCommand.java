@@ -1,7 +1,7 @@
-package com.zihaomc.ghost.commands;
+package com.zihaomc.ghost.features.ghostblock;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.handlers.*;
+import com.zihaomc.ghost.features.ghostblock.handlers.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.command.CommandBase;
@@ -26,7 +26,6 @@ public class GhostBlockCommand extends CommandBase {
 
     /**
      * 一个有序的、用于 Tab 补全的列表。
-     * 这个列表定义了子命令的显示顺序，并且排除了不应被用户直接输入的 "confirm_clear"。
      */
     private static final List<String> SUB_COMMANDS_FOR_TAB = Arrays.asList(
             "set",
@@ -51,7 +50,7 @@ public class GhostBlockCommand extends CommandBase {
         commandHandlers.put("cancel", new CancelHandler());
         commandHandlers.put("resume", new ResumeHandler());
         commandHandlers.put("undo", new UndoHandler());
-        commandHandlers.put("history", new HistoryHandler()); // 注册 history 命令处理器
+        commandHandlers.put("history", new HistoryHandler()); 
         commandHandlers.put("help", new HelpHandler());
         // confirm_clear 仍然是一个有效的命令处理器，但不会出现在 Tab 补全中
         commandHandlers.put("confirm_clear", new ConfirmClearHandler());
@@ -82,13 +81,8 @@ public class GhostBlockCommand extends CommandBase {
         return true; // 对所有客户端玩家可用
     }
 
-    /**
-     * 处理命令执行的核心方法。
-     * 它解析子命令并将其委托给相应的处理器。
-     */
     @Override
     public void processCommand(ICommandSender sender, String[] args) throws CommandException {
-        // 如果没有参数，或者第一个参数是 "help"，则显示帮助信息
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             commandHandlers.get("help").processCommand(sender, null, args);
             return;
@@ -113,13 +107,8 @@ public class GhostBlockCommand extends CommandBase {
         }
     }
 
-    /**
-     * 提供 Tab 补全的逻辑。
-     * 它同样将补全请求委托给相应的处理器。
-     */
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        // 如果只输入了第一个参数（子命令），则提供所有子命令的补全
         if (args.length == 1) {
             // 使用有序列表进行补全
             return getListOfStringsMatchingLastWord(args, SUB_COMMANDS_FOR_TAB);
@@ -128,7 +117,6 @@ public class GhostBlockCommand extends CommandBase {
         String subCommand = args[0].toLowerCase();
         ICommandHandler handler = commandHandlers.get(subCommand);
 
-        // 如果找到了处理器，则调用其 Tab 补全方法
         if (handler != null) {
             return handler.addTabCompletionOptions(sender, args, pos);
         }

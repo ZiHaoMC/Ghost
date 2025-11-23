@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.features.translation;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import com.zihaomc.ghost.config.GhostConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
@@ -52,7 +52,6 @@ public class TranslateCommand extends CommandBase {
         String providerOverride = null;
         String sourceText;
         
-        // 解析参数，查找 -p 标志
         if (args.length >= 3 && (args[0].equalsIgnoreCase("-p") || args[0].equalsIgnoreCase("--provider"))) {
             providerOverride = args[1];
             sourceText = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
@@ -72,7 +71,6 @@ public class TranslateCommand extends CommandBase {
         translatingMessage.appendSibling(content);
         sender.addChatMessage(translatingMessage);
 
-        // 使用线程池执行
         TranslationUtil.runAsynchronously(() -> {
             final String result = TranslationUtil.translate(finalSourceText, finalProvider);
             
@@ -102,8 +100,8 @@ public class TranslateCommand extends CommandBase {
                                  .appendSibling(providerTag)
                                  .appendSibling(resultContent);
                                  
-                    // 追加切换按钮
-                    resultMessage.appendSibling(CommandHelper.createProviderSwitchButtons(finalSourceText, finalProvider));
+                    // --- 修改点：使用 GhostBlockHelper ---
+                    resultMessage.appendSibling(GhostBlockHelper.createProviderSwitchButtons(finalSourceText, finalProvider));
                 }
                 
                 sender.addChatMessage(resultMessage);

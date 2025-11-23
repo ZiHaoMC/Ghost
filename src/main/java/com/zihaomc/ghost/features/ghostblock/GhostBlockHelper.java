@@ -1,11 +1,10 @@
-package com.zihaomc.ghost.commands.utils;
+package com.zihaomc.ghost.features.ghostblock;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.data.CommandState.BlockStateProxy;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.BlockStateProxy;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
-import com.zihaomc.ghost.features.translation.TranslationUtil; // 新增导入
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -31,9 +30,8 @@ import java.util.stream.Collectors;
 
 /**
  * 包含 GhostBlockCommand 及其处理器所需的各种静态辅助方法。
- * 例如：消息格式化、参数解析、文件操作、Tab补全建议等。
  */
-public class CommandHelper {
+public class GhostBlockHelper {
 
     // --- 颜色常量 ---
     public static final EnumChatFormatting LABEL_COLOR = EnumChatFormatting.GRAY;
@@ -42,45 +40,30 @@ public class CommandHelper {
 
     /**
      * 创建翻译源切换按钮的文本组件。
-     * 显示为 [G] [B] [M] 等缩写，鼠标悬停显示全称。
-     * 
-     * @param sourceText 原始待翻译文本
-     * @param currentProvider 当前使用的提供商
-     * @return 包含所有其他提供商按钮的 IChatComponent
      */
     public static IChatComponent createProviderSwitchButtons(String sourceText, String currentProvider) {
-        // 检查配置开关，如果关闭则不生成按钮
         if (!GhostConfig.Translation.showProviderSwitchButtons) {
             return new ChatComponentText("");
         }
 
-        ChatComponentText buttons = new ChatComponentText(" "); // 稍微留点空隙
+        ChatComponentText buttons = new ChatComponentText(" "); 
         String[] providers = {"GOOGLE", "BING", "MYMEMORY", "NIUTRANS"};
         
-        // 转义原文中的引号，防止构建命令时格式错误
         String escapedText = sourceText.replace("\"", "\\\"");
 
         for (String provider : providers) {
-            // 跳过当前正在使用的提供商
             if (provider.equalsIgnoreCase(currentProvider)) continue;
 
-            // 获取缩写 (例如 GOOGLE -> G)
             String abbr = getProviderAbbreviation(provider);
-            
-            // 创建按钮文本组件
             ChatComponentText button = new ChatComponentText("[" + abbr + "] ");
-            
-            // 构建点击执行的命令: /gtranslate -p PROVIDER "原文"
             String command = "/gtranslate -p " + provider + " \"" + escapedText + "\"";
             
-            // 构建独立的悬浮提示文本 (例如: "切换源: GOOGLE")
             String tooltipStr = LangUtil.translate("ghost.tooltip.switch_provider", provider);
             ChatComponentText tooltipComponent = new ChatComponentText(tooltipStr);
             tooltipComponent.getChatStyle().setColor(EnumChatFormatting.YELLOW);
 
-            // 设置独立的样式
             ChatStyle style = new ChatStyle()
-                    .setColor(EnumChatFormatting.DARK_GRAY) // 按钮本身显示为深灰色，不抢眼
+                    .setColor(EnumChatFormatting.DARK_GRAY)
                     .setBold(false)
                     .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
                     .setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltipComponent));
@@ -91,9 +74,6 @@ public class CommandHelper {
         return buttons;
     }
 
-    /**
-     * 获取提供商的单字母缩写
-     */
     private static String getProviderAbbreviation(String provider) {
         switch (provider.toUpperCase()) {
             case "GOOGLE": return "G";
@@ -104,23 +84,10 @@ public class CommandHelper {
         }
     }
 
-    /**
-     * 格式化带[Ghost]前缀的消息（默认灰色）。
-     * @param messageKey 语言文件键
-     * @param args 格式化参数
-     * @return 格式化后的 ChatComponentText
-     */
     public static ChatComponentText formatMessage(String messageKey, Object... args) {
         return formatMessage(EnumChatFormatting.GRAY, messageKey, args);
     }
 
-    /**
-     * 格式化带[Ghost]前缀的消息（带指定颜色）。
-     * @param contentColor 内容文本颜色
-     * @param messageKey 语言文件键
-     * @param args 格式化参数
-     * @return 格式化后的 ChatComponentText
-     */
     public static ChatComponentText formatMessage(EnumChatFormatting contentColor, String messageKey, Object... args) {
         ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
         prefix.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.DARK_GRAY));
@@ -130,28 +97,18 @@ public class CommandHelper {
         return prefix;
     }
 
-    /**
-     * 解析方块状态字符串 (例如 "minecraft:stone:1" 或 "wool:11")。
-     * @param sender 命令发送者，用于 getBlockByText
-     * @param input  输入字符串
-     * @return BlockStateProxy 实例
-     * @throws CommandException 如果解析失败
-     */
     public static BlockStateProxy parseBlockState(ICommandSender sender, String input) throws CommandException {
         String blockIdString = input;
         int meta = 0;
 
-        // 查找最后一个冒号
         int lastColonIndex = input.lastIndexOf(':');
-        if (lastColonIndex > 0) { // 确保冒号不是第一个字符
+        if (lastColonIndex > 0) {
             String potentialMeta = input.substring(lastColonIndex + 1);
             try {
-                // 如果冒号后面的部分是数字，则我们认为它是 metadata
                 int parsedMeta = Integer.parseInt(potentialMeta);
                 meta = parsedMeta;
-                blockIdString = input.substring(0, lastColonIndex); // 更新 blockIdString 为冒号前面的部分
+                blockIdString = input.substring(0, lastColonIndex);
             } catch (NumberFormatException e) {
-                // 如果不是数字，说明冒号是方块名称的一部分（例如 "minecraft:log"），所以 blockIdString 保持为完整输入
             }
         }
 
@@ -166,7 +123,6 @@ public class CommandHelper {
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block_id", blockIdString));
         }
 
-        // 验证 metadata 是否对找到的方块有效
         try {
             block.getStateFromMeta(meta);
         } catch (IllegalArgumentException e) {
@@ -179,14 +135,6 @@ public class CommandHelper {
         return new BlockStateProxy(Block.getIdFromBlock(block), meta);
     }
     
-    /**
-     * 解析命令参数中的坐标，支持相对坐标(~)。
-     * @param sender 命令发送者
-     * @param args   命令参数数组
-     * @param index  坐标参数的起始索引
-     * @return 解析后的 BlockPos
-     * @throws CommandException 如果坐标无效
-     */
     public static BlockPos parseBlockPosLegacy(ICommandSender sender, String[] args, int index) throws CommandException {
         if (args.length < index + 3) {
             throw new WrongUsageException("ghostblock.commands.usage");
@@ -201,14 +149,6 @@ public class CommandHelper {
         return new BlockPos(Math.floor(x), Math.floor(y), Math.floor(z));
     }
 
-    /**
-     * 解析单个相对或绝对坐标值。
-     * @param sender 命令发送者
-     * @param input  坐标字符串 (如 "10", "~", "~-5")
-     * @param base   相对坐标的基准值
-     * @return 解析后的 double 型坐标值
-     * @throws CommandException 如果输入无效
-     */
     private static double parseRelativeCoordinateLegacy(ICommandSender sender, String input, double base) throws CommandException {
         if (input.startsWith("~")) {
             String offsetStr = input.substring(1);
@@ -230,11 +170,6 @@ public class CommandHelper {
         }
     }
 
-    /**
-     * 检查字符串是否可以解析为整数。
-     * @param input 待检查字符串
-     * @return 如果是数字则为 true
-     */
     public static boolean isNumber(String input) {
         if (input == null || input.isEmpty()) return false;
         try {
@@ -245,40 +180,21 @@ public class CommandHelper {
         }
     }
 
-    /**
-     * 验证批次大小是否为正数。
-     * @param batchSize 批次大小
-     * @throws CommandException 如果无效
-     */
     public static void validateBatchSize(int batchSize) throws CommandException {
         if (batchSize <= 0) {
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.batch_size_too_small"));
         }
     }
 
-    /**
-     * 获取当前世界/维度的自动清除文件名。
-     * @param world 客户端世界
-     * @return 文件名字符串 (不含后缀)
-     */
     public static String getAutoClearFileName(WorldClient world) {
         return "clear_" + GhostBlockData.getWorldIdentifier(world);
     }
     
-    /**
-     * 获取自动放置功能专用的保存文件名。
-     * @param world 客户端世界
-     * @return 文件名字符串 (不含后缀)
-     */
     public static String getAutoPlaceSaveFileName(net.minecraft.world.World world) {
         if (world == null) return "autoplace_unknown_world";
         return "autoplace_" + GhostBlockData.getWorldIdentifier(world);
     }
     
-    /**
-     * 获取所有可用的用户保存文件名（不含内部文件如 clear_, undo_）。
-     * @return 文件名列表
-     */
     public static List<String> getAvailableFileNames() {
         List<String> files = new ArrayList<>();
         File savesDir = new File(GhostBlockData.SAVES_DIR);
@@ -299,13 +215,6 @@ public class CommandHelper {
         return files;
     }
     
-    /**
-     * 检查坐标是否有效且所在区块的 ExtendedBlockStorage 已就绪。
-     * 这是比 `world.isBlockLoaded()` 更精确的检查，因为它确保了实际的方块存储数组存在。
-     * @param world 客户端世界
-     * @param pos 坐标
-     * @return 如果就绪则为 true
-     */
     public static boolean isBlockSectionReady(WorldClient world, BlockPos pos) {
         if (pos.getY() < 0 || pos.getY() >= 256) return false;
         if (!world.isBlockLoaded(pos)) return false; 
@@ -316,13 +225,6 @@ public class CommandHelper {
         return chunk.getBlockStorageArray()[storageY] != null;
     }
 
-    /**
-     * 在客户端世界设置一个幽灵方块。
-     * @param world 客户端世界
-     * @param pos 坐标
-     * @param state 方块状态代理
-     * @throws CommandException 如果方块ID无效
-     */
     public static void setGhostBlock(WorldClient world, BlockPos pos, BlockStateProxy state) throws CommandException {
         if (world.isRemote) {
             Block block = Block.getBlockById(state.blockId);
@@ -337,17 +239,9 @@ public class CommandHelper {
         }
     }
     
-    /**
-     * 为坐标参数提供Tab补全建议，按“玩家位置 -> 相对位置 -> 指针位置”的顺序。
-     * @param sender 命令发送者
-     * @param coordinateIndex 坐标索引 (0=x, 1=y, 2=z)
-     * @param targetPos 玩家视线指向的方块坐标
-     * @return 建议列表
-     */
     public static List<String> getCoordinateSuggestions(ICommandSender sender, int coordinateIndex, BlockPos targetPos) {
         List<String> suggestions = new ArrayList<>();
 
-        // 1. 添加玩家当前整数坐标
         if (sender instanceof EntityPlayer) {
             EntityPlayer player = (EntityPlayer) sender;
             int playerCoord = 0;
@@ -361,10 +255,8 @@ public class CommandHelper {
             suggestions.add("0");
         }
         
-        // 2. 添加相对坐标 "~"
         suggestions.add("~");
 
-        // 3. 添加目标方块坐标
         if (targetPos != null) {
             switch (coordinateIndex) {
                 case 0: suggestions.add(String.valueOf(targetPos.getX())); break;
@@ -373,16 +265,9 @@ public class CommandHelper {
             }
         }
 
-        // 移除重复项并返回
         return suggestions.stream().distinct().collect(Collectors.toList());
     }
 
-    /**
-     * 检查参数数组中（除最后一个正在输入的参数外）是否包含某个标志。
-     * @param args 参数数组
-     * @param flags 要检查的标志
-     * @return 如果包含则为 true
-     */
     public static boolean hasFlag(String[] args, String... flags) {
         for (int i = 0; i < args.length - 1; i++) {
             for (String flag : flags) {
@@ -394,33 +279,15 @@ public class CommandHelper {
         return false;
     }
 
-    /**
-     * 不区分大小写地检查列表中是否包含某个字符串。
-     * @param list 字符串列表
-     * @param target 目标字符串
-     * @return 如果包含则为 true
-     */
     public static boolean containsIgnoreCase(List<String> list, String target) {
         if (target == null) return false;
         return list.stream().anyMatch(s -> target.equalsIgnoreCase(s));
     }
     
-    /**
-     * 格式化 ID 列表为逗号分隔的字符串。
-     * @param ids ID集合
-     * @return 格式化后的字符串
-     */
     public static String formatIdList(Collection<?> ids) {
         return String.join(", ", ids.stream().map(Object::toString).collect(Collectors.toList()));
     }
     
-    /**
-     * 创建带格式的进度消息组件。
-     * @param key 语言文件键
-     * @param percent 进度百分比
-     * @param progressBar 进度条字符串
-     * @return 格式化后的 IChatComponent
-     */
     public static IChatComponent createProgressMessage(String key, int percent, String progressBar) {
         String rawMessage = LangUtil.translate(key, "{0}", "{1}");
         String[] parts = rawMessage.split("\\{(\\d)\\}", -1);
@@ -434,12 +301,6 @@ public class CommandHelper {
         return message;
     }
     
-    /**
-     * 创建进度条样式的字符串。
-     * @param progressPercent 进度百分比 (0-100)
-     * @param length 进度条总长度
-     * @return 格式化后的进度条字符串
-     */
     public static String createProgressBar(float progressPercent, int length) {
         int progress = (int) (progressPercent / 100 * length);
         progress = Math.min(progress, length);

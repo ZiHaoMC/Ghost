@@ -1,11 +1,11 @@
-package com.zihaomc.ghost.commands.handlers;
+package com.zihaomc.ghost.features.ghostblock.handlers;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.data.CommandState;
-import com.zihaomc.ghost.commands.data.CommandState.BlockStateProxy;
-import com.zihaomc.ghost.commands.data.CommandState.UndoRecord;
-import com.zihaomc.ghost.commands.tasks.FillTask;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.BlockStateProxy;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.UndoRecord;
+import com.zihaomc.ghost.features.ghostblock.tasks.FillTask;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
@@ -24,26 +24,20 @@ import net.minecraft.util.BlockPos;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * 处理 /cgb set 子命令的逻辑。
- */
 public class SetHandler implements ICommandHandler {
 
     @Override
     public void processCommand(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
-        // 拼接完整的命令字符串，用于历史记录
         String fullCommand = "/cgb " + String.join(" ", args);
         
-        // 用法检查: set x y z block [-s [filename]]
         if (args.length < 5) {
             throw new WrongUsageException(LangUtil.translate("ghostblock.commands.cghostblock.set.usage"));
         }
         
-        BlockPos pos = CommandHelper.parseBlockPosLegacy(sender, args, 1);
-        BlockStateProxy state = CommandHelper.parseBlockState(sender, args[4]);
+        BlockPos pos = GhostBlockHelper.parseBlockPosLegacy(sender, args, 1);
+        BlockStateProxy state = GhostBlockHelper.parseBlockState(sender, args[4]);
         Block block = Block.getBlockById(state.blockId);
         
-        // 允许使用 minecraft:air。 parseBlockState 已经处理了 null 的情况。
         if (block == null) {
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block"));
         }
@@ -80,11 +74,11 @@ public class SetHandler implements ICommandHandler {
         List<BlockPos> positions = Collections.singletonList(pos);
         List<GhostBlockEntry> autoEntries = collectOriginalBlocks(world, positions, state);
         if (!autoEntries.isEmpty()) {
-            GhostBlockData.saveData(world, autoEntries, CommandHelper.getAutoClearFileName(world), false);
+            GhostBlockData.saveData(world, autoEntries, GhostBlockHelper.getAutoClearFileName(world), false);
         }
 
-        boolean sectionIsReady = CommandHelper.isBlockSectionReady(world, pos);
-        Integer taskId = (!sectionIsReady) ? CommandState.taskIdCounter.incrementAndGet() : null;
+        boolean sectionIsReady = GhostBlockHelper.isBlockSectionReady(world, pos);
+        Integer taskId = (!sectionIsReady) ? GhostBlockState.taskIdCounter.incrementAndGet() : null;
 
         String baseId = GhostBlockData.getWorldBaseIdentifier(world);
         String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
@@ -96,15 +90,12 @@ public class SetHandler implements ICommandHandler {
             fileBackups.put(actualSaveFileName, existingEntries);
         }
 
-        // 创建详细描述字符串, 格式: "x,y,z block_id"
         String details = String.format("%d,%d,%d %s", pos.getX(), pos.getY(), pos.getZ(), args[4]);
         
-        // 创建撤销记录时，使用新的 OperationType 和 details
-        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId, fullCommand, details));
+        GhostBlockState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.SET, taskId, fullCommand, details));
 
 
         if (taskId == null) {
-            // 直接放置
             if (saveToFile) {
                 String actualSaveFileName = (saveFileName == null) ? GhostBlockData.getWorldIdentifier(world) : saveFileName;
                 IBlockState currentOriginalState = world.getBlockState(pos);
@@ -114,20 +105,19 @@ public class SetHandler implements ICommandHandler {
                                 currentOriginalBlock.getRegistryName().toString(), currentOriginalBlock.getMetaFromState(currentOriginalState)));
                 GhostBlockData.saveData(world, userEntryToSave, actualSaveFileName, false);
                 String displayName = (saveFileName == null) ? LangUtil.translate("ghostblock.displayname.default_file", GhostBlockData.getWorldIdentifier(world)) : saveFileName;
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.save.success", displayName));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.save.success", displayName));
             }
-            CommandHelper.setGhostBlock(world, pos, state);
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.cghostblock.set.success", pos.getX(), pos.getY(), pos.getZ()));
+            GhostBlockHelper.setGhostBlock(world, pos, state);
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.cghostblock.set.success", pos.getX(), pos.getY(), pos.getZ()));
         } else {
-            // 创建任务
             List<GhostBlockEntry> entryForTaskSave = new ArrayList<>();
             if (saveToFile && !autoEntries.isEmpty()) {
                 entryForTaskSave.add(autoEntries.get(0));
             }
             FillTask task = new FillTask(world, state, positions, 1, saveToFile, saveFileName, sender, taskId, entryForTaskSave);
-            CommandState.activeFillTasks.add(task);
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.cghostblock.set.deferred", pos.getX(), pos.getY(), pos.getZ()));
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.task.chunk_aware_notice"));
+            GhostBlockState.activeFillTasks.add(task);
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.cghostblock.set.deferred", pos.getX(), pos.getY(), pos.getZ()));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.task.chunk_aware_notice"));
         }
     }
 
@@ -135,17 +125,17 @@ public class SetHandler implements ICommandHandler {
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         int currentArgIndex = args.length - 1;
         if (currentArgIndex >= 1 && currentArgIndex <= 3) {
-            return CommandBase.getListOfStringsMatchingLastWord(args, CommandHelper.getCoordinateSuggestions(sender, currentArgIndex - 1, Minecraft.getMinecraft().objectMouseOver != null ? Minecraft.getMinecraft().objectMouseOver.getBlockPos() : null));
+            return CommandBase.getListOfStringsMatchingLastWord(args, GhostBlockHelper.getCoordinateSuggestions(sender, currentArgIndex - 1, Minecraft.getMinecraft().objectMouseOver != null ? Minecraft.getMinecraft().objectMouseOver.getBlockPos() : null));
         } else if (currentArgIndex == 4) {
             return CommandBase.getListOfStringsMatchingLastWord(args, Block.blockRegistry.getKeys());
         } else if (currentArgIndex == 5) {
-            if (!CommandHelper.hasFlag(args, "-s", "--save")) {
+            if (!GhostBlockHelper.hasFlag(args, "-s", "--save")) {
                 return CommandBase.getListOfStringsMatchingLastWord(args, Arrays.asList("-s", "--save"));
             }
         } else if (currentArgIndex == 6) {
             String prevArg = args[currentArgIndex - 1];
             if (prevArg.equalsIgnoreCase("-s") || prevArg.equalsIgnoreCase("--save")) {
-                List<String> suggestions = new ArrayList<>(CommandHelper.getAvailableFileNames());
+                List<String> suggestions = new ArrayList<>(GhostBlockHelper.getAvailableFileNames());
                 suggestions.add(0, "filename");
                 return CommandBase.getListOfStringsMatchingLastWord(args, suggestions);
             }
@@ -153,16 +143,13 @@ public class SetHandler implements ICommandHandler {
         return Collections.emptyList();
     }
     
-    /**
-     * 收集指定位置的原始方块信息，用于自动保存和撤销。
-     */
     private List<GhostBlockEntry> collectOriginalBlocks(WorldClient world, List<BlockPos> blocks, BlockStateProxy state) {
         List<GhostBlockEntry> entries = new ArrayList<>();
         Block ghostBlock = (state != null) ? Block.getBlockById(state.blockId) : null;
         String ghostBlockId = (ghostBlock != null) ? ghostBlock.getRegistryName().toString() : "minecraft:air";
         int ghostMeta = (state != null) ? state.metadata : 0;
 
-        String autoFileName = CommandHelper.getAutoClearFileName(world);
+        String autoFileName = GhostBlockHelper.getAutoClearFileName(world);
         List<GhostBlockEntry> existingEntries = GhostBlockData.loadData(world, Collections.singletonList(autoFileName));
         Set<String> existingKeys = existingEntries.stream().map(e -> e.x + "," + e.y + "," + e.z).collect(Collectors.toSet());
 

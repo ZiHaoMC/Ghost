@@ -1,11 +1,11 @@
-package com.zihaomc.ghost.commands.handlers;
+package com.zihaomc.ghost.features.ghostblock.handlers;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.data.CommandState;
-import com.zihaomc.ghost.commands.data.CommandState.BlockStateProxy;
-import com.zihaomc.ghost.commands.data.CommandState.UndoRecord;
-import com.zihaomc.ghost.commands.tasks.FillTask;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.BlockStateProxy;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.UndoRecord;
+import com.zihaomc.ghost.features.ghostblock.tasks.FillTask;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
@@ -24,26 +24,21 @@ import net.minecraft.util.BlockPos;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * 处理 /cgb fill 子命令的逻辑。
- */
 public class FillHandler implements ICommandHandler {
 
     @Override
     public void processCommand(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
-        // 拼接完整的命令字符串，用于历史记录
         String fullCommand = "/cgb " + String.join(" ", args);
         
         if (args.length < 8) {
             throw new WrongUsageException(LangUtil.translate("ghostblock.commands.cghostblock.fill.usage"));
         }
         
-        BlockPos from = CommandHelper.parseBlockPosLegacy(sender, args, 1);
-        BlockPos to = CommandHelper.parseBlockPosLegacy(sender, args, 4);
-        BlockStateProxy state = CommandHelper.parseBlockState(sender, args[7]);
+        BlockPos from = GhostBlockHelper.parseBlockPosLegacy(sender, args, 1);
+        BlockPos to = GhostBlockHelper.parseBlockPosLegacy(sender, args, 4);
+        BlockStateProxy state = GhostBlockHelper.parseBlockState(sender, args[7]);
         Block block = Block.getBlockById(state.blockId);
 
-        // 允许使用 minecraft:air。
         if (block == null) {
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block"));
         }
@@ -66,10 +61,10 @@ public class FillHandler implements ICommandHandler {
                 userProvidedBatchFlag = true;
                 useBatch = true;
                 i++;
-                if (i < args.length && CommandHelper.isNumber(args[i])) {
+                if (i < args.length && GhostBlockHelper.isNumber(args[i])) {
                     try {
                         batchSize = Integer.parseInt(args[i]);
-                        CommandHelper.validateBatchSize(batchSize);
+                        GhostBlockHelper.validateBatchSize(batchSize);
                         userProvidedBatchSize = true;
                         i++;
                     } catch (NumberFormatException | CommandException e) {
@@ -127,22 +122,22 @@ public class FillHandler implements ICommandHandler {
         }
 
         if (allBlocks.isEmpty()) {
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.fill.empty_area"));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.fill.empty_area"));
             return;
         }
 
         List<GhostBlockEntry> autoEntries = collectOriginalBlocks(world, allBlocks, state);
         if (!autoEntries.isEmpty()) {
-            GhostBlockData.saveData(world, autoEntries, CommandHelper.getAutoClearFileName(world), false);
+            GhostBlockData.saveData(world, autoEntries, GhostBlockHelper.getAutoClearFileName(world), false);
         }
 
         boolean implicitBatchRequired = false;
         if (!useBatch && !allBlocks.isEmpty() && volume < 32768) {
             for (BlockPos pos : allBlocks) {
-                if (!CommandHelper.isBlockSectionReady(world, pos)) {
+                if (!GhostBlockHelper.isBlockSectionReady(world, pos)) {
                     implicitBatchRequired = true;
                     if (!userProvidedBatchFlag) {
-                        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.fill.implicit_batch_notice"));
+                        sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.fill.implicit_batch_notice"));
                     }
                     break;
                 }
@@ -152,7 +147,7 @@ public class FillHandler implements ICommandHandler {
             if (!useBatch) useBatch = true;
         }
         
-        Integer taskId = (useBatch || implicitBatchRequired) ? CommandState.taskIdCounter.incrementAndGet() : null;
+        Integer taskId = (useBatch || implicitBatchRequired) ? GhostBlockState.taskIdCounter.incrementAndGet() : null;
 
         String baseId = GhostBlockData.getWorldBaseIdentifier(world);
         String undoFileName = "undo_" + baseId + "_dim_" + world.provider.getDimensionId() + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8);
@@ -164,22 +159,20 @@ public class FillHandler implements ICommandHandler {
             fileBackups.put(actualSaveFileName, existingEntries);
         }
         
-        // 创建详细描述字符串, 格式: "count block_id"
         String details = String.format("%d %s", allBlocks.size(), args[7]);
 
-        // 创建撤销记录时，使用新的 OperationType 和 details
-        CommandState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.FILL, taskId, fullCommand, details));
+        GhostBlockState.undoHistory.add(0, new UndoRecord(undoFileName, fileBackups, UndoRecord.OperationType.FILL, taskId, fullCommand, details));
 
 
         if (taskId != null) {
             FillTask task = new FillTask(world, state, allBlocks, batchSize, saveToFile, saveFileName, sender, taskId, autoEntries);
-            CommandState.activeFillTasks.add(task);
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.fill.batch_started", taskId, allBlocks.size(), batchSize));
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.task.chunk_aware_notice"));
+            GhostBlockState.activeFillTasks.add(task);
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.fill.batch_started", taskId, allBlocks.size(), batchSize));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.AQUA, "ghostblock.commands.task.chunk_aware_notice"));
         } else {
             int count = 0;
             for(BlockPos pos : allBlocks) {
-                CommandHelper.setGhostBlock(world, pos, state);
+                GhostBlockHelper.setGhostBlock(world, pos, state);
                 count++;
             }
             if (saveToFile) {
@@ -187,10 +180,10 @@ public class FillHandler implements ICommandHandler {
                 if (!autoEntries.isEmpty()) {
                     GhostBlockData.saveData(world, autoEntries, actualSaveFileName, false);
                     String displayName = (saveFileName == null) ? LangUtil.translate("ghostblock.displayname.default_file", GhostBlockData.getWorldIdentifier(world)) : saveFileName;
-                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.save.success", displayName));
+                    sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.save.success", displayName));
                 }
             }
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.cghostblock.fill.success", count));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.cghostblock.fill.success", count));
         }
     }
 
@@ -198,29 +191,29 @@ public class FillHandler implements ICommandHandler {
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
         int currentArgIndex = args.length - 1;
         if (currentArgIndex >= 1 && currentArgIndex <= 3) {
-            return CommandBase.getListOfStringsMatchingLastWord(args, CommandHelper.getCoordinateSuggestions(sender, currentArgIndex - 1, Minecraft.getMinecraft().objectMouseOver != null ? Minecraft.getMinecraft().objectMouseOver.getBlockPos() : null));
+            return CommandBase.getListOfStringsMatchingLastWord(args, GhostBlockHelper.getCoordinateSuggestions(sender, currentArgIndex - 1, Minecraft.getMinecraft().objectMouseOver != null ? Minecraft.getMinecraft().objectMouseOver.getBlockPos() : null));
         } else if (currentArgIndex >= 4 && currentArgIndex <= 6) {
-            return CommandBase.getListOfStringsMatchingLastWord(args, CommandHelper.getCoordinateSuggestions(sender, currentArgIndex - 4, Minecraft.getMinecraft().objectMouseOver != null ? Minecraft.getMinecraft().objectMouseOver.getBlockPos() : null));
+            return CommandBase.getListOfStringsMatchingLastWord(args, GhostBlockHelper.getCoordinateSuggestions(sender, currentArgIndex - 4, Minecraft.getMinecraft().objectMouseOver != null ? Minecraft.getMinecraft().objectMouseOver.getBlockPos() : null));
         } else if (currentArgIndex == 7) {
             return CommandBase.getListOfStringsMatchingLastWord(args, Block.blockRegistry.getKeys());
         } else if (currentArgIndex >= 8) {
             String prevArg = args[currentArgIndex - 1].toLowerCase();
             String prefix = args[currentArgIndex].toLowerCase();
             if (prevArg.equals("-s") || prevArg.equals("--save")) {
-                List<String> suggestions = new ArrayList<>(CommandHelper.getAvailableFileNames());
+                List<String> suggestions = new ArrayList<>(GhostBlockHelper.getAvailableFileNames());
                 suggestions.add(0, "filename");
                 return CommandBase.getListOfStringsMatchingLastWord(args, suggestions);
             }
             if (prevArg.equals("-b") || prevArg.equals("--batch")) {
-                if (!CommandHelper.isNumber(prefix)) {
+                if (!GhostBlockHelper.isNumber(prefix)) {
                     return CommandBase.getListOfStringsMatchingLastWord(args, Arrays.asList("100", "500", "1000"));
                 }
             }
             List<String> suggestions = new ArrayList<>();
-            if (!CommandHelper.hasFlag(args, "-b", "--batch") && !(prevArg.equals("-b") || prevArg.equals("--batch"))) {
+            if (!GhostBlockHelper.hasFlag(args, "-b", "--batch") && !(prevArg.equals("-b") || prevArg.equals("--batch"))) {
                 suggestions.add("-b");
             }
-            if (!CommandHelper.hasFlag(args, "-s", "--save") && !(prevArg.equals("-s") || prevArg.equals("--save"))) {
+            if (!GhostBlockHelper.hasFlag(args, "-s", "--save") && !(prevArg.equals("-s") || prevArg.equals("--save"))) {
                 suggestions.add("-s");
             }
             return CommandBase.getListOfStringsMatchingLastWord(args, suggestions);
@@ -233,7 +226,7 @@ public class FillHandler implements ICommandHandler {
         Block ghostBlock = (state != null) ? Block.getBlockById(state.blockId) : null;
         String ghostBlockId = (ghostBlock != null) ? ghostBlock.getRegistryName().toString() : "minecraft:air";
         int ghostMeta = (state != null) ? state.metadata : 0;
-        String autoFileName = CommandHelper.getAutoClearFileName(world);
+        String autoFileName = GhostBlockHelper.getAutoClearFileName(world);
         List<GhostBlockEntry> existingEntries = GhostBlockData.loadData(world, Collections.singletonList(autoFileName));
         Set<String> existingKeys = existingEntries.stream().map(e -> e.x + "," + e.y + "," + e.z).collect(Collectors.toSet());
         for (BlockPos pos : blocks) {

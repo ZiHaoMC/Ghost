@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.features.translation;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper; 
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.client.Minecraft;
@@ -23,9 +23,8 @@ public class ChatTranslationHandler {
 
     @SubscribeEvent
     public void onClientChatReceived(ClientChatReceivedEvent event) {
-        if (event.type == 2) return; // 忽略 Action Bar 消息
+        if (event.type == 2) return;
         
-        // 如果两个功能都没开，直接返回，节省性能
         if (!GhostConfig.Translation.enableAutomaticTranslation && !GhostConfig.Translation.enableChatTranslation) {
             return;
         }
@@ -36,7 +35,6 @@ public class ChatTranslationHandler {
         String unformattedText = event.message.getUnformattedText();
         String translatedPrefix = LangUtil.translate("ghost.generic.prefix.translation");
 
-        // 检查消息是否已经是我们自己的翻译结果，如果是则不处理
         if (unformattedText.startsWith(translatedPrefix)) {
             processedMessageHashes.add(messageHash);
             return;
@@ -44,11 +42,9 @@ public class ChatTranslationHandler {
 
         if ((event.type == 0 || event.type == 1) && !unformattedText.trim().isEmpty()) {
             if (GhostConfig.Translation.enableAutomaticTranslation) {
-                // 自动翻译模式：自动发起请求并显示结果
                 triggerAutomaticChatTranslation(unformattedText);
                 processedMessageHashes.add(messageHash);
             } else if (GhostConfig.Translation.enableChatTranslation) {
-                // 手动翻译模式：添加 [翻译] 按钮
                 appendTranslateButton(event.message, unformattedText);
                 processedMessageHashes.add(messageHash);
             }
@@ -75,8 +71,9 @@ public class ChatTranslationHandler {
                     resultMessage.appendSibling(resultPrefix)
                                  .appendSibling(providerTag)
                                  .appendSibling(resultContent);
-                                 
-                    resultMessage.appendSibling(CommandHelper.createProviderSwitchButtons(originalText, currentProvider));
+                    
+                    // --- 修改点：使用 GhostBlockHelper ---
+                    resultMessage.appendSibling(GhostBlockHelper.createProviderSwitchButtons(originalText, currentProvider));
                     
                     Minecraft.getMinecraft().thePlayer.addChatMessage(resultMessage);
                 }

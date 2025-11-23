@@ -1,13 +1,13 @@
-package com.zihaomc.ghost.commands.handlers;
+package com.zihaomc.ghost.features.ghostblock.handlers;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.data.CommandState;
-import com.zihaomc.ghost.commands.data.CommandState.UndoRecord;
-import com.zihaomc.ghost.commands.data.CommandState.BlockStateProxy;
-import com.zihaomc.ghost.commands.tasks.ClearTask;
-import com.zihaomc.ghost.commands.tasks.FillTask;
-import com.zihaomc.ghost.commands.tasks.LoadTask;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.UndoRecord;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.BlockStateProxy;
+import com.zihaomc.ghost.features.ghostblock.tasks.ClearTask;
+import com.zihaomc.ghost.features.ghostblock.tasks.FillTask;
+import com.zihaomc.ghost.features.ghostblock.tasks.LoadTask;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.data.GhostBlockData.GhostBlockEntry;
 import com.zihaomc.ghost.utils.LogUtil;
@@ -28,54 +28,42 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * 处理 /cgb undo 子命令的逻辑。
- */
 public class UndoHandler implements ICommandHandler {
 
     @Override
     public void processCommand(ICommandSender sender, WorldClient world, String[] args) throws CommandException {
-        if (CommandState.undoHistory.isEmpty()) {
+        if (GhostBlockState.undoHistory.isEmpty()) {
             throw new CommandException(LangUtil.translate("ghostblock.commands.undo.empty"));
         }
 
-        int index = 1; // 默认为1，即撤销最近的操作
+        int index = 1; 
         if (args.length > 1) {
             try {
                 index = Integer.parseInt(args[1]);
-                if (index <= 0 || index > CommandState.undoHistory.size()) {
-                    // 抛出带有有效范围提示的错误
-                    throw new CommandException(LangUtil.translate("ghostblock.commands.undo.invalid_index", CommandState.undoHistory.size()));
+                if (index <= 0 || index > GhostBlockState.undoHistory.size()) {
+                    throw new CommandException(LangUtil.translate("ghostblock.commands.undo.invalid_index", GhostBlockState.undoHistory.size()));
                 }
             } catch (NumberFormatException e) {
                 throw new WrongUsageException(LangUtil.translate("ghostblock.commands.undo.usage.extended"));
             }
         }
 
-        // 从历史列表中移除指定索引的记录 (用户输入1，对应列表索引0)
-        UndoRecord record = CommandState.undoHistory.remove(index - 1);
+        UndoRecord record = GhostBlockState.undoHistory.remove(index - 1);
 
-        // 核心逻辑：如果此撤销操作关联了一个仍在运行的任务，强制终止它。
         if (record.relatedTaskId != null) {
             cancelRelatedTask(record.relatedTaskId);
         }
 
-        // 1. 恢复用户文件备份
         restoreUserFileBackups(sender, world, record);
-
-        // 2. 处理核心撤销逻辑
         handleCoreUndo(sender, world, record);
-
-        // 3. 删除撤销数据文件
         deleteUndoDataFile(record, world);
     }
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        // 为 undo 命令的第二个参数提供历史记录编号的 Tab 补全
         if (args.length == 2) {
             List<String> suggestions = new ArrayList<>();
-            for (int i = 1; i <= CommandState.undoHistory.size(); i++) {
+            for (int i = 1; i <= GhostBlockState.undoHistory.size(); i++) {
                 suggestions.add(String.valueOf(i));
             }
             return CommandBase.getListOfStringsMatchingLastWord(args, suggestions);
@@ -83,17 +71,10 @@ public class UndoHandler implements ICommandHandler {
         return Collections.emptyList();
     }
     
-    // --- 辅助方法 (这部分无需修改) ---
-
-    /**
-     * 强制终止与撤销操作关联的任务。
-     * 注意：这里只调用 .cancel()，任务会在下一次Tick时自动从活动列表中移除，不会进入暂停列表。
-     */
     private void cancelRelatedTask(int taskId) {
         boolean cancelled = false;
-        // 检查 FillTask
-        synchronized (CommandState.activeFillTasks) {
-            for (FillTask task : CommandState.activeFillTasks) {
+        synchronized (GhostBlockState.activeFillTasks) {
+            for (FillTask task : GhostBlockState.activeFillTasks) {
                 if (task.getTaskId() == taskId) {
                     task.cancel();
                     cancelled = true;
@@ -101,10 +82,9 @@ public class UndoHandler implements ICommandHandler {
                 }
             }
         }
-        // 检查 LoadTask
         if (!cancelled) {
-            synchronized (CommandState.activeLoadTasks) {
-                for (LoadTask task : CommandState.activeLoadTasks) {
+            synchronized (GhostBlockState.activeLoadTasks) {
+                for (LoadTask task : GhostBlockState.activeLoadTasks) {
                     if (task.getTaskId() == taskId) {
                         task.cancel();
                         cancelled = true;
@@ -113,10 +93,9 @@ public class UndoHandler implements ICommandHandler {
                 }
             }
         }
-        // 检查 ClearTask
         if (!cancelled) {
-            synchronized (CommandState.activeClearTasks) {
-                for (ClearTask task : CommandState.activeClearTasks) {
+            synchronized (GhostBlockState.activeClearTasks) {
+                for (ClearTask task : GhostBlockState.activeClearTasks) {
                     if (task.getTaskId() == taskId) {
                         task.cancel();
                         cancelled = true;
@@ -132,12 +111,12 @@ public class UndoHandler implements ICommandHandler {
 
     private void restoreUserFileBackups(ICommandSender sender, WorldClient world, UndoRecord record) {
         if (record.fileBackups != null && !record.fileBackups.isEmpty()) {
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.undo.restoring_user_files"));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.undo.restoring_user_files"));
             for (Map.Entry<String, List<GhostBlockEntry>> entry : record.fileBackups.entrySet()) {
                 String fileName = entry.getKey();
                 List<GhostBlockEntry> backupEntries = entry.getValue();
                 GhostBlockData.saveData(world, backupEntries, fileName, true);
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY,"ghostblock.commands.undo.user_file_restored", fileName));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GRAY,"ghostblock.commands.undo.user_file_restored", fileName));
             }
         }
     }
@@ -161,10 +140,10 @@ public class UndoHandler implements ICommandHandler {
     
     private void undoSetOperation(ICommandSender sender, WorldClient world, List<GhostBlockEntry> entriesFromUndoFile) throws CommandException {
         if (entriesFromUndoFile.isEmpty()) {
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.undo.error.data_file_empty"));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.undo.error.data_file_empty"));
             return;
         }
-        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.undo.restoring_blocks"));
+        sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GRAY, "ghostblock.commands.undo.restoring_blocks"));
         AtomicInteger restoredCount = new AtomicInteger();
         List<BlockPos> affectedPositions = new ArrayList<>();
 
@@ -179,30 +158,30 @@ public class UndoHandler implements ICommandHandler {
                     affectedPositions.add(pos);
                 } catch (Exception e) {
                     LogUtil.error("log.error.undo.restore.set.failed", pos, e.getMessage());
-                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED,"ghostblock.commands.undo.error.restore_failed", pos.getX(), pos.getY(), pos.getZ(), e.getMessage()));
+                    sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED,"ghostblock.commands.undo.error.restore_failed", pos.getX(), pos.getY(), pos.getZ(), e.getMessage()));
                 }
             } else {
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED,"ghostblock.commands.undo.error_block_lookup", entry.originalBlockId, pos.getX(), pos.getY(), pos.getZ()));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED,"ghostblock.commands.undo.error_block_lookup", entry.originalBlockId, pos.getX(), pos.getY(), pos.getZ()));
             }
         });
 
         removeEntriesFromAutoClearFile(world, affectedPositions);
-        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.undo.success_set", restoredCount.get()));
+        sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.undo.success_set", restoredCount.get()));
     }
     
     private void undoClearOperation(ICommandSender sender, WorldClient world, UndoRecord record, List<GhostBlockEntry> entriesFromUndoFile) throws CommandException {
         if (record.undoFileName.startsWith("undo_clear_file_")) {
             if (record.fileBackups != null && !record.fileBackups.isEmpty()) {
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.undo.success_clear_file"));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.undo.success_clear_file"));
             } else {
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.undo.warning.no_files_to_restore"));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.undo.warning.no_files_to_restore"));
             }
         } else {
             if (entriesFromUndoFile.isEmpty()) {
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.YELLOW, "ghost.commands.undo.error.data_file_empty_ghost"));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghost.commands.undo.error.data_file_empty_ghost"));
                 return;
             }
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY, "ghost.commands.undo.restoring_ghost_blocks"));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GRAY, "ghost.commands.undo.restoring_ghost_blocks"));
             AtomicInteger restoredCount = new AtomicInteger();
             List<GhostBlockEntry> restoredGhostEntries = new ArrayList<>();
 
@@ -211,24 +190,24 @@ public class UndoHandler implements ICommandHandler {
                 Block ghostBlock = Block.getBlockFromName(entry.blockId);
                 if (ghostBlock != null && ghostBlock != Block.getBlockFromName("minecraft:air")) {
                     try {
-                        CommandHelper.setGhostBlock(world, pos, new BlockStateProxy(Block.getIdFromBlock(ghostBlock), entry.metadata));
+                        GhostBlockHelper.setGhostBlock(world, pos, new BlockStateProxy(Block.getIdFromBlock(ghostBlock), entry.metadata));
                         restoredCount.incrementAndGet();
                         restoredGhostEntries.add(entry);
                     } catch (Exception e) {
                         LogUtil.error("log.error.undo.restore.clear.failed", pos, e.getMessage());
-                        sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED,"ghost.commands.undo.error.restore_ghost_failed", pos.getX(), pos.getY(), pos.getZ(), e.getMessage()));
+                        sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED,"ghost.commands.undo.error.restore_ghost_failed", pos.getX(), pos.getY(), pos.getZ(), e.getMessage()));
                     }
                 } else {
-                    sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED,"ghost.commands.undo.error_block_lookup", entry.blockId, pos.getX(), pos.getY(), pos.getZ()));
+                    sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED,"ghost.commands.undo.error_block_lookup", entry.blockId, pos.getX(), pos.getY(), pos.getZ()));
                 }
             });
 
             if (!restoredGhostEntries.isEmpty()) {
-                String autoFileName = CommandHelper.getAutoClearFileName(world);
+                String autoFileName = GhostBlockHelper.getAutoClearFileName(world);
                 GhostBlockData.saveData(world, restoredGhostEntries, autoFileName, false);
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GRAY,"ghost.commands.undo.auto_file_restored", restoredGhostEntries.size()));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GRAY,"ghost.commands.undo.auto_file_restored", restoredGhostEntries.size()));
             }
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghost.commands.undo.success_clear", restoredCount.get()));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghost.commands.undo.success_clear", restoredCount.get()));
         }
     }
 
@@ -247,7 +226,7 @@ public class UndoHandler implements ICommandHandler {
     
     private void removeEntriesFromAutoClearFile(World world, List<BlockPos> positionsToRemove) {
         if (positionsToRemove.isEmpty()) return;
-        String autoFileName = CommandHelper.getAutoClearFileName((WorldClient) world);
+        String autoFileName = GhostBlockHelper.getAutoClearFileName((WorldClient) world);
         GhostBlockData.removeEntriesFromFile(world, autoFileName, positionsToRemove);
         LogUtil.info("log.info.undo.autoClearFile.updated", autoFileName, positionsToRemove.size());
     }

@@ -1,11 +1,11 @@
-package com.zihaomc.ghost.commands.handlers;
+package com.zihaomc.ghost.features.ghostblock.handlers;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.data.CommandState;
-import com.zihaomc.ghost.commands.data.CommandState.TaskSnapshot;
-import com.zihaomc.ghost.commands.tasks.FillTask;
-import com.zihaomc.ghost.commands.tasks.LoadTask;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.TaskSnapshot;
+import com.zihaomc.ghost.features.ghostblock.tasks.FillTask;
+import com.zihaomc.ghost.features.ghostblock.tasks.LoadTask;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -18,9 +18,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * 处理 /cgb resume 子命令的逻辑。
- */
 public class ResumeHandler implements ICommandHandler {
 
     @Override
@@ -36,11 +33,10 @@ public class ResumeHandler implements ICommandHandler {
             throw new CommandException(LangUtil.translate("ghostblock.commands.resume.invalid_id", args[1]));
         }
 
-        TaskSnapshot snapshot = CommandState.pausedTasks.get(taskId);
+        TaskSnapshot snapshot = GhostBlockState.pausedTasks.get(taskId);
         if (snapshot == null) {
-            // 检查任务是否仍在运行
-            boolean isRunning = CommandState.activeFillTasks.stream().anyMatch(t -> t.getTaskId() == taskId);
-            if (!isRunning) isRunning = CommandState.activeLoadTasks.stream().anyMatch(t -> t.getTaskId() == taskId);
+            boolean isRunning = GhostBlockState.activeFillTasks.stream().anyMatch(t -> t.getTaskId() == taskId);
+            if (!isRunning) isRunning = GhostBlockState.activeLoadTasks.stream().anyMatch(t -> t.getTaskId() == taskId);
             
             if (isRunning) {
                 throw new CommandException(LangUtil.translate("ghostblock.commands.resume.error.already_running", taskId));
@@ -49,28 +45,26 @@ public class ResumeHandler implements ICommandHandler {
             }
         }
 
-        // 恢复任务
         if ("fill".equals(snapshot.type)) {
             FillTask newTask = new FillTask(world, snapshot.state, snapshot.remainingBlocks, snapshot.batchSize,
                     snapshot.saveToFile, snapshot.saveFileName, snapshot.sender, snapshot.taskId, snapshot.entriesToSaveForUserFile);
-            CommandState.activeFillTasks.add(newTask);
-            CommandState.pausedTasks.remove(taskId);
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.resume.success", taskId));
+            GhostBlockState.activeFillTasks.add(newTask);
+            GhostBlockState.pausedTasks.remove(taskId);
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.resume.success", taskId));
         } else if ("load".equals(snapshot.type)) {
             LoadTask newTask = new LoadTask(world, snapshot.remainingEntries, snapshot.batchSize, snapshot.sender, snapshot.taskId);
-            CommandState.activeLoadTasks.add(newTask);
-            CommandState.pausedTasks.remove(taskId);
-            sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.resume.success", taskId));
+            GhostBlockState.activeLoadTasks.add(newTask);
+            GhostBlockState.pausedTasks.remove(taskId);
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.resume.success", taskId));
         } else {
-            CommandState.pausedTasks.remove(taskId);
+            GhostBlockState.pausedTasks.remove(taskId);
             throw new CommandException(LangUtil.translate("ghostblock.commands.resume.invalid_type"));
         }
     }
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        // 只补全已暂停的任务ID
-        List<String> pausedIds = CommandState.pausedTasks.keySet().stream().map(String::valueOf).collect(Collectors.toList());
+        List<String> pausedIds = GhostBlockState.pausedTasks.keySet().stream().map(String::valueOf).collect(Collectors.toList());
         return CommandBase.getListOfStringsMatchingLastWord(args, pausedIds);
     }
 }

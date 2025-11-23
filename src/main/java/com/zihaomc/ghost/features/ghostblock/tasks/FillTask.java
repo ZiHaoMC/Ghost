@@ -1,8 +1,8 @@
-package com.zihaomc.ghost.commands.tasks;
+package com.zihaomc.ghost.features.ghostblock.tasks;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.data.CommandState.BlockStateProxy;
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockState.BlockStateProxy;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
@@ -20,7 +20,6 @@ import java.util.*;
 
 /**
  * 代表一个后台批量填充幽灵方块的任务。
- * 这个任务是区块感知和玩家距离感知的，只会在条件满足时放置方块。
  */
 public class FillTask {
     final WorldClient world;
@@ -57,10 +56,6 @@ public class FillTask {
         LogUtil.info("log.info.task.fill.init", taskId, this.totalBlocks, this.batchSize);
     }
 
-    /**
-     * 由 Tick 事件循环调用，处理一个批次的方块放置。
-     * @return 如果任务完成或被取消，则返回 true。
-     */
     public boolean processBatch() {
         if (cancelled) {
             return true;
@@ -70,7 +65,7 @@ public class FillTask {
         // 允许使用 air，只检查 null。
         if (block == null) {
             if (processedCount == 0 && !cancelled) {
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.RED, "ghostblock.commands.error.invalid_block"));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED, "ghostblock.commands.error.invalid_block"));
                 LogUtil.error("log.error.task.fill.invalidBlock", taskId, state.blockId);
                 this.cancel();
             }
@@ -137,14 +132,11 @@ public class FillTask {
         return finished;
     }
 
-    /**
-     * 检查给定位置的方块是否满足放置条件。
-     */
     private boolean checkPlacementConditions(BlockPos pos, EntityPlayer player) {
         if (pos.getY() < 0 || pos.getY() >= 256) {
             return false;
         }
-        if (CommandHelper.isBlockSectionReady(world, pos)) {
+        if (GhostBlockHelper.isBlockSectionReady(world, pos)) {
             if (player != null) {
                 if (player.getDistanceSqToCenter(pos) <= TASK_PLACEMENT_PROXIMITY_SQ) {
                     return true;
@@ -163,9 +155,6 @@ public class FillTask {
         return false;
     }
 
-    /**
-     * 根据需要发送进度消息。
-     */
     private void sendProgressIfNeeded(float currentPercent, boolean forceSend) {
         if (totalBlocks == 0) currentPercent = 100.0f;
         currentPercent = Math.min(100.0f, Math.max(0.0f, currentPercent));
@@ -174,8 +163,8 @@ public class FillTask {
         boolean shouldSend = forceSend || Math.abs(currentPercent - lastReportedPercent) >= 0.1f || System.currentTimeMillis() - lastUpdateTime > 1000;
 
         if (shouldSend && currentPercent <= 100.0f) {
-            String progressBar = CommandHelper.createProgressBar(currentPercent, 10);
-            IChatComponent message = CommandHelper.createProgressMessage("ghostblock.commands.fill.progress", (int) Math.floor(currentPercent), progressBar);
+            String progressBar = GhostBlockHelper.createProgressBar(currentPercent, 10);
+            IChatComponent message = GhostBlockHelper.createProgressMessage("ghostblock.commands.fill.progress", (int) Math.floor(currentPercent), progressBar);
             
             if (sender instanceof EntityPlayer) {
                 EntityPlayer player = (EntityPlayer) sender;
@@ -195,9 +184,6 @@ public class FillTask {
         }
     }
 
-    /**
-     * 发送最终进度并执行清理。
-     */
     private void sendFinalProgress() {
         if (lastReportedPercent < 100.0f && !cancelled) {
             sendProgressIfNeeded(100.0f, true);
@@ -209,7 +195,7 @@ public class FillTask {
                 LogUtil.debug("log.info.task.fill.save.userFile", taskId, this.entriesToSaveForUserFile.size(), actualSaveFileName);
                 GhostBlockData.saveData(world, this.entriesToSaveForUserFile, actualSaveFileName, false);
                 String displayName = (saveFileName == null) ? LangUtil.translate("ghostblock.displayname.default_file", GhostBlockData.getWorldIdentifier(world)) : saveFileName;
-                sender.addChatMessage(CommandHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.save.success", displayName));
+                sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.save.success", displayName));
             } else {
                 LogUtil.warn("log.warn.task.fill.save.noEntries", taskId);
             }
@@ -217,15 +203,12 @@ public class FillTask {
 
         if (!cancelled) {
             String finishKey = (totalBlocks == 1 && processedCount <= 1) ? "ghostblock.commands.fill.finish_single" : "ghostblock.commands.fill.finish";
-            sender.addChatMessage(CommandHelper.formatMessage(CommandHelper.FINISH_COLOR, finishKey, processedCount));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(GhostBlockHelper.FINISH_COLOR, finishKey, processedCount));
         } else {
             LogUtil.info("log.info.task.fill.cancelled", taskId);
         }
     }
 
-    /**
-     * 标记任务为取消。
-     */
     public void cancel() {
         if (!this.cancelled) {
             LogUtil.info("log.info.task.fill.markedCancelled", taskId);

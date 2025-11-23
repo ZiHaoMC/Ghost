@@ -1,7 +1,7 @@
-package com.zihaomc.ghost.commands.handlers;
+package com.zihaomc.ghost.features.ghostblock.handlers;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.commands.GhostBlockCommand;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockCommand;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
@@ -13,9 +13,6 @@ import net.minecraft.util.IChatComponent;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * 处理 /cgb help 子命令的逻辑。
- */
 public class HelpHandler implements ICommandHandler {
 
     @Override
@@ -28,10 +25,6 @@ public class HelpHandler implements ICommandHandler {
         return Collections.emptyList();
     }
 
-    /**
-     * 显示 /cgb 命令的帮助信息。
-     * @param sender 命令发送者。
-     */
     private void displayHelp(ICommandSender sender) {
         EnumChatFormatting hl = EnumChatFormatting.GOLD;
         EnumChatFormatting tx = EnumChatFormatting.GRAY;
@@ -60,9 +53,6 @@ public class HelpHandler implements ICommandHandler {
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.cghostblock.help.aliases") + ": " + hl + commandAliases));
     }
 
-    /**
-     * 格式化帮助文本中的一行（子命令 + 描述）。
-     */
     private IChatComponent formatHelpLine(String command, String description) {
         ChatComponentText line = new ChatComponentText("  ");
         ChatComponentText cmdComp = new ChatComponentText(command);

@@ -73,6 +73,7 @@ public class AutoCraftHandler {
     private static final int WAIT_TIMEOUT_TICKS = 60;
     private static final int PLACEMENT_TIMEOUT_TICKS = 40;
     private static final int STASH_MESSAGE_TIMEOUT_TICKS = 80; // 等待/pickupstash消息的超时时间，4秒
+    private static final int INVENTORY_SYNC_TIMEOUT_TICKS = 60; // 取出物品后等待库存同步的最大时间，3秒
 
     /**
      * 根据指定的配方启动自动合成。
@@ -165,8 +166,10 @@ public class AutoCraftHandler {
         String message = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
         if (message.contains("You picked up") && message.contains("from your material stash")) {
             LogUtil.info("[AutoCraft] Stash pickup confirmation message received.");
-            // 收到消息后，等待一个极短的时间（3 ticks）确保客户端物品栏数据包已处理
-            setDelay(3);
+            // 收到消息后，重置超时计数器，并设置短暂延迟后进入检查状态
+            // 这里给予足够的时间（如3秒）让客户端同步库存
+            timeoutCounter = INVENTORY_SYNC_TIMEOUT_TICKS; 
+            setDelay(5); 
             setState(State.CHECK_SUPPLIES_AFTER_STASH);
         }
     }
@@ -177,7 +180,7 @@ public class AutoCraftHandler {
             return;
         }
         
-        setState(currentState);
+        // setState(currentState); // 移除此行，避免日志刷屏
 
         if (tickCounter > 0) {
             tickCounter--;
@@ -224,15 +227,26 @@ public class AutoCraftHandler {
                     break;
 
                 case CHECK_SUPPLIES_AFTER_STASH:
-                    LogUtil.info("[AutoCraft] Performing final supply check after stash pickup.");
+                    // 这是一个轮询检查状态，直到超时或者材料充足
                     int finalIngredientCount = getIngredientCount();
-                    LogUtil.info("[AutoCraft] Final supply check for " + activeRecipe.ingredientDisplayName + ". Found " + finalIngredientCount + ". Required: " + activeRecipe.requiredAmount);
+                    
                     if (finalIngredientCount >= activeRecipe.requiredAmount) {
+                        LogUtil.info("[AutoCraft] Supplies confirmed after sync: " + finalIngredientCount + ". Proceeding.");
                         setState(State.OPEN_MENU);
                     } else {
-                        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.insufficient_after_stash", activeRecipe.ingredientDisplayName)));
-                        LogUtil.error("[AutoCraft] Insufficient " + activeRecipe.ingredientDisplayName + " after picking up stash. Stopping.");
-                        stop();
+                        if (timeoutCounter > 0) {
+                            // 如果还没超时，说明可能还在同步中，继续等待
+                            int waitInterval = 5; // 每5 ticks检查一次
+                            timeoutCounter -= waitInterval;
+                            setDelay(waitInterval);
+                            LogUtil.debug("[AutoCraft] Supplies insufficient (" + finalIngredientCount + "/" + activeRecipe.requiredAmount + "). Waiting for inventory sync... " + timeoutCounter + " ticks left.");
+                        } else {
+                            // 超时了，说明真的不够
+                            LogUtil.info("[AutoCraft] Final supply check failed. Found " + finalIngredientCount + ". Required: " + activeRecipe.requiredAmount);
+                            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.insufficient_after_stash", activeRecipe.ingredientDisplayName)));
+                            LogUtil.error("[AutoCraft] Insufficient " + activeRecipe.ingredientDisplayName + " after picking up stash (timed out). Stopping.");
+                            stop();
+                        }
                     }
                     break;
 
@@ -289,7 +303,7 @@ public class AutoCraftHandler {
 
                     if (ingredientsPlaced < activeRecipe.requiredAmount) {
                         int ingredientSlotId = findAnyIngredientSlot();
-                        LogUtil.info("[AutoCraft] Searching for " + activeRecipe.ingredientDisplayName + "... Found in actual container slot: " + ingredientSlotId);
+                        // LogUtil.info("[AutoCraft] Searching for " + activeRecipe.ingredientDisplayName + "... Found in actual container slot: " + ingredientSlotId);
                         if (ingredientSlotId != -1) {
                             ItemStack stackBeforeClick = mc.thePlayer.openContainer.getSlot(ingredientSlotId).getStack();
                             if (stackBeforeClick != null) {
@@ -322,7 +336,7 @@ public class AutoCraftHandler {
                     ItemStack currentStack = mc.thePlayer.openContainer.getSlot(slotToWatch).getStack();
                     int currentStackSize = (currentStack == null) ? 0 : currentStack.stackSize;
 
-                    LogUtil.info("[AutoCraft] Waiting for placement confirmation on slot " + slotToWatch + ". Original size: " + stackSizeToWatch + ", Current size: " + currentStackSize + ". Timeout in: " + timeoutCounter);
+                    // LogUtil.info("[AutoCraft] Waiting for placement confirmation on slot " + slotToWatch + ". Original size: " + stackSizeToWatch + ", Current size: " + currentStackSize + ". Timeout in: " + timeoutCounter);
 
                     if (currentStack == null || currentStackSize < stackSizeToWatch) {
                         int amountPlaced = stackSizeToWatch - currentStackSize;
@@ -370,10 +384,8 @@ public class AutoCraftHandler {
                         LogUtil.info("[AutoCraft] Slot cleared. Checking supplies for next cycle.");
                         
                         // 优化：在进入下一次合成循环前立即检查材料是否充足
-                        // 如果不足，直接跳转到补货流程，而不是进入 DO_CRAFT 状态空转或报错
                         if (getIngredientCount() < activeRecipe.requiredAmount) {
                             LogUtil.info("[AutoCraft] Insufficient supplies for next cycle. Triggering supply check.");
-                            // 需要关闭当前的 GUI 以便 CHECK_SUPPLIES 或 GET_SUPPLIES 正常运作
                             if (mc.currentScreen != null) {
                                 mc.thePlayer.closeScreen();
                             }

@@ -1,6 +1,6 @@
-package com.zihaomc.ghost.commands.tasks;
+package com.zihaomc.ghost.features.ghostblock.tasks;
 
-import com.zihaomc.ghost.commands.utils.CommandHelper;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import com.zihaomc.ghost.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
@@ -112,7 +112,7 @@ public class LoadTask {
         if (pos.getY() < 0 || pos.getY() >= 256) {
             return false;
         }
-        if (CommandHelper.isBlockSectionReady(world, pos)) {
+        if (GhostBlockHelper.isBlockSectionReady(world, pos)) {
             if (player != null && player.getDistanceSqToCenter(pos) > TASK_PLACEMENT_PROXIMITY_SQ) {
                 if (previouslyWaitingForLoadOrProximityIndices.add(index)) {
                     LogUtil.debug("log.info.task.load.posWaiting", taskId, pos, index, "玩家距离远");
@@ -136,8 +136,8 @@ public class LoadTask {
         boolean shouldSend = forceSend || Math.abs(currentPercent - lastReportedPercent) >= 0.1f || System.currentTimeMillis() - lastUpdateTime > 1000;
 
         if (shouldSend && currentPercent <= 100.0f) {
-            String progressBar = CommandHelper.createProgressBar(currentPercent, 10);
-            IChatComponent message = CommandHelper.createProgressMessage("ghostblock.commands.load.progress", (int) Math.floor(currentPercent), progressBar);
+            String progressBar = GhostBlockHelper.createProgressBar(currentPercent, 10);
+            IChatComponent message = GhostBlockHelper.createProgressMessage("ghostblock.commands.load.progress", (int) Math.floor(currentPercent), progressBar);
             
             if (sender instanceof EntityPlayer) {
                 EntityPlayer player = (EntityPlayer) sender;
@@ -162,7 +162,7 @@ public class LoadTask {
             sendProgressIfNeeded(100.0f, true);
         }
         if (!cancelled) {
-            sender.addChatMessage(CommandHelper.formatMessage(CommandHelper.FINISH_COLOR, "ghostblock.commands.load.finish", entries.size()));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(GhostBlockHelper.FINISH_COLOR, "ghostblock.commands.load.finish", entries.size()));
         } else {
             LogUtil.info("log.info.task.load.cancelled", taskId);
         }

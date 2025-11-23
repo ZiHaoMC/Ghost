@@ -1,8 +1,8 @@
-package com.zihaomc.ghost.commands.data;
+package com.zihaomc.ghost.features.ghostblock;
 
-import com.zihaomc.ghost.commands.tasks.ClearTask;
-import com.zihaomc.ghost.commands.tasks.FillTask;
-import com.zihaomc.ghost.commands.tasks.LoadTask;
+import com.zihaomc.ghost.features.ghostblock.tasks.ClearTask;
+import com.zihaomc.ghost.features.ghostblock.tasks.FillTask;
+import com.zihaomc.ghost.features.ghostblock.tasks.LoadTask;
 import com.zihaomc.ghost.data.GhostBlockData;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.BlockPos;
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 集中存储 GhostBlockCommand 的所有状态，
  * 以便在不同的处理器和事件监听器之间共享。
  */
-public class CommandState {
+public class GhostBlockState {
 
     // --- 任务管理 ---
     public static final AtomicInteger taskIdCounter = new AtomicInteger(0);
@@ -29,7 +29,6 @@ public class CommandState {
     public static final List<ClearTask> activeClearTasks = Collections.synchronizedList(new ArrayList<>());
 
     // --- 撤销/重做 ---
-    // 从 Deque 改为 List 以支持按索引撤销
     public static final List<UndoRecord> undoHistory = new ArrayList<>();
 
     // --- 清除确认 ---
@@ -40,7 +39,6 @@ public class CommandState {
 
     /**
      * 代表一次可撤销的操作记录。
-     * (重构以支持更详细的描述)
      */
     public static class UndoRecord {
         public enum OperationType {
