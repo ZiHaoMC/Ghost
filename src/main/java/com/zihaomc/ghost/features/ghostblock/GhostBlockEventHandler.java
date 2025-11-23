@@ -1,11 +1,10 @@
 package com.zihaomc.ghost.features.ghostblock;
 
-import com.zihaomc.ghost.features.ghostblock.GhostBlockState;
 import com.zihaomc.ghost.features.ghostblock.tasks.ClearTask;
 import com.zihaomc.ghost.features.ghostblock.tasks.FillTask;
 import com.zihaomc.ghost.features.ghostblock.tasks.LoadTask;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.data.GhostBlockData;
+import com.zihaomc.ghost.features.ghostblock.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -30,19 +29,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * 处理所有与 GhostBlock 功能相关的 Forge 事件。
+ * 包括后台任务处理、自动放置逻辑、世界加载/卸载时的清理。
+ */
 public class GhostBlockEventHandler {
 
+    // --- 事件相关状态 ---
     private static int lastTrackedDimension = 0;
     private static boolean isFirstJoin = true;
 
+    // --- 自动放置相关状态 ---
     private static GhostBlockData.GhostBlockEntry pendingAutoPlaceEntry = null;
     private static BlockPos pendingAutoPlaceTargetPos = null;
     private static File pendingAutoPlaceFileRef = null;
     private static int autoPlaceTickDelayCounter = 0;
-    private static final int AUTO_PLACE_DURATION_TICKS = 40;
-    private static final int AUTO_PLACE_MAX_ATTEMPT_TICKS = 100; 
+    private static final int AUTO_PLACE_DURATION_TICKS = 40; // 持续放置2秒
+    private static final int AUTO_PLACE_MAX_ATTEMPT_TICKS = 100; // 最多等待5秒
     private static boolean autoPlaceInProgress = false;
 
+    /**
+     * 客户端 Tick 事件，用于处理后台任务队列和自动放置。
+     */
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
@@ -53,7 +61,6 @@ public class GhostBlockEventHandler {
     }
 
     private void processTaskQueues() {
-        // 注意：这里使用的是 GhostBlockState，而不是 CommandState
         synchronized (GhostBlockState.activeFillTasks) {
             Iterator<FillTask> taskIter = GhostBlockState.activeFillTasks.iterator();
             while (taskIter.hasNext()) {
@@ -113,8 +120,8 @@ public class GhostBlockEventHandler {
             cleanupPendingAutoPlace(true);
         }
 
+        // 检查自动放置
         if (GhostConfig.AutoPlace.enableAutoPlaceOnJoin) {
-            // 注意：这里使用的是 GhostBlockHelper
             String autoPlaceFileName = GhostBlockHelper.getAutoPlaceSaveFileName(world);
             List<GhostBlockData.GhostBlockEntry> autoPlaceEntries = GhostBlockData.loadData(world, Collections.singletonList(autoPlaceFileName));
 
@@ -235,7 +242,6 @@ public class GhostBlockEventHandler {
             }
         }
         if (autoPlaceTickDelayCounter == 1 || (autoPlaceTickDelayCounter == AUTO_PLACE_DURATION_TICKS)) {
-            // 使用 GhostBlockHelper
             Minecraft.getMinecraft().thePlayer.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.autoplace.platform_success", center.getX(), center.getY(), center.getZ()));
         }
         if (autoPlaceTickDelayCounter >= AUTO_PLACE_DURATION_TICKS) {
@@ -267,7 +273,6 @@ public class GhostBlockEventHandler {
     }
 
     private void cleanupAndRestoreOnLoad(WorldClient world) {
-        // 使用 GhostBlockHelper
         String autoFileName = GhostBlockHelper.getAutoClearFileName(world);
         File autoFile = GhostBlockData.getDataFile(world, autoFileName);
 
@@ -298,7 +303,6 @@ public class GhostBlockEventHandler {
         if (player == null || player.worldObj != clientWorld) return;
 
         BlockPos logicalPlayerFeetPos = new BlockPos(Math.floor(player.posX), Math.floor(player.posY - 1.0), Math.floor(player.posZ));
-        // 使用 GhostBlockHelper
         String tempClearFileName = GhostBlockHelper.getAutoClearFileName(clientWorld);
         List<GhostBlockData.GhostBlockEntry> clearEntries = GhostBlockData.loadData(clientWorld, Collections.singletonList(tempClearFileName));
 
@@ -306,7 +310,6 @@ public class GhostBlockEventHandler {
                 .filter(entry -> entry.x == logicalPlayerFeetPos.getX() && entry.y == logicalPlayerFeetPos.getY() && entry.z == logicalPlayerFeetPos.getZ())
                 .findFirst();
 
-        // 使用 GhostBlockHelper
         String autoPlaceSaveFileName = GhostBlockHelper.getAutoPlaceSaveFileName(clientWorld);
         File autoPlaceFileToSaveTo = GhostBlockData.getDataFile(clientWorld, autoPlaceSaveFileName);
 
@@ -321,7 +324,6 @@ public class GhostBlockEventHandler {
     }
 
     private void cleanupOnUnload(WorldClient clientWorld) {
-        // 使用 GhostBlockHelper
         File tempClearFileObject = GhostBlockData.getDataFile(clientWorld, GhostBlockHelper.getAutoClearFileName(clientWorld));
         if (tempClearFileObject.exists()) {
             tempClearFileObject.delete();
@@ -357,7 +359,6 @@ public class GhostBlockEventHandler {
         GhostBlockState.pausedTasks.clear();
 
         if (feedbackSender != null && cancelledCount > 0) {
-            // 使用 GhostBlockHelper
             feedbackSender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.task.cancelled_world_change"));
         }
         LogUtil.info("log.info.tasks.cancelled.count", cancelledCount);

@@ -3,7 +3,7 @@ package com.zihaomc.ghost.features.ghostblock.tasks;
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.features.ghostblock.GhostBlockState.BlockStateProxy;
 import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
-import com.zihaomc.ghost.data.GhostBlockData;
+import com.zihaomc.ghost.features.ghostblock.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -11,7 +11,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.IChatComponent;
@@ -62,7 +61,6 @@ public class FillTask {
         }
 
         Block block = Block.getBlockById(state.blockId);
-        // 允许使用 air，只检查 null。
         if (block == null) {
             if (processedCount == 0 && !cancelled) {
                 sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED, "ghostblock.commands.error.invalid_block"));

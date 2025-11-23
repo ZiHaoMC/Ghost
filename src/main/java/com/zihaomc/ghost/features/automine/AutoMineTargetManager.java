@@ -3,7 +3,7 @@ package com.zihaomc.ghost.features.automine;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import com.zihaomc.ghost.data.GhostBlockData;
+import com.zihaomc.ghost.features.ghostblock.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -28,19 +28,11 @@ public class AutoMineTargetManager {
     private static final String TARGET_GROUPS_FILE_NAME = "automine_groups.json";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    /** 内存中的坐标目标列表, 按世界区分 */
     public static final Map<String, List<BlockPos>> worldTargetBlocks = new ConcurrentHashMap<>();
-    /** 内存中的方块类型目标集合 (包含 metadata) */
     public static final Set<BlockData> targetBlockTypes = new HashSet<>();
-    /** 内存中的方块权重映射 */
     public static final Map<Block, Integer> targetBlockWeights = new ConcurrentHashMap<>();
-    /** 内存中的自定义方块组 */
     public static final Map<String, List<String>> customBlockGroups = new ConcurrentHashMap<>();
 
-    /**
-     * 一个内部类，用于唯一标识一个方块及其数据值。
-     * metadata 为 -1 表示通配符，匹配此方块的所有数据值。
-     */
     public static class BlockData {
         public final Block block;
         public final int metadata;
@@ -103,9 +95,6 @@ public class AutoMineTargetManager {
         return new File(configDir, TARGET_GROUPS_FILE_NAME);
     }
 
-    /**
-     * 在游戏启动时加载所有持久化的目标数据。
-     */
     public static void loadTargets() {
         loadCoordinates();
         loadBlockTypes();
@@ -113,10 +102,6 @@ public class AutoMineTargetManager {
         loadBlockGroups();
     }
 
-    /**
-     * 获取当前所在世界的世界标识符。
-     * @return 世界标识符字符串，如果不在世界中则返回 null。
-     */
     private static String getCurrentWorldId() {
         if (Minecraft.getMinecraft() != null && Minecraft.getMinecraft().theWorld != null) {
             return GhostBlockData.getWorldIdentifier(Minecraft.getMinecraft().theWorld);
@@ -124,11 +109,6 @@ public class AutoMineTargetManager {
         return null;
     }
 
-    /**
-     * 获取当前世界的坐标目标列表。
-     * 如果当前世界没有列表，会为其创建一个新的空列表。
-     * @return 当前世界的目标坐标列表。如果不在世界中，则返回一个不可变的空列表。
-     */
     public static List<BlockPos> getCurrentTargetBlocks() {
         String worldId = getCurrentWorldId();
         if (worldId == null) {
@@ -177,7 +157,6 @@ public class AutoMineTargetManager {
                                 meta = Integer.parseInt(blockIdString.substring(lastColon + 1));
                                 blockName = blockIdString.substring(0, lastColon);
                             } catch (NumberFormatException e) {
-                                // Not a meta
                             }
                         }
                         Block block = Block.blockRegistry.getObject(new ResourceLocation(blockName));
@@ -223,7 +202,6 @@ public class AutoMineTargetManager {
     private static void loadBlockGroups() {
         File groupsFile = getGroupsFile();
         if (!groupsFile.exists()) {
-            // 如果文件不存在，加载预定义的组
             PredefinedGroupManager.initializePredefinedGroups();
             return;
         }

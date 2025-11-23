@@ -3,7 +3,7 @@ package com.zihaomc.ghost.features.ghostblock;
 import com.zihaomc.ghost.features.ghostblock.tasks.ClearTask;
 import com.zihaomc.ghost.features.ghostblock.tasks.FillTask;
 import com.zihaomc.ghost.features.ghostblock.tasks.LoadTask;
-import com.zihaomc.ghost.data.GhostBlockData;
+import com.zihaomc.ghost.features.ghostblock.data.GhostBlockData;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.BlockPos;
 
@@ -16,8 +16,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 集中存储 GhostBlockCommand 的所有状态，
- * 以便在不同的处理器和事件监听器之间共享。
+ * 集中存储 GhostBlock 功能的所有状态。
+ * 包括：活动任务、撤销历史、挂起的确认请求等。
  */
 public class GhostBlockState {
 
@@ -42,11 +42,7 @@ public class GhostBlockState {
      */
     public static class UndoRecord {
         public enum OperationType {
-            SET,
-            FILL,
-            LOAD,
-            CLEAR_BLOCK,
-            CLEAR_FILE
+            SET, FILL, LOAD, CLEAR_BLOCK, CLEAR_FILE
         }
 
         public final String undoFileName;
@@ -54,8 +50,6 @@ public class GhostBlockState {
         public final OperationType operationType;
         public final Integer relatedTaskId;
         public final String commandString;
-        
-        // 用于生成详细描述的附加信息
         public final String details;
 
         public UndoRecord(String undoFileName, Map<String, List<GhostBlockData.GhostBlockEntry>> fileBackups, OperationType type, Integer relatedTaskId, String commandString, String details) {

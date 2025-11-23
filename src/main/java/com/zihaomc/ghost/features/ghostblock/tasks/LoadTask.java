@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.features.ghostblock.tasks;
 
 import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
-import com.zihaomc.ghost.data.GhostBlockData;
+import com.zihaomc.ghost.features.ghostblock.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -9,7 +9,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.IChatComponent;
 
@@ -70,7 +69,6 @@ public class LoadTask {
             
             if (canPlaceNow) {
                 Block block = Block.getBlockFromName(entry.blockId);
-                // 允许加载 air
                 if (block != null) {
                     try {
                         IBlockState blockStateToSet = block.getStateFromMeta(entry.metadata);

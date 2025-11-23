@@ -3,7 +3,7 @@ package com.zihaomc.ghost.features.ghostblock;
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.features.ghostblock.GhostBlockState.BlockStateProxy;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.data.GhostBlockData;
+import com.zihaomc.ghost.features.ghostblock.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -29,7 +29,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 包含 GhostBlockCommand 及其处理器所需的各种静态辅助方法。
+ * GhostBlock 功能的通用辅助工具类。
+ * 包含：消息格式化、坐标解析、文件操作、方块设置等静态方法。
  */
 public class GhostBlockHelper {
 
@@ -40,30 +41,41 @@ public class GhostBlockHelper {
 
     /**
      * 创建翻译源切换按钮的文本组件。
+     * 显示为 [G] [B] [M] 等缩写，鼠标悬停显示全称。
      */
     public static IChatComponent createProviderSwitchButtons(String sourceText, String currentProvider) {
+        // 检查配置开关，如果关闭则不生成按钮
         if (!GhostConfig.Translation.showProviderSwitchButtons) {
             return new ChatComponentText("");
         }
 
-        ChatComponentText buttons = new ChatComponentText(" "); 
+        ChatComponentText buttons = new ChatComponentText(" "); // 稍微留点空隙
         String[] providers = {"GOOGLE", "BING", "MYMEMORY", "NIUTRANS"};
         
+        // 转义原文中的引号，防止构建命令时格式错误
         String escapedText = sourceText.replace("\"", "\\\"");
 
         for (String provider : providers) {
+            // 跳过当前正在使用的提供商
             if (provider.equalsIgnoreCase(currentProvider)) continue;
 
+            // 获取缩写 (例如 GOOGLE -> G)
             String abbr = getProviderAbbreviation(provider);
+            
+            // 创建按钮文本组件
             ChatComponentText button = new ChatComponentText("[" + abbr + "] ");
+            
+            // 构建点击执行的命令: /gtranslate -p PROVIDER "原文"
             String command = "/gtranslate -p " + provider + " \"" + escapedText + "\"";
             
+            // 构建独立的悬浮提示文本 (例如: "切换源: GOOGLE")
             String tooltipStr = LangUtil.translate("ghost.tooltip.switch_provider", provider);
             ChatComponentText tooltipComponent = new ChatComponentText(tooltipStr);
             tooltipComponent.getChatStyle().setColor(EnumChatFormatting.YELLOW);
 
+            // 设置独立的样式
             ChatStyle style = new ChatStyle()
-                    .setColor(EnumChatFormatting.DARK_GRAY)
+                    .setColor(EnumChatFormatting.DARK_GRAY) // 按钮本身显示为深灰色，不抢眼
                     .setBold(false)
                     .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
                     .setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltipComponent));
@@ -74,6 +86,9 @@ public class GhostBlockHelper {
         return buttons;
     }
 
+    /**
+     * 获取提供商的单字母缩写
+     */
     private static String getProviderAbbreviation(String provider) {
         switch (provider.toUpperCase()) {
             case "GOOGLE": return "G";
@@ -84,10 +99,16 @@ public class GhostBlockHelper {
         }
     }
 
+    /**
+     * 格式化带[Ghost]前缀的消息（默认灰色）。
+     */
     public static ChatComponentText formatMessage(String messageKey, Object... args) {
         return formatMessage(EnumChatFormatting.GRAY, messageKey, args);
     }
 
+    /**
+     * 格式化带[Ghost]前缀的消息（带指定颜色）。
+     */
     public static ChatComponentText formatMessage(EnumChatFormatting contentColor, String messageKey, Object... args) {
         ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
         prefix.setChatStyle(new ChatStyle().setColor(EnumChatFormatting.DARK_GRAY));
@@ -97,18 +118,23 @@ public class GhostBlockHelper {
         return prefix;
     }
 
+    /**
+     * 解析方块状态字符串 (例如 "minecraft:stone:1" 或 "wool:11")。
+     */
     public static BlockStateProxy parseBlockState(ICommandSender sender, String input) throws CommandException {
         String blockIdString = input;
         int meta = 0;
 
+        // 查找最后一个冒号，尝试解析 metadata
         int lastColonIndex = input.lastIndexOf(':');
-        if (lastColonIndex > 0) {
+        if (lastColonIndex > 0) { 
             String potentialMeta = input.substring(lastColonIndex + 1);
             try {
                 int parsedMeta = Integer.parseInt(potentialMeta);
                 meta = parsedMeta;
                 blockIdString = input.substring(0, lastColonIndex);
             } catch (NumberFormatException e) {
+                // 如果不是数字，说明冒号是方块名称的一部分
             }
         }
 
@@ -123,6 +149,7 @@ public class GhostBlockHelper {
             throw new CommandException(LangUtil.translate("ghostblock.commands.error.invalid_block_id", blockIdString));
         }
 
+        // 验证 metadata 是否有效
         try {
             block.getStateFromMeta(meta);
         } catch (IllegalArgumentException e) {
@@ -135,6 +162,9 @@ public class GhostBlockHelper {
         return new BlockStateProxy(Block.getIdFromBlock(block), meta);
     }
     
+    /**
+     * 解析命令参数中的坐标，支持相对坐标(~)。
+     */
     public static BlockPos parseBlockPosLegacy(ICommandSender sender, String[] args, int index) throws CommandException {
         if (args.length < index + 3) {
             throw new WrongUsageException("ghostblock.commands.usage");
@@ -186,15 +216,24 @@ public class GhostBlockHelper {
         }
     }
 
+    /**
+     * 获取当前世界/维度的自动清除文件名。
+     */
     public static String getAutoClearFileName(WorldClient world) {
         return "clear_" + GhostBlockData.getWorldIdentifier(world);
     }
     
+    /**
+     * 获取自动放置功能专用的保存文件名。
+     */
     public static String getAutoPlaceSaveFileName(net.minecraft.world.World world) {
         if (world == null) return "autoplace_unknown_world";
         return "autoplace_" + GhostBlockData.getWorldIdentifier(world);
     }
     
+    /**
+     * 获取所有可用的用户保存文件名（不含内部文件如 clear_, undo_）。
+     */
     public static List<String> getAvailableFileNames() {
         List<String> files = new ArrayList<>();
         File savesDir = new File(GhostBlockData.SAVES_DIR);
@@ -215,6 +254,9 @@ public class GhostBlockHelper {
         return files;
     }
     
+    /**
+     * 检查坐标是否有效且所在区块的 ExtendedBlockStorage 已就绪。
+     */
     public static boolean isBlockSectionReady(WorldClient world, BlockPos pos) {
         if (pos.getY() < 0 || pos.getY() >= 256) return false;
         if (!world.isBlockLoaded(pos)) return false; 
@@ -225,6 +267,9 @@ public class GhostBlockHelper {
         return chunk.getBlockStorageArray()[storageY] != null;
     }
 
+    /**
+     * 在客户端世界设置一个幽灵方块。
+     */
     public static void setGhostBlock(WorldClient world, BlockPos pos, BlockStateProxy state) throws CommandException {
         if (world.isRemote) {
             Block block = Block.getBlockById(state.blockId);
@@ -239,6 +284,9 @@ public class GhostBlockHelper {
         }
     }
     
+    /**
+     * 为坐标参数提供Tab补全建议。
+     */
     public static List<String> getCoordinateSuggestions(ICommandSender sender, int coordinateIndex, BlockPos targetPos) {
         List<String> suggestions = new ArrayList<>();
 
@@ -288,6 +336,9 @@ public class GhostBlockHelper {
         return String.join(", ", ids.stream().map(Object::toString).collect(Collectors.toList()));
     }
     
+    /**
+     * 创建带格式的进度消息组件。
+     */
     public static IChatComponent createProgressMessage(String key, int percent, String progressBar) {
         String rawMessage = LangUtil.translate(key, "{0}", "{1}");
         String[] parts = rawMessage.split("\\{(\\d)\\}", -1);
@@ -301,6 +352,9 @@ public class GhostBlockHelper {
         return message;
     }
     
+    /**
+     * 创建进度条样式的字符串。
+     */
     public static String createProgressBar(float progressPercent, int length) {
         int progress = (int) (progressPercent / 100 * length);
         progress = Math.min(progress, length);

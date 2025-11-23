@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.features.ghostblock.tasks;
 
 import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
-import com.zihaomc.ghost.data.GhostBlockData;
+import com.zihaomc.ghost.features.ghostblock.data.GhostBlockData;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -14,7 +14,7 @@ import java.io.File;
 import java.util.List;
 
 /**
- * 代表一个后台批量清除幽灵方块（恢复为原始方块）的任务。
+ * 代表一个后台批量清除幽灵方块的任务。
  */
 public class ClearTask {
     private final WorldClient world;
