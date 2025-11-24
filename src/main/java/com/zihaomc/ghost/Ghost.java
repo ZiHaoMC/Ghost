@@ -1,7 +1,7 @@
 package com.zihaomc.ghost;
 
 import com.zihaomc.ghost.features.autocraft.AutoCraftCommand;
-import com.zihaomc.ghost.commands.AutoMineCommand;
+import com.zihaomc.ghost.features.automine.AutoMineCommand;
 import com.zihaomc.ghost.features.ghostblock.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
 import com.zihaomc.ghost.features.translation.TranslateCommand;

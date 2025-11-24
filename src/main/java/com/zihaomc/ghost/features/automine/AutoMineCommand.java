@@ -1,9 +1,9 @@
-package com.zihaomc.ghost.commands;
+package com.zihaomc.ghost.features.automine;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.features.automine.AutoMineHandler;
-import com.zihaomc.ghost.features.automine.AutoMineTargetManager;
-import com.zihaomc.ghost.features.automine.PredefinedGroupManager;
+// 同包引用，移除 AutoMineHandler 导入
+// 同包引用，移除 AutoMineTargetManager 导入
+// 同包引用，移除 PredefinedGroupManager 导入
 import net.minecraft.block.Block;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
