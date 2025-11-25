@@ -38,6 +38,7 @@ public class GhostConfig {
     public static final String CATEGORY_GUI_TWEAKS = "gui_tweaks";
     public static final String CATEGORY_AUTO_MINE = "auto_mine_feature";
     public static final String CATEGORY_AUTO_CRAFT = "auto_craft_feature";
+    public static final String CATEGORY_PATHFINDING = "pathfinding_feature"; // 新增
 
     // --- 用于命令的统一配置更新器 ---
     public static final Map<String, BiConsumer<String, String>> settingUpdaters = new HashMap<>();
@@ -102,7 +103,6 @@ public class GhostConfig {
         public static boolean showTranslationOnly;
         public static boolean hideTranslationKeybindTooltip;
         
-        // *** 关键修复点：必须包含这个变量 ***
         public static boolean showProviderSwitchButtons;
         
         public static String niuTransApiKey;
@@ -110,13 +110,6 @@ public class GhostConfig {
         public static String translationSourceLang;
         public static String translationTargetLang;
         
-        /** 
-         * 翻译提供商选择:
-         * NIUTRANS (需要Key)
-         * GOOGLE (免费, GTX接口)
-         * BING (免费, 模拟网页)
-         * MYMEMORY (免费)
-         */
         public static String translationProvider; 
     }
 
@@ -153,7 +146,6 @@ public class GhostConfig {
         public static boolean enableVoidSafetyCheck;
         public static int voidSafetyYLimit;
 
-        // --- Hypixel Skyblock Mithril 挖掘优化 ---
         public static boolean enableMithrilOptimization;
         public static String[] titaniumBlockIds;
         public static int mithrilCleanupThreshold;
@@ -166,6 +158,11 @@ public class GhostConfig {
         public static int autoCraftMenuOpenDelayTicks;
         public static int autoCraftTableOpenDelayTicks;
         public static int autoCraftPickupStashWaitTicks;
+    }
+
+    // 新增 Pathfinding 配置类
+    public static class Pathfinding {
+        public static int maxIterations; // 最大计算迭代次数
     }
 
     // --- 核心方法 ---
@@ -196,6 +193,7 @@ public class GhostConfig {
         loadGuiTweaksSettings();
         loadAutoMineSettings();
         loadAutoCraftSettings();
+        loadPathfindingSettings(); // 加载寻路配置
 
         if (config.hasChanged()) {
             config.save();
@@ -263,7 +261,6 @@ public class GhostConfig {
         Translation.showTranslationOnly = loadBoolean(CATEGORY_TRANSLATION, "showTranslationOnly", false, "ghost.config.comment.showTranslationOnly");
         Translation.hideTranslationKeybindTooltip = loadBoolean(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false, "ghost.config.comment.hideTranslationKeybindTooltip");
         
-        // *** 关键修复点：加载这个变量 ***
         Translation.showProviderSwitchButtons = loadBoolean(CATEGORY_TRANSLATION, "showProviderSwitchButtons", true, "ghost.config.comment.showProviderSwitchButtons");
         
         Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
@@ -305,7 +302,6 @@ public class GhostConfig {
         AutoMine.enableVoidSafetyCheck = loadBoolean(CATEGORY_AUTO_MINE, "enableVoidSafetyCheck", true, "ghost.config.comment.autoMineVoidSafetyCheck");
         AutoMine.voidSafetyYLimit = loadInt(CATEGORY_AUTO_MINE, "voidSafetyYLimit", 1, 0, 255, "ghost.config.comment.autoMineVoidSafetyYLimit");
 
-        // --- 加载 Mithril 优化设置 ---
         AutoMine.enableMithrilOptimization = loadBoolean(CATEGORY_AUTO_MINE, "enableMithrilOptimization", false, "ghost.config.comment.autoMineMithrilOptimization");
         AutoMine.titaniumBlockIds = loadStringList(CATEGORY_AUTO_MINE, "titaniumBlockIds", new String[]{"minecraft:stone:4"}, "ghost.config.comment.autoMineTitaniumBlockIds");
         AutoMine.mithrilCleanupThreshold = loadInt(CATEGORY_AUTO_MINE, "mithrilCleanupThreshold", 5, 1, 50, "ghost.config.comment.autoMineMithrilCleanupThreshold");
@@ -318,6 +314,10 @@ public class GhostConfig {
         AutoCraft.autoCraftMenuOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftMenuOpenDelayTicks", 5, 1, 200, "ghost.config.comment.autoCraftMenuOpenDelay");
         AutoCraft.autoCraftTableOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftTableOpenDelayTicks", 8, 1, 200, "ghost.config.comment.autoCraftTableOpenDelay");
         AutoCraft.autoCraftPickupStashWaitTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftPickupStashWaitTicks", 5, 1, 200, "ghost.config.comment.autoCraftPickupStashWait");
+    }
+
+    private static void loadPathfindingSettings() {
+        Pathfinding.maxIterations = loadInt(CATEGORY_PATHFINDING, "maxIterations", 5000, 1000, 50000, "最大寻路计算步数");
     }
 
     // --- 加载辅助方法 ---
@@ -473,7 +473,6 @@ public class GhostConfig {
         updateAndSave(CATEGORY_TRANSLATION, "translationProvider", value, () -> Translation.translationProvider = value);
     }
     
-    // *** 关键修复点：包含这个 Setter ***
     public static void setShowProviderSwitchButtons(boolean value) {
         updateAndSave(CATEGORY_TRANSLATION, "showProviderSwitchButtons", value, () -> Translation.showProviderSwitchButtons = value);
     }
@@ -589,7 +588,6 @@ public class GhostConfig {
         updateAndSave(CATEGORY_AUTO_MINE, "voidSafetyYLimit", value, () -> AutoMine.voidSafetyYLimit = value);
     }
 
-    // --- Mithril 优化设置的 Setter ---
     public static void setAutoMineEnableMithrilOptimization(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "enableMithrilOptimization", value, () -> AutoMine.enableMithrilOptimization = value);
     }
@@ -663,7 +661,6 @@ public class GhostConfig {
         settingUpdaters.put("translationtargetlang", (k, v) -> setTranslationTargetLang(v));
         settingUpdaters.put("translationprovider", (k, v) -> setTranslationProvider(v));
         
-        // *** 关键修复点：注册这个命令 ***
         settingUpdaters.put("showproviderswitchbuttons", (k, v) -> setShowProviderSwitchButtons(parseBoolean(v)));
         
         settingUpdaters.put("enablenotefeature", (k, v) -> setEnableNoteFeature(parseBoolean(v)));
@@ -693,7 +690,6 @@ public class GhostConfig {
         settingUpdaters.put("autominevoidsafetycheck", (k, v) -> setAutoMineEnableVoidSafetyCheck(parseBoolean(v)));
         settingUpdaters.put("autominevoidsafetylimit", (k, v) -> setAutoMineVoidSafetyYLimit(parseInt(v)));
         
-        // --- 注册 Mithril 优化命令更新器 ---
         settingUpdaters.put("autominemithriloptimization", (k, v) -> setAutoMineEnableMithrilOptimization(parseBoolean(v)));
         settingUpdaters.put("autominemithrilcleanupthreshold", (k, v) -> setAutoMineMithrilCleanupThreshold(parseInt(v)));
         settingUpdaters.put("automineenabletoolswitching", (k,v) -> setAutoMineEnableAutomaticToolSwitching(parseBoolean(v)));

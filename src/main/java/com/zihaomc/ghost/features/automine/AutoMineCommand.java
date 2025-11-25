@@ -1,9 +1,8 @@
 package com.zihaomc.ghost.features.automine;
 
 import com.zihaomc.ghost.LangUtil;
-// 同包引用，移除 AutoMineHandler 导入
-// 同包引用，移除 AutoMineTargetManager 导入
-// 同包引用，移除 PredefinedGroupManager 导入
+import com.zihaomc.ghost.features.automine.AutoMineHandler;
+import com.zihaomc.ghost.features.automine.AutoMineTargetManager;
 import net.minecraft.block.Block;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -15,7 +14,6 @@ import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,7 +24,7 @@ import java.util.stream.Collectors;
 
 /**
  * /automine 命令的实现类 (重构优化版)。
- * 采用统一的动词优先结构，提升用户体验和可维护性。
+ * 修正了包名以匹配文件路径。
  */
 public class AutoMineCommand extends CommandBase {
 
@@ -187,12 +185,8 @@ public class AutoMineCommand extends CommandBase {
         }
     }
     
-    /**
-     * 处理 /automine mode [模式] 子命令
-     */
     private void handleMode(ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 2) {
-            // 如果只输入 /automine mode，则显示当前模式
             String currentModeName = AutoMineHandler.getMiningMode().name();
             sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.mode.current", currentModeName)));
             return;
@@ -200,13 +194,9 @@ public class AutoMineCommand extends CommandBase {
 
         String modeName = args[1].toUpperCase();
         try {
-            // 尝试将输入的字符串转换为 MiningMode 枚举
             AutoMineHandler.MiningMode newMode = AutoMineHandler.MiningMode.valueOf(modeName);
-            // 调用 Handler 中的方法来设置新模式
             AutoMineHandler.setMiningMode(newMode);
-            // Handler 内部会发送成功消息，这里不再重复发送
         } catch (IllegalArgumentException e) {
-            // 如果转换失败 (例如输入了无效的模式名)，抛出用法错误
             throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.mode"));
         }
     }
@@ -282,7 +272,7 @@ public class AutoMineCommand extends CommandBase {
                 if (args.length < 4) throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.group.create"));
                 String groupName = args[2].toLowerCase();
                 List<String> components = new ArrayList<>(Arrays.asList(args).subList(3, args.length));
-                for (String comp : components) parseBlockData(sender, comp); // 验证所有组件
+                for (String comp : components) parseBlockData(sender, comp); 
                 AutoMineTargetManager.customBlockGroups.put(groupName, components);
                 AutoMineTargetManager.saveBlockGroups();
                 sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.group.create.success", groupName, components.size())));
@@ -387,7 +377,6 @@ public class AutoMineCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        // 不为内部命令提供Tab补全
         if (args.length > 0 && "automine_internal_feedback".equalsIgnoreCase(args[0])) {
             return Collections.emptyList();
         }
@@ -407,7 +396,6 @@ public class AutoMineCommand extends CommandBase {
                     return getListOfStringsMatchingLastWord(args, "set", "clear");
                 case "group":
                     return getListOfStringsMatchingLastWord(args, "create", "delete");
-                // 为 mode 子命令添加 Tab 补全
                 case "mode":
                     return getListOfStringsMatchingLastWord(args, Arrays.stream(AutoMineHandler.MiningMode.values()).map(Enum::name).collect(Collectors.toList()));
             }
@@ -446,14 +434,9 @@ public class AutoMineCommand extends CommandBase {
         return Collections.emptyList();
     }
     
-    // --- Helper Methods ---
-
-    /**
-     * [新增] 解析方块ID字符串 (例如 "minecraft:stone:1") 的辅助方法。
-     */
     private AutoMineTargetManager.BlockData parseBlockData(ICommandSender sender, String input) throws CommandException {
         String blockIdString = input;
-        int meta = -1; // -1 for wildcard
+        int meta = -1; 
         int lastColonIndex = input.lastIndexOf(':');
         if (lastColonIndex > 0 && lastColonIndex > input.indexOf(':')) {
             String potentialMeta = input.substring(lastColonIndex + 1);
@@ -461,7 +444,6 @@ public class AutoMineCommand extends CommandBase {
                 meta = Integer.parseInt(potentialMeta);
                 blockIdString = input.substring(0, lastColonIndex);
             } catch (NumberFormatException e) {
-                // Not a meta
             }
         }
         
