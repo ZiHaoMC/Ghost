@@ -5,6 +5,8 @@ import com.zihaomc.ghost.features.autocraft.AutoCraftCommand;
 import com.zihaomc.ghost.features.automine.AutoMineCommand;
 import com.zihaomc.ghost.features.ghostblock.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
+import com.zihaomc.ghost.features.pathfinding.PathfindingCommand; 
+import com.zihaomc.ghost.features.pathfinding.PathfindingHandler; 
 import com.zihaomc.ghost.features.translation.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.features.autocraft.AutoCraftHandler;
@@ -112,6 +114,9 @@ public class Ghost {
             
             MinecraftForge.EVENT_BUS.register(new GhostBlockEventHandler());
             LogUtil.debug("log.handler.registered.ghostBlockCommand");
+
+            MinecraftForge.EVENT_BUS.register(new PathfindingHandler()); // 注册寻路事件
+            LogUtil.debug("log.handler.registered.pathfinding");
         }
     }
 
@@ -150,6 +155,9 @@ public class Ghost {
 
             ClientCommandHandler.instance.registerCommand(new AutoCraftCommand());
             LogUtil.debug("log.command.registered.autoCraft");
+
+            ClientCommandHandler.instance.registerCommand(new PathfindingCommand()); // 注册寻路命令
+            LogUtil.debug("log.command.registered.gpath");
 
         } else {
             LogUtil.debug("log.command.skipping.server");
@@ -285,6 +293,7 @@ public class GhostConfig {
     public static final String CATEGORY_GUI_TWEAKS = "gui_tweaks";
     public static final String CATEGORY_AUTO_MINE = "auto_mine_feature";
     public static final String CATEGORY_AUTO_CRAFT = "auto_craft_feature";
+    public static final String CATEGORY_PATHFINDING = "pathfinding_feature"; // 新增
 
     // --- 用于命令的统一配置更新器 ---
     public static final Map<String, BiConsumer<String, String>> settingUpdaters = new HashMap<>();
@@ -349,7 +358,6 @@ public class GhostConfig {
         public static boolean showTranslationOnly;
         public static boolean hideTranslationKeybindTooltip;
         
-        // *** 关键修复点：必须包含这个变量 ***
         public static boolean showProviderSwitchButtons;
         
         public static String niuTransApiKey;
@@ -357,13 +365,6 @@ public class GhostConfig {
         public static String translationSourceLang;
         public static String translationTargetLang;
         
-        /** 
-         * 翻译提供商选择:
-         * NIUTRANS (需要Key)
-         * GOOGLE (免费, GTX接口)
-         * BING (免费, 模拟网页)
-         * MYMEMORY (免费)
-         */
         public static String translationProvider; 
     }
 
@@ -400,7 +401,6 @@ public class GhostConfig {
         public static boolean enableVoidSafetyCheck;
         public static int voidSafetyYLimit;
 
-        // --- Hypixel Skyblock Mithril 挖掘优化 ---
         public static boolean enableMithrilOptimization;
         public static String[] titaniumBlockIds;
         public static int mithrilCleanupThreshold;
@@ -413,6 +413,11 @@ public class GhostConfig {
         public static int autoCraftMenuOpenDelayTicks;
         public static int autoCraftTableOpenDelayTicks;
         public static int autoCraftPickupStashWaitTicks;
+    }
+
+    // 新增 Pathfinding 配置类
+    public static class Pathfinding {
+        public static int maxIterations; // 最大计算迭代次数
     }
 
     // --- 核心方法 ---
@@ -443,6 +448,7 @@ public class GhostConfig {
         loadGuiTweaksSettings();
         loadAutoMineSettings();
         loadAutoCraftSettings();
+        loadPathfindingSettings(); // 加载寻路配置
 
         if (config.hasChanged()) {
             config.save();
@@ -510,7 +516,6 @@ public class GhostConfig {
         Translation.showTranslationOnly = loadBoolean(CATEGORY_TRANSLATION, "showTranslationOnly", false, "ghost.config.comment.showTranslationOnly");
         Translation.hideTranslationKeybindTooltip = loadBoolean(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false, "ghost.config.comment.hideTranslationKeybindTooltip");
         
-        // *** 关键修复点：加载这个变量 ***
         Translation.showProviderSwitchButtons = loadBoolean(CATEGORY_TRANSLATION, "showProviderSwitchButtons", true, "ghost.config.comment.showProviderSwitchButtons");
         
         Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
@@ -552,7 +557,6 @@ public class GhostConfig {
         AutoMine.enableVoidSafetyCheck = loadBoolean(CATEGORY_AUTO_MINE, "enableVoidSafetyCheck", true, "ghost.config.comment.autoMineVoidSafetyCheck");
         AutoMine.voidSafetyYLimit = loadInt(CATEGORY_AUTO_MINE, "voidSafetyYLimit", 1, 0, 255, "ghost.config.comment.autoMineVoidSafetyYLimit");
 
-        // --- 加载 Mithril 优化设置 ---
         AutoMine.enableMithrilOptimization = loadBoolean(CATEGORY_AUTO_MINE, "enableMithrilOptimization", false, "ghost.config.comment.autoMineMithrilOptimization");
         AutoMine.titaniumBlockIds = loadStringList(CATEGORY_AUTO_MINE, "titaniumBlockIds", new String[]{"minecraft:stone:4"}, "ghost.config.comment.autoMineTitaniumBlockIds");
         AutoMine.mithrilCleanupThreshold = loadInt(CATEGORY_AUTO_MINE, "mithrilCleanupThreshold", 5, 1, 50, "ghost.config.comment.autoMineMithrilCleanupThreshold");
@@ -565,6 +569,10 @@ public class GhostConfig {
         AutoCraft.autoCraftMenuOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftMenuOpenDelayTicks", 5, 1, 200, "ghost.config.comment.autoCraftMenuOpenDelay");
         AutoCraft.autoCraftTableOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftTableOpenDelayTicks", 8, 1, 200, "ghost.config.comment.autoCraftTableOpenDelay");
         AutoCraft.autoCraftPickupStashWaitTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftPickupStashWaitTicks", 5, 1, 200, "ghost.config.comment.autoCraftPickupStashWait");
+    }
+
+    private static void loadPathfindingSettings() {
+        Pathfinding.maxIterations = loadInt(CATEGORY_PATHFINDING, "maxIterations", 5000, 1000, 50000, "最大寻路计算步数");
     }
 
     // --- 加载辅助方法 ---
@@ -720,7 +728,6 @@ public class GhostConfig {
         updateAndSave(CATEGORY_TRANSLATION, "translationProvider", value, () -> Translation.translationProvider = value);
     }
     
-    // *** 关键修复点：包含这个 Setter ***
     public static void setShowProviderSwitchButtons(boolean value) {
         updateAndSave(CATEGORY_TRANSLATION, "showProviderSwitchButtons", value, () -> Translation.showProviderSwitchButtons = value);
     }
@@ -836,7 +843,6 @@ public class GhostConfig {
         updateAndSave(CATEGORY_AUTO_MINE, "voidSafetyYLimit", value, () -> AutoMine.voidSafetyYLimit = value);
     }
 
-    // --- Mithril 优化设置的 Setter ---
     public static void setAutoMineEnableMithrilOptimization(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "enableMithrilOptimization", value, () -> AutoMine.enableMithrilOptimization = value);
     }
@@ -910,7 +916,6 @@ public class GhostConfig {
         settingUpdaters.put("translationtargetlang", (k, v) -> setTranslationTargetLang(v));
         settingUpdaters.put("translationprovider", (k, v) -> setTranslationProvider(v));
         
-        // *** 关键修复点：注册这个命令 ***
         settingUpdaters.put("showproviderswitchbuttons", (k, v) -> setShowProviderSwitchButtons(parseBoolean(v)));
         
         settingUpdaters.put("enablenotefeature", (k, v) -> setEnableNoteFeature(parseBoolean(v)));
@@ -940,7 +945,6 @@ public class GhostConfig {
         settingUpdaters.put("autominevoidsafetycheck", (k, v) -> setAutoMineEnableVoidSafetyCheck(parseBoolean(v)));
         settingUpdaters.put("autominevoidsafetylimit", (k, v) -> setAutoMineVoidSafetyYLimit(parseInt(v)));
         
-        // --- 注册 Mithril 优化命令更新器 ---
         settingUpdaters.put("autominemithriloptimization", (k, v) -> setAutoMineEnableMithrilOptimization(parseBoolean(v)));
         settingUpdaters.put("autominemithrilcleanupthreshold", (k, v) -> setAutoMineMithrilCleanupThreshold(parseInt(v)));
         settingUpdaters.put("automineenabletoolswitching", (k,v) -> setAutoMineEnableAutomaticToolSwitching(parseBoolean(v)));
@@ -1230,6 +1234,468 @@ public class GhostConfigCommand extends CommandBase {
     }
 }
 
+
+features/pathfinding/Pathfinder.java:
+package com.zihaomc.ghost.features.pathfinding;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
+import net.minecraft.client.Minecraft;
+import net.minecraft.init.Blocks;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.MovingObjectPosition;
+import net.minecraft.util.Vec3;
+import net.minecraft.block.state.IBlockState;
+
+import java.util.*;
+
+/**
+ * 优化后的 A* 寻路算法。
+ * - 支持 8 方向移动 (对角线)。
+ * - 包含路径平滑处理 (去除不必要的拐点，允许任意角度行走)。
+ */
+public class Pathfinder {
+
+    private static final Minecraft mc = Minecraft.getMinecraft();
+    private static final double DIAGONAL_COST = 1.414; // 根号2，对角线移动的代价
+
+    /**
+     * 计算路径的主入口
+     */
+    public static List<BlockPos> computePath(BlockPos start, BlockPos end, int maxIterations) {
+        PriorityQueue<Node> openSet = new PriorityQueue<>();
+        Set<BlockPos> closedSet = new HashSet<>();
+        Map<BlockPos, Node> allNodes = new HashMap<>();
+
+        Node startNode = new Node(start, null, 0, start.distanceSq(end));
+        openSet.add(startNode);
+        allNodes.put(start, startNode);
+
+        int iterations = 0;
+
+        while (!openSet.isEmpty() && iterations < maxIterations) {
+            iterations++;
+            Node current = openSet.poll();
+
+            // 到达终点 (距离小于1.5格视为到达)
+            if (current.pos.distanceSq(end) < 1.5) {
+                List<BlockPos> rawPath = retracePath(current);
+                return smoothPath(rawPath); // 返回平滑处理后的路径
+            }
+
+            closedSet.add(current.pos);
+
+            for (Neighbor neighbor : getNeighbors(current.pos)) {
+                BlockPos neighborPos = neighbor.pos;
+                if (closedSet.contains(neighborPos)) continue;
+
+                double newGCost = current.gCost + neighbor.cost;
+                Node neighborNode = allNodes.getOrDefault(neighborPos, new Node(neighborPos, null, Double.MAX_VALUE, 0));
+
+                if (newGCost < neighborNode.gCost) {
+                    neighborNode.parent = current;
+                    neighborNode.gCost = newGCost;
+                    // 使用欧几里得距离作为启发函数，鼓励走直线
+                    neighborNode.hCost = Math.sqrt(neighborPos.distanceSq(end));
+                    
+                    if (openSet.contains(neighborNode)) {
+                        openSet.remove(neighborNode); // 移除旧的以更新排序
+                    }
+                    openSet.add(neighborNode);
+                    allNodes.put(neighborPos, neighborNode);
+                }
+            }
+        }
+
+        return new ArrayList<>(); // 未找到路径
+    }
+
+    /**
+     * 路径平滑算法 (String Pulling)
+     * 尝试直接连接相隔较远的节点，如果中间没有障碍物，则跳过中间节点。
+     */
+    private static List<BlockPos> smoothPath(List<BlockPos> path) {
+        if (path.size() <= 2) return path;
+
+        List<BlockPos> smoothed = new ArrayList<>();
+        smoothed.add(path.get(0));
+        int currentIdx = 0;
+
+        while (currentIdx < path.size() - 1) {
+            int nextIdx = currentIdx + 1;
+            // 从最远处开始尝试连接，贪婪算法
+            for (int i = path.size() - 1; i > currentIdx + 1; i--) {
+                // 只有在同一高度才进行激进的平滑，防止在楼梯上卡住
+                if (path.get(currentIdx).getY() == path.get(i).getY() && 
+                    canWalkDirectly(path.get(currentIdx), path.get(i))) {
+                    nextIdx = i;
+                    break;
+                }
+            }
+            smoothed.add(path.get(nextIdx));
+            currentIdx = nextIdx;
+        }
+        return smoothed;
+    }
+
+    /**
+     * 检查两点之间是否可以直接行走 (无墙壁且地板连续)
+     */
+    private static boolean canWalkDirectly(BlockPos start, BlockPos end) {
+        Vec3 startVec = new Vec3(start.getX() + 0.5, start.getY() + 1.0, start.getZ() + 0.5);
+        Vec3 endVec = new Vec3(end.getX() + 0.5, end.getY() + 1.0, end.getZ() + 0.5);
+
+        // 1. 身体碰撞检查 (防止穿墙)
+        MovingObjectPosition result = mc.theWorld.rayTraceBlocks(startVec, endVec, false, true, false);
+        if (result != null && result.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
+            return false;
+        }
+
+        // 2. 地面检查 (防止跨越虚空/坑洞)
+        double dist = Math.sqrt(start.distanceSq(end));
+        int steps = (int) Math.ceil(dist); 
+        for (int i = 1; i < steps; i++) {
+            double progress = i / dist;
+            double x = start.getX() + (end.getX() - start.getX()) * progress;
+            double y = start.getY(); // 假设平地
+            double z = start.getZ() + (end.getZ() - start.getZ()) * progress;
+            
+            // 检查路径上每一个点的脚下是否有方块
+            if (!isWalkable(new BlockPos(x, y, z))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static List<BlockPos> retracePath(Node endNode) {
+        List<BlockPos> path = new ArrayList<>();
+        Node current = endNode;
+        while (current != null) {
+            path.add(current.pos);
+            current = current.parent;
+        }
+        Collections.reverse(path);
+        return path;
+    }
+
+    private static class Neighbor {
+        BlockPos pos;
+        double cost;
+        public Neighbor(BlockPos pos, double cost) { this.pos = pos; this.cost = cost; }
+    }
+
+    private static List<Neighbor> getNeighbors(BlockPos pos) {
+        List<Neighbor> neighbors = new ArrayList<>();
+        
+        BlockPos n = pos.north();
+        BlockPos s = pos.south();
+        BlockPos e = pos.east();
+        BlockPos w = pos.west();
+
+        // 1. 获取四个基准方向的可行性 (支持上下台阶)
+        boolean wn = addWithVerticalChecks(neighbors, n, 1.0);
+        boolean ws = addWithVerticalChecks(neighbors, s, 1.0);
+        boolean we = addWithVerticalChecks(neighbors, e, 1.0);
+        boolean ww = addWithVerticalChecks(neighbors, w, 1.0);
+
+        // 2. 获取对角线方向 (仅限平地，且两侧必须无障碍防止卡墙)
+        // 比如向 东北(NE) 走，必须 北(N) 和 东(E) 都是可走的，否则会被墙角卡住
+        if (wn && we && isWalkable(n.east())) neighbors.add(new Neighbor(n.east(), DIAGONAL_COST));
+        if (wn && ww && isWalkable(n.west())) neighbors.add(new Neighbor(n.west(), DIAGONAL_COST));
+        if (ws && we && isWalkable(s.east())) neighbors.add(new Neighbor(s.east(), DIAGONAL_COST));
+        if (ws && ww && isWalkable(s.west())) neighbors.add(new Neighbor(s.west(), DIAGONAL_COST));
+
+        return neighbors;
+    }
+
+    // 添加节点，并尝试处理 1 格高差 (自动跳跃/下落)
+    // 返回值表示该基准方向是否可以通行 (用于对角线判断)
+    private static boolean addWithVerticalChecks(List<Neighbor> neighbors, BlockPos target, double cost) {
+        if (isWalkable(target)) {
+            neighbors.add(new Neighbor(target, cost));
+            return true;
+        } else if (isWalkable(target.up()) && isPassable(target) && isPassable(target.up(2))) { // 上台阶
+            neighbors.add(new Neighbor(target.up(), cost));
+            return false; // 对角线通常不处理跳跃
+        } else if (isWalkable(target.down()) && isPassable(target.down(1)) && isPassable(target)) { // 下台阶
+            neighbors.add(new Neighbor(target.down(), cost));
+            return true;
+        }
+        return false;
+    }
+
+    // 检查某个位置是否可以站立
+    private static boolean isWalkable(BlockPos pos) {
+        // 1. 脚下必须是实心方块 (防止掉虚空)
+        if (!isSolid(pos.down())) return false;
+        // 2. 身体位置必须无碰撞体积 (不是墙)
+        if (!isPassable(pos)) return false;
+        // 3. 头部位置必须无碰撞体积
+        if (!isPassable(pos.up())) return false;
+        // 4. 危险方块检查 (岩浆、蜘蛛网等)
+        if (isDangerous(pos) || isDangerous(pos.down())) return false;
+        return true;
+    }
+
+    // 检查方块是否允许穿过 (没有碰撞箱)
+    private static boolean isPassable(BlockPos pos) {
+        IBlockState state = mc.theWorld.getBlockState(pos);
+        Block block = state.getBlock();
+        // getCollisionBoundingBox 返回 null 表示可以穿过 (如空气、草、花)
+        return block.getCollisionBoundingBox(mc.theWorld, pos, state) == null;
+    }
+
+    // 检查方块是否适合作为地面
+    private static boolean isSolid(BlockPos pos) {
+        IBlockState state = mc.theWorld.getBlockState(pos);
+        Block block = state.getBlock();
+        if (block == Blocks.air) return false;
+        // Material.isSolid() 对于水和岩浆返回 false，对石头、台阶返回 true
+        return block.getMaterial().isSolid();
+    }
+
+    private static boolean isDangerous(BlockPos pos) {
+        Block block = mc.theWorld.getBlockState(pos).getBlock();
+        return block == Blocks.lava || block == Blocks.flowing_lava || 
+               block == Blocks.cactus || block == Blocks.fire || block == Blocks.web;
+    }
+
+    private static class Node implements Comparable<Node> {
+        BlockPos pos;
+        Node parent;
+        double gCost; // 离起点的代价
+        double hCost; // 离终点的估算代价
+
+        public Node(BlockPos pos, Node parent, double gCost, double hCost) {
+            this.pos = pos;
+            this.parent = parent;
+            this.gCost = gCost;
+            this.hCost = hCost;
+        }
+
+        public double getFCost() { return gCost + hCost; }
+
+        @Override
+        public int compareTo(Node other) {
+            return Double.compare(this.getFCost(), other.getFCost());
+        }
+        
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Node) return pos.equals(((Node) obj).pos);
+            return false;
+        }
+    }
+}
+
+features/pathfinding/PathfindingCommand.java:
+package com.zihaomc.ghost.features.pathfinding;
+
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.command.CommandBase;
+import net.minecraft.command.CommandException;
+import net.minecraft.command.ICommandSender;
+import net.minecraft.command.WrongUsageException;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
+
+import java.util.Collections;
+import java.util.List;
+
+public class PathfindingCommand extends CommandBase {
+
+    @Override
+    public String getCommandName() {
+        return "gpath";
+    }
+
+    @Override
+    public String getCommandUsage(ICommandSender sender) {
+        return "/gpath <x> <y> <z> 或 /gpath stop";
+    }
+
+    @Override
+    public int getRequiredPermissionLevel() {
+        return 0;
+    }
+
+    @Override
+    public boolean canCommandSenderUseCommand(ICommandSender sender) {
+        return true;
+    }
+
+    @Override
+    public void processCommand(ICommandSender sender, String[] args) throws CommandException {
+        if (args.length == 0) {
+            throw new WrongUsageException(getCommandUsage(sender));
+        }
+
+        if (args[0].equalsIgnoreCase("stop")) {
+            PathfindingHandler.stop();
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[Ghost] 寻路已停止。"));
+            return;
+        }
+
+        if (args.length < 3) {
+            throw new WrongUsageException(getCommandUsage(sender));
+        }
+
+        BlockPos targetPos = GhostBlockHelper.parseBlockPosLegacy(sender, args, 0);
+        BlockPos startPos = Minecraft.getMinecraft().thePlayer.getPosition();
+
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[Ghost] 正在计算路径..."));
+
+        // 在独立线程中计算路径，防止卡顿主线程
+        new Thread(() -> {
+            List<BlockPos> path = Pathfinder.computePath(startPos, targetPos, 5000); // 5000次迭代限制
+
+            Minecraft.getMinecraft().addScheduledTask(() -> {
+                if (path != null && !path.isEmpty()) {
+                    PathfindingHandler.setPath(path);
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 路径已找到 (" + path.size() + " 步)，开始移动。"));
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 无法到达指定坐标 (路径未找到或距离太远)。"));
+                }
+            });
+        }).start();
+    }
+    
+    @Override
+    public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
+        if (args.length == 1) {
+            return getListOfStringsMatchingLastWord(args, "stop");
+        }
+        return null;
+    }
+}
+
+features/pathfinding/PathfindingHandler.java:
+package com.zihaomc.ghost.features.pathfinding;
+
+import com.zihaomc.ghost.utils.LogUtil;
+import com.zihaomc.ghost.utils.RotationUtil;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.MathHelper;
+import net.minecraft.util.Vec3;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
+
+import java.util.List;
+
+/**
+ * 负责执行路径行走的处理器。
+ * 优化了视角旋转和平滑移动。
+ */
+public class PathfindingHandler {
+
+    private static final Minecraft mc = Minecraft.getMinecraft();
+    private static List<BlockPos> currentPath = null;
+    private static boolean isPathfinding = false;
+    private static int currentPathIndex = 0;
+    
+    // 视角旋转速度 (度/tick)，值越大转得越快。20.0 是一个比较拟人的速度。
+    private static final float ROTATION_SPEED = 20.0f; 
+
+    public static void setPath(List<BlockPos> path) {
+        currentPath = path;
+        currentPathIndex = 0;
+        
+        // 如果路径有平滑处理，起点就是当前位置，直接跳到下一个点
+        if (path.size() > 1 && path.get(0).distanceSq(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ) < 1.0) {
+            currentPathIndex = 1;
+        }
+        
+        isPathfinding = true;
+    }
+
+    public static void stop() {
+        isPathfinding = false;
+        currentPath = null;
+        resetKeys();
+    }
+
+    public static boolean isPathfinding() {
+        return isPathfinding;
+    }
+
+    @SubscribeEvent
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || mc.theWorld == null) return;
+
+        if (!isPathfinding || currentPath == null || currentPath.isEmpty()) {
+            return;
+        }
+
+        if (currentPathIndex >= currentPath.size()) {
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 目的地已到达。"));
+            stop();
+            return;
+        }
+
+        BlockPos targetNode = currentPath.get(currentPathIndex);
+        // 目标点取方块中心，并加上眼部高度，使视角看起来是平视前方
+        Vec3 targetCenter = new Vec3(targetNode.getX() + 0.5, targetNode.getY(), targetNode.getZ() + 0.5);
+        
+        // --- 1. 视角控制 (Arbitrary Direction) ---
+        // 计算看向目标点的精确角度
+        float[] targetRots = RotationUtil.getRotations(targetCenter.addVector(0, mc.thePlayer.getEyeHeight(), 0));
+        // 平滑插值旋转，而不是瞬间锁定，这允许任意角度的朝向
+        float[] smoothRots = RotationUtil.getSmoothRotations(
+                mc.thePlayer.rotationYaw, 
+                mc.thePlayer.rotationPitch, 
+                targetRots[0], 
+                targetRots[1], 
+                ROTATION_SPEED
+        );
+        
+        mc.thePlayer.rotationYaw = smoothRots[0];
+        mc.thePlayer.rotationPitch = smoothRots[1];
+
+        // --- 2. 移动控制 ---
+        // 距离检测：如果水平距离非常近 (< 0.5格)，则认为到达该节点，切换到下一个
+        double distSq = mc.thePlayer.getDistanceSq(targetCenter.xCoord, mc.thePlayer.posY, targetCenter.zCoord);
+        // 忽略Y轴的距离判定，防止在楼梯上因高度差导致判定失败
+        double distSqFlat = Math.pow(mc.thePlayer.posX - targetCenter.xCoord, 2) + Math.pow(mc.thePlayer.posZ - targetCenter.zCoord, 2);
+
+        if (distSqFlat < 0.25) { // 0.5 * 0.5
+            currentPathIndex++;
+            return; // 等待下一 tick 处理新目标
+        }
+
+        KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), true);
+        mc.thePlayer.setSprinting(false); // 保持走路状态以提高精度，如果需要跑动可改为 true
+
+        // --- 3. 跳跃控制 ---
+        boolean needJump = false;
+        // 如果目标点比脚下高 (上台阶/跳跃)
+        if (targetNode.getY() > Math.round(mc.thePlayer.posY)) { 
+             needJump = true;
+        } 
+        // 或者虽然高度相同，但水平方向被阻挡 (半砖/地毯等)
+        else if (mc.thePlayer.isCollidedHorizontally && mc.thePlayer.onGround) {
+             needJump = true; 
+        }
+        
+        if (needJump && mc.thePlayer.onGround) {
+            mc.thePlayer.jump();
+        }
+    }
+
+    private static void resetKeys() {
+        if (mc.gameSettings != null) {
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), false);
+            KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), false);
+        }
+    }
+}
 
 features/ghostblock/GhostBlockEventHandler.java:
 package com.zihaomc.ghost.features.ghostblock;
@@ -8414,9 +8880,8 @@ features/automine/AutoMineCommand.java:
 package com.zihaomc.ghost.features.automine;
 
 import com.zihaomc.ghost.LangUtil;
-// 同包引用，移除 AutoMineHandler 导入
-// 同包引用，移除 AutoMineTargetManager 导入
-// 同包引用，移除 PredefinedGroupManager 导入
+import com.zihaomc.ghost.features.automine.AutoMineHandler;
+import com.zihaomc.ghost.features.automine.AutoMineTargetManager;
 import net.minecraft.block.Block;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -8428,7 +8893,6 @@ import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatStyle;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8439,7 +8903,7 @@ import java.util.stream.Collectors;
 
 /**
  * /automine 命令的实现类 (重构优化版)。
- * 采用统一的动词优先结构，提升用户体验和可维护性。
+ * 修正了包名以匹配文件路径。
  */
 public class AutoMineCommand extends CommandBase {
 
@@ -8600,12 +9064,8 @@ public class AutoMineCommand extends CommandBase {
         }
     }
     
-    /**
-     * 处理 /automine mode [模式] 子命令
-     */
     private void handleMode(ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 2) {
-            // 如果只输入 /automine mode，则显示当前模式
             String currentModeName = AutoMineHandler.getMiningMode().name();
             sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.mode.current", currentModeName)));
             return;
@@ -8613,13 +9073,9 @@ public class AutoMineCommand extends CommandBase {
 
         String modeName = args[1].toUpperCase();
         try {
-            // 尝试将输入的字符串转换为 MiningMode 枚举
             AutoMineHandler.MiningMode newMode = AutoMineHandler.MiningMode.valueOf(modeName);
-            // 调用 Handler 中的方法来设置新模式
             AutoMineHandler.setMiningMode(newMode);
-            // Handler 内部会发送成功消息，这里不再重复发送
         } catch (IllegalArgumentException e) {
-            // 如果转换失败 (例如输入了无效的模式名)，抛出用法错误
             throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.mode"));
         }
     }
@@ -8695,7 +9151,7 @@ public class AutoMineCommand extends CommandBase {
                 if (args.length < 4) throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.group.create"));
                 String groupName = args[2].toLowerCase();
                 List<String> components = new ArrayList<>(Arrays.asList(args).subList(3, args.length));
-                for (String comp : components) parseBlockData(sender, comp); // 验证所有组件
+                for (String comp : components) parseBlockData(sender, comp); 
                 AutoMineTargetManager.customBlockGroups.put(groupName, components);
                 AutoMineTargetManager.saveBlockGroups();
                 sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.group.create.success", groupName, components.size())));
@@ -8800,7 +9256,6 @@ public class AutoMineCommand extends CommandBase {
 
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        // 不为内部命令提供Tab补全
         if (args.length > 0 && "automine_internal_feedback".equalsIgnoreCase(args[0])) {
             return Collections.emptyList();
         }
@@ -8820,7 +9275,6 @@ public class AutoMineCommand extends CommandBase {
                     return getListOfStringsMatchingLastWord(args, "set", "clear");
                 case "group":
                     return getListOfStringsMatchingLastWord(args, "create", "delete");
-                // 为 mode 子命令添加 Tab 补全
                 case "mode":
                     return getListOfStringsMatchingLastWord(args, Arrays.stream(AutoMineHandler.MiningMode.values()).map(Enum::name).collect(Collectors.toList()));
             }
@@ -8859,14 +9313,9 @@ public class AutoMineCommand extends CommandBase {
         return Collections.emptyList();
     }
     
-    // --- Helper Methods ---
-
-    /**
-     * [新增] 解析方块ID字符串 (例如 "minecraft:stone:1") 的辅助方法。
-     */
     private AutoMineTargetManager.BlockData parseBlockData(ICommandSender sender, String input) throws CommandException {
         String blockIdString = input;
-        int meta = -1; // -1 for wildcard
+        int meta = -1; 
         int lastColonIndex = input.lastIndexOf(':');
         if (lastColonIndex > 0 && lastColonIndex > input.indexOf(':')) {
             String potentialMeta = input.substring(lastColonIndex + 1);
@@ -8874,7 +9323,6 @@ public class AutoMineCommand extends CommandBase {
                 meta = Integer.parseInt(potentialMeta);
                 blockIdString = input.substring(0, lastColonIndex);
             } catch (NumberFormatException e) {
-                // Not a meta
             }
         }
         
