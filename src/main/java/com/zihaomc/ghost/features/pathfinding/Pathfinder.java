@@ -1,6 +1,9 @@
 package com.zihaomc.ghost.features.pathfinding;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockFence;
+import net.minecraft.block.BlockFenceGate;
+import net.minecraft.block.BlockWall;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.init.Blocks;
@@ -12,18 +15,15 @@ import net.minecraft.block.state.IBlockState;
 import java.util.*;
 
 /**
- * 优化后的 A* 寻路算法。
- * - 支持 8 方向移动 (对角线)。
- * - 包含路径平滑处理 (去除不必要的拐点，允许任意角度行走)。
+ * 修复版 A* 寻路算法。
+ * - 修复了撞墙问题：使用 RayTrace 进行精确的墙壁检测。
+ * - 修复了楼梯问题：增加了专门的垂直移动判断逻辑。
  */
 public class Pathfinder {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private static final double DIAGONAL_COST = 1.414; // 根号2，对角线移动的代价
+    private static final double DIAGONAL_COST = 1.414;
 
-    /**
-     * 计算路径的主入口
-     */
     public static List<BlockPos> computePath(BlockPos start, BlockPos end, int maxIterations) {
         PriorityQueue<Node> openSet = new PriorityQueue<>();
         Set<BlockPos> closedSet = new HashSet<>();
@@ -39,10 +39,9 @@ public class Pathfinder {
             iterations++;
             Node current = openSet.poll();
 
-            // 到达终点 (距离小于1.5格视为到达)
             if (current.pos.distanceSq(end) < 1.5) {
                 List<BlockPos> rawPath = retracePath(current);
-                return smoothPath(rawPath); // 返回平滑处理后的路径
+                return smoothPath(rawPath);
             }
 
             closedSet.add(current.pos);
@@ -57,11 +56,10 @@ public class Pathfinder {
                 if (newGCost < neighborNode.gCost) {
                     neighborNode.parent = current;
                     neighborNode.gCost = newGCost;
-                    // 使用欧几里得距离作为启发函数，鼓励走直线
-                    neighborNode.hCost = Math.sqrt(neighborPos.distanceSq(end));
-                    
+                    neighborNode.hCost = Math.sqrt(neighborPos.distanceSq(end)); // 欧几里得距离
+
                     if (openSet.contains(neighborNode)) {
-                        openSet.remove(neighborNode); // 移除旧的以更新排序
+                        openSet.remove(neighborNode);
                     }
                     openSet.add(neighborNode);
                     allNodes.put(neighborPos, neighborNode);
@@ -69,12 +67,12 @@ public class Pathfinder {
             }
         }
 
-        return new ArrayList<>(); // 未找到路径
+        return new ArrayList<>();
     }
 
     /**
-     * 路径平滑算法 (String Pulling)
-     * 尝试直接连接相隔较远的节点，如果中间没有障碍物，则跳过中间节点。
+     * 路径平滑：使用光线追踪检测是否可以走直线。
+     * 这比之前的点采样更精准，不会试图穿过墙角。
      */
     private static List<BlockPos> smoothPath(List<BlockPos> path) {
         if (path.size() <= 2) return path;
@@ -85,11 +83,11 @@ public class Pathfinder {
 
         while (currentIdx < path.size() - 1) {
             int nextIdx = currentIdx + 1;
-            // 从最远处开始尝试连接，贪婪算法
+            // 贪婪策略：寻找最远的可见节点
             for (int i = path.size() - 1; i > currentIdx + 1; i--) {
-                // 只有在同一高度才进行激进的平滑，防止在楼梯上卡住
-                if (path.get(currentIdx).getY() == path.get(i).getY() && 
-                    canWalkDirectly(path.get(currentIdx), path.get(i))) {
+                // 仅在高度差不大时尝试平滑，避免跳崖
+                if (Math.abs(path.get(currentIdx).getY() - path.get(i).getY()) <= 1 && 
+                    canSeeDirectly(path.get(currentIdx), path.get(i))) {
                     nextIdx = i;
                     break;
                 }
@@ -101,34 +99,24 @@ public class Pathfinder {
     }
 
     /**
-     * 检查两点之间是否可以直接行走 (无墙壁且地板连续)
+     * 使用 RayTrace 检查两点之间是否有方块阻挡。
+     * 这是防止“撞墙”的关键修复。
      */
-    private static boolean canWalkDirectly(BlockPos start, BlockPos end) {
+    private static boolean canSeeDirectly(BlockPos start, BlockPos end) {
+        // 从起点中心+眼高，看向终点中心+眼高
         Vec3 startVec = new Vec3(start.getX() + 0.5, start.getY() + 1.0, start.getZ() + 0.5);
         Vec3 endVec = new Vec3(end.getX() + 0.5, end.getY() + 1.0, end.getZ() + 0.5);
 
-        // 1. 身体碰撞检查 (防止穿墙)
+        // false, true, false -> 不忽略流体，忽略无碰撞箱方块(草)，不返回未碰撞方块
         MovingObjectPosition result = mc.theWorld.rayTraceBlocks(startVec, endVec, false, true, false);
+        
+        // 如果 RayTrace 击中了方块，说明有墙
         if (result != null && result.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
             return false;
         }
-
-        // 2. 地面检查 (防止跨越虚空/坑洞)
-        double dist = Math.sqrt(start.distanceSq(end));
-        int steps = (int) Math.ceil(dist); 
-        for (int i = 1; i < steps; i++) {
-            double progress = i / dist;
-            double x = start.getX() + (end.getX() - start.getX()) * progress;
-            double y = start.getY(); // 假设平地
-            double z = start.getZ() + (end.getZ() - start.getZ()) * progress;
-            
-            // 检查路径上每一个点的脚下是否有方块
-            if (!isWalkable(new BlockPos(x, y, z))) {
-                return false;
-            }
-        }
-
-        return true;
+        
+        // 额外检查：确保终点脚下是实心的 (防止平滑路径导致掉进坑里)
+        return isSolid(end.down());
     }
 
     private static List<BlockPos> retracePath(Node endNode) {
@@ -148,87 +136,100 @@ public class Pathfinder {
         public Neighbor(BlockPos pos, double cost) { this.pos = pos; this.cost = cost; }
     }
 
+    /**
+     * 获取邻居节点，包含核心的移动逻辑
+     */
     private static List<Neighbor> getNeighbors(BlockPos pos) {
         List<Neighbor> neighbors = new ArrayList<>();
         
-        BlockPos n = pos.north();
-        BlockPos s = pos.south();
-        BlockPos e = pos.east();
-        BlockPos w = pos.west();
+        BlockPos[] cardinals = {pos.north(), pos.south(), pos.east(), pos.west()};
+        boolean[] walkable = new boolean[4]; // 记录四个方向是否可行，用于对角线判断
 
-        // 1. 获取四个基准方向的可行性 (支持上下台阶)
-        boolean wn = addWithVerticalChecks(neighbors, n, 1.0);
-        boolean ws = addWithVerticalChecks(neighbors, s, 1.0);
-        boolean we = addWithVerticalChecks(neighbors, e, 1.0);
-        boolean ww = addWithVerticalChecks(neighbors, w, 1.0);
+        // 1. 处理四个正方向 (前后左右)
+        for (int i = 0; i < 4; i++) {
+            BlockPos target = cardinals[i];
+            
+            // 情况 A: 平地移动 (目标格子是空气，脚下是实心)
+            if (isPassable(target) && isSolid(target.down()) && isSafeHead(target)) {
+                neighbors.add(new Neighbor(target, 1.0));
+                walkable[i] = true;
+            } 
+            // 情况 B: 上台阶/楼梯 (目标格子是实心，但目标上方是空气)
+            // 修复点：这里检测 target 是实心，但 target.up 是空的
+            else if (isSolid(target) && isPassable(target.up()) && isSafeHead(target.up())) {
+                neighbors.add(new Neighbor(target.up(), 1.0)); // 实际上移动到了上方一格
+                // 上台阶不算“平地可通行”，所以 walkable[i] 保持 false (防止对角线穿模)
+            }
+            // 情况 C: 下台阶 (目标格子是空气，目标脚下是空气，但再下面是实心)
+            else if (isPassable(target) && isPassable(target.down()) && isSolid(target.down(2)) && isSafeHead(target.down())) {
+                neighbors.add(new Neighbor(target.down(), 1.0));
+                walkable[i] = true;
+            }
+        }
 
-        // 2. 获取对角线方向 (仅限平地，且两侧必须无障碍防止卡墙)
-        // 比如向 东北(NE) 走，必须 北(N) 和 东(E) 都是可走的，否则会被墙角卡住
-        if (wn && we && isWalkable(n.east())) neighbors.add(new Neighbor(n.east(), DIAGONAL_COST));
-        if (wn && ww && isWalkable(n.west())) neighbors.add(new Neighbor(n.west(), DIAGONAL_COST));
-        if (ws && we && isWalkable(s.east())) neighbors.add(new Neighbor(s.east(), DIAGONAL_COST));
-        if (ws && ww && isWalkable(s.west())) neighbors.add(new Neighbor(s.west(), DIAGONAL_COST));
+        // 2. 处理对角线 (仅限平地)
+        // 索引对应: 0=N, 1=S, 2=E, 3=W
+        // NE(0,2), NW(0,3), SE(1,2), SW(1,3)
+        checkDiagonal(neighbors, walkable[0], walkable[2], pos.north().east());
+        checkDiagonal(neighbors, walkable[0], walkable[3], pos.north().west());
+        checkDiagonal(neighbors, walkable[1], walkable[2], pos.south().east());
+        checkDiagonal(neighbors, walkable[1], walkable[3], pos.south().west());
 
         return neighbors;
     }
 
-    // 添加节点，并尝试处理 1 格高差 (自动跳跃/下落)
-    // 返回值表示该基准方向是否可以通行 (用于对角线判断)
-    private static boolean addWithVerticalChecks(List<Neighbor> neighbors, BlockPos target, double cost) {
-        if (isWalkable(target)) {
-            neighbors.add(new Neighbor(target, cost));
-            return true;
-        } else if (isWalkable(target.up()) && isPassable(target) && isPassable(target.up(2))) { // 上台阶
-            neighbors.add(new Neighbor(target.up(), cost));
-            return false; // 对角线通常不处理跳跃
-        } else if (isWalkable(target.down()) && isPassable(target.down(1)) && isPassable(target)) { // 下台阶
-            neighbors.add(new Neighbor(target.down(), cost));
-            return true;
+    private static void checkDiagonal(List<Neighbor> list, boolean b1, boolean b2, BlockPos target) {
+        // 只有当两个正方向都可通行时，才允许走对角线，防止切角穿墙
+        if (b1 && b2 && isPassable(target) && isSolid(target.down()) && isSafeHead(target)) {
+            list.add(new Neighbor(target, DIAGONAL_COST));
         }
-        return false;
     }
 
-    // 检查某个位置是否可以站立
-    private static boolean isWalkable(BlockPos pos) {
-        // 1. 脚下必须是实心方块 (防止掉虚空)
-        if (!isSolid(pos.down())) return false;
-        // 2. 身体位置必须无碰撞体积 (不是墙)
-        if (!isPassable(pos)) return false;
-        // 3. 头部位置必须无碰撞体积
-        if (!isPassable(pos.up())) return false;
-        // 4. 危险方块检查 (岩浆、蜘蛛网等)
-        if (isDangerous(pos) || isDangerous(pos.down())) return false;
-        return true;
-    }
+    // --- 核心检测逻辑 ---
 
-    // 检查方块是否允许穿过 (没有碰撞箱)
+    /**
+     * 检查某个位置是否“空旷”，允许玩家身体进入
+     */
     private static boolean isPassable(BlockPos pos) {
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();
-        // getCollisionBoundingBox 返回 null 表示可以穿过 (如空气、草、花)
+        // 危险方块检查
+        if (block == Blocks.lava || block == Blocks.flowing_lava || block == Blocks.fire || block == Blocks.cactus) return false;
+        
+        // 关键修复：使用 getCollisionBoundingBox
+        // 如果返回 null，说明没有碰撞箱 (空气、草、花)，可以穿过
         return block.getCollisionBoundingBox(mc.theWorld, pos, state) == null;
     }
 
-    // 检查方块是否适合作为地面
+    /**
+     * 检查某个位置是否“实心”，允许玩家踩在上面
+     */
     private static boolean isSolid(BlockPos pos) {
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();
+        
         if (block == Blocks.air) return false;
-        // Material.isSolid() 对于水和岩浆返回 false，对石头、台阶返回 true
+        
+        // 排除栅栏、墙等不能直接踩上去(因为太高)或者判定复杂的方块
+        // 但允许楼梯、台阶
+        if (block instanceof BlockFence || block instanceof BlockFenceGate || block instanceof BlockWall) return false;
+        
+        // 检查材质是否实心 (水、岩浆返回 false)
         return block.getMaterial().isSolid();
     }
 
-    private static boolean isDangerous(BlockPos pos) {
-        Block block = mc.theWorld.getBlockState(pos).getBlock();
-        return block == Blocks.lava || block == Blocks.flowing_lava || 
-               block == Blocks.cactus || block == Blocks.fire || block == Blocks.web;
+    /**
+     * 检查头顶是否有空间 (2格高)
+     */
+    private static boolean isSafeHead(BlockPos feetPos) {
+        return isPassable(feetPos.up());
     }
 
     private static class Node implements Comparable<Node> {
         BlockPos pos;
         Node parent;
-        double gCost; // 离起点的代价
-        double hCost; // 离终点的估算代价
+        double gCost;
+        double hCost;
 
         public Node(BlockPos pos, Node parent, double gCost, double hCost) {
             this.pos = pos;
