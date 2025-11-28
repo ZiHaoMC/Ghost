@@ -1339,22 +1339,74 @@ public class Pathfinder {
     /**
      * 使用 RayTrace 检查两点之间是否有方块阻挡。
      * 这是防止“撞墙”的关键修复。
+
+     * 使用带宽度的 RayTrace 检查两点之间是否可以通过。
+     * 修复了“细线穿墙”导致的撞墙问题。
      */
     private static boolean canSeeDirectly(BlockPos start, BlockPos end) {
-        // 从起点中心+眼高，看向终点中心+眼高
+        // 1. 基础坐标准备
         Vec3 startVec = new Vec3(start.getX() + 0.5, start.getY() + 1.0, start.getZ() + 0.5);
         Vec3 endVec = new Vec3(end.getX() + 0.5, end.getY() + 1.0, end.getZ() + 0.5);
 
-        // false, true, false -> 不忽略流体，忽略无碰撞箱方块(草)，不返回未碰撞方块
-        MovingObjectPosition result = mc.theWorld.rayTraceBlocks(startVec, endVec, false, true, false);
+        // 2. 第一轮：中心检测 (最快，过滤掉大部分明显障碍)
+        if (rayTraceIsBlocked(startVec, endVec)) return false;
+
+        // 3. 第二轮：体积检测 (模拟玩家宽度 0.6)
+        // 计算路径的方向向量
+        double dx = endVec.xCoord - startVec.xCoord;
+        double dz = endVec.zCoord - startVec.zCoord;
+        // 计算垂直于路径的向量 (旋转90度)
+        // (x, z) -> (-z, x)
+        double perpX = -dz;
+        double perpZ = dx;
+        // 归一化并乘以半径 (玩家宽度0.6，半径0.3，稍微留点余量取0.25防止误判)
+        double len = Math.sqrt(perpX * perpX + perpZ * perpZ);
+        if (len < 1.0E-4) return true; // 距离太近，忽略
         
-        // 如果 RayTrace 击中了方块，说明有墙
-        if (result != null && result.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            return false;
+        double offsetX = (perpX / len) * 0.25;
+        double offsetZ = (perpZ / len) * 0.25;
+
+        // 左肩膀射线
+        Vec3 startLeft = startVec.addVector(offsetX, 0, offsetZ);
+        Vec3 endLeft = endVec.addVector(offsetX, 0, offsetZ);
+        if (rayTraceIsBlocked(startLeft, endLeft)) return false;
+
+        // 右肩膀射线
+        Vec3 startRight = startVec.addVector(-offsetX, 0, -offsetZ);
+        Vec3 endRight = endVec.addVector(-offsetX, 0, -offsetZ);
+        if (rayTraceIsBlocked(startRight, endRight)) return false;
+
+        // 4. 地面塌陷检查 (防止平滑路径让人掉坑里)
+        return checkGroundContinuity(start, end);
+    }
+
+    /**
+     * 封装原版 RayTrace，简化代码
+     */
+    private static boolean rayTraceIsBlocked(Vec3 start, Vec3 end) {
+        // rayTraceBlocks 参数: 向量1, 向量2, stopOnLiquid, ignoreBlockWithoutBoundingBox, returnLastUncollidableBlock
+        MovingObjectPosition result = mc.theWorld.rayTraceBlocks(start, end, false, true, false);
+        return result != null && result.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK;
+    }
+
+    /**
+     * 检查路径上的每一步脚下是否有方块
+     */
+    private static boolean checkGroundContinuity(BlockPos start, BlockPos end) {
+        double dist = Math.sqrt(start.distanceSq(end));
+        int steps = (int) Math.ceil(dist); 
+        for (int i = 1; i < steps; i++) {
+            double progress = i / dist;
+            double x = start.getX() + (end.getX() - start.getX()) * progress;
+            double y = start.getY(); // 假设同高度
+            double z = start.getZ() + (end.getZ() - start.getZ()) * progress;
+            
+            // 检查这里的脚下 (down) 是否是实心的
+            if (!isSolid(new BlockPos(x, y, z).down())) {
+                return false;
+            }
         }
-        
-        // 额外检查：确保终点脚下是实心的 (防止平滑路径导致掉进坑里)
-        return isSolid(end.down());
+        return true;
     }
 
     private static List<BlockPos> retracePath(Node endNode) {
