@@ -1,6 +1,5 @@
 package com.zihaomc.ghost.features.pathfinding;
 
-import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.RotationUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
@@ -20,112 +19,67 @@ public class PathfindingHandler {
     private static boolean isPathfinding = false;
     private static int currentPathIndex = 0;
     
-    private static final float ROTATION_SPEED = 20.0f; 
-    private static int stuckTicks = 0;
-    private static BlockPos lastPosition = null;
-    
-    // 调试日志
-    private static final boolean DEBUG_HANDLER = true;
+    // 必须走到距离中心 0.4 格以内才算到达，确保不切角
+    private static final double REACH_DISTANCE = 0.4; 
 
     public static void setPath(List<BlockPos> path) {
-        if (path == null || path.isEmpty()) {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 错误：无法找到通往目标的路径 (可能是目标不可达)。"));
-            isPathfinding = false;
-            return;
-        }
-
+        if (path == null || path.isEmpty()) return;
         currentPath = path;
         currentPathIndex = 0;
-        stuckTicks = 0;
-        lastPosition = null;
-        
-        // 如果路径点多于1个，且第0个点离我很近，则直接从第1个点开始走
-        if (path.size() > 1 && path.get(0).distanceSq(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ) < 2.0) {
-            currentPathIndex = 1;
-        }
-        
         isPathfinding = true;
+        
+        // 简单的起点跳过：只跳过脚下那个点，防止原地转圈
+        if (path.size() > 0) {
+            BlockPos first = path.get(0);
+            if (first.distanceSq(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ) < 1.5) {
+                currentPathIndex = 1;
+            }
+        }
     }
 
     public static void stop() {
-        if (isPathfinding) {
-            isPathfinding = false;
-            currentPath = null;
-            resetKeys();
-            if (DEBUG_HANDLER) LogUtil.info("[Handler] 寻路已停止");
-        }
-    }
-
-    public static boolean isPathfinding() {
-        return isPathfinding;
+        isPathfinding = false;
+        currentPath = null;
+        resetKeys();
     }
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || mc.theWorld == null) return;
+        if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || !isPathfinding) return;
 
-        if (!isPathfinding || currentPath == null || currentPath.isEmpty()) return;
-
-        // 到达检查
-        if (currentPathIndex >= currentPath.size()) {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 目的地已到达。"));
+        if (currentPath == null || currentPathIndex >= currentPath.size()) {
             stop();
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 目的地已到达。"));
             return;
-        }
-
-        // --- 卡死检测 ---
-        if (mc.thePlayer.ticksExisted % 20 == 0) {
-            BlockPos currentPos = mc.thePlayer.getPosition();
-            if (lastPosition != null && currentPos.distanceSq(lastPosition) < 0.5) { // 稍微放宽一点
-                stuckTicks++;
-            } else {
-                stuckTicks = 0;
-                lastPosition = currentPos;
-            }
-            if (stuckTicks > 4) { // 延长到 4秒
-                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 检测到长时间卡死，自动停止。"));
-                stop();
-                return;
-            }
         }
 
         BlockPos targetNode = currentPath.get(currentPathIndex);
         Vec3 targetCenter = new Vec3(targetNode.getX() + 0.5, targetNode.getY(), targetNode.getZ() + 0.5);
-        
-        // 视角
-        float[] targetRots = RotationUtil.getRotations(targetCenter.addVector(0, mc.thePlayer.getEyeHeight(), 0));
-        float[] smoothRots = RotationUtil.getSmoothRotations(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, targetRots[0], targetRots[1], ROTATION_SPEED);
-        mc.thePlayer.rotationYaw = smoothRots[0];
-        mc.thePlayer.rotationPitch = smoothRots[1];
 
-        // 距离判定
         double distSqFlat = Math.pow(mc.thePlayer.posX - targetCenter.xCoord, 2) + Math.pow(mc.thePlayer.posZ - targetCenter.zCoord, 2);
-        if (distSqFlat < 0.25) { 
+
+        // 如果到达，切换下一个点
+        if (distSqFlat < (REACH_DISTANCE * REACH_DISTANCE)) {
             currentPathIndex++;
             return;
         }
+
+        // 旋转
+        float[] rotations = RotationUtil.getRotations(targetCenter.addVector(0, mc.thePlayer.getEyeHeight(), 0));
+        mc.thePlayer.rotationYaw = rotations[0];
+        mc.thePlayer.rotationPitch = 0; 
 
         // 移动
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), true);
         mc.thePlayer.setSprinting(false); 
 
-        // 跳跃
+        // 跳跃：只在需要爬坡或游泳时跳
         boolean needJump = false;
-        double speed = Math.sqrt(mc.thePlayer.motionX * mc.thePlayer.motionX + mc.thePlayer.motionZ * mc.thePlayer.motionZ);
-
         if (mc.thePlayer.isInWater() || mc.thePlayer.isInLava()) {
-            needJump = true; 
+            needJump = true;
+        } else if (targetNode.getY() > mc.thePlayer.posY + 0.1) {
+             needJump = true;
         }
-        else if (mc.thePlayer.onGround) {
-            if (targetNode.getY() > Math.floor(mc.thePlayer.posY)) {
-                needJump = true;
-            }
-            // 只有极低速度且有碰撞才跳，防止蹭墙跳
-            else if (mc.thePlayer.isCollidedHorizontally && speed < 0.01) {
-                needJump = true;
-            }
-        }
-        
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), needJump);
     }
 

@@ -1,40 +1,41 @@
 package com.zihaomc.ghost.features.pathfinding;
 
-import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.*;
-import net.minecraft.block.material.Material; // 修复了这里的导入
+import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.BlockPos;
-import net.minecraft.util.MovingObjectPosition;
-import net.minecraft.util.Vec3;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.util.Vec3;
 
 import java.util.*;
 
 public class Pathfinder {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private static final double DIAGONAL_COST = 1.414;
-    private static final boolean DEBUG = true;
+    private static final double WALL_PENALTY = 1000.0; 
 
     public static List<BlockPos> computePath(BlockPos start, BlockPos end, int maxIterations) {
-        if (DEBUG) LogUtil.info("[Pathfinder] 正在计算路径: " + start + " -> " + end);
-        
-        // 预检查：如果终点本身不可行走（比如在墙里），尝试找终点附近的空位
-        if (!isPassable(end) || !isPassable(end.up())) {
-            if (DEBUG) LogUtil.warn("[Pathfinder] 终点被阻挡，尝试修正...");
-            if (isPassable(end.up())) end = end.up(); // 尝试向上修正
+        return computePathInternal(start, end, maxIterations);
+    }
+
+    private static List<BlockPos> computePathInternal(BlockPos rawStart, BlockPos end, int maxIterations) {
+        // [核心修复] 智能起点选择
+        // 现在会根据玩家的真实距离，选择最近的那个空地，防止选到墙后面去
+        BlockPos start = getValidStart(rawStart);
+
+        if (isSafeFloor(end) && isPassable(end.up()) && isPassable(end.up(2))) {
+            end = end.up();
         }
 
         PriorityQueue<Node> openSet = new PriorityQueue<>();
-        Set<BlockPos> closedSet = new HashSet<>();
-        Map<BlockPos, Node> allNodes = new HashMap<>();
-
-        Node startNode = new Node(start, null, 0, start.distanceSq(end));
+        Map<BlockPos, Double> costMap = new HashMap<>();
+        
+        Node startNode = new Node(start, null, 0, getHeuristic(start, end));
         openSet.add(startNode);
-        allNodes.put(start, startNode);
+        costMap.put(start, 0.0);
 
         int iterations = 0;
 
@@ -42,110 +43,80 @@ public class Pathfinder {
             iterations++;
             Node current = openSet.poll();
 
-            // 稍微放宽到达判定 (1.5 -> 2.0)
-            if (current.pos.distanceSq(end) < 2.0) {
-                List<BlockPos> rawPath = retracePath(current);
-                if (DEBUG) LogUtil.info("[Pathfinder] 路径计算成功，原始节点数: " + rawPath.size());
-                return smoothPath(rawPath);
+            if (current.gCost > costMap.getOrDefault(current.pos, Double.MAX_VALUE)) {
+                continue;
             }
 
-            closedSet.add(current.pos);
+            if (current.pos.distanceSq(end) < 1.5) {
+                return retracePath(current);
+            }
 
             for (Neighbor neighbor : getNeighbors(current.pos)) {
                 BlockPos neighborPos = neighbor.pos;
-                if (closedSet.contains(neighborPos)) continue;
+                double penalty = getEnvironmentPenalty(neighborPos);
+                double newGCost = current.gCost + neighbor.cost + penalty;
 
-                double newGCost = current.gCost + neighbor.cost;
-                Node neighborNode = allNodes.getOrDefault(neighborPos, new Node(neighborPos, null, Double.MAX_VALUE, 0));
-
-                if (newGCost < neighborNode.gCost) {
-                    neighborNode.parent = current;
-                    neighborNode.gCost = newGCost;
-                    neighborNode.hCost = Math.sqrt(neighborPos.distanceSq(end));
-                    
-                    if (openSet.contains(neighborNode)) {
-                        openSet.remove(neighborNode);
-                    }
-                    openSet.add(neighborNode);
-                    allNodes.put(neighborPos, neighborNode);
+                if (newGCost < costMap.getOrDefault(neighborPos, Double.MAX_VALUE)) {
+                    costMap.put(neighborPos, newGCost);
+                    double hCost = getHeuristic(neighborPos, end);
+                    openSet.add(new Node(neighborPos, current, newGCost, hCost));
                 }
             }
         }
-
-        if (DEBUG) LogUtil.warn("[Pathfinder] 寻路失败：无法找到路径 (迭代 " + iterations + " 次)");
+        
         return new ArrayList<>();
     }
 
-    private static List<BlockPos> smoothPath(List<BlockPos> path) {
-        if (path.size() <= 2) return path;
+    /**
+     * [修复版] 获取有效起点
+     * 如果 rawStart 是墙壁，寻找周围最近的空气格，而不是随机找一个
+     */
+    private static BlockPos getValidStart(BlockPos original) {
+        // 1. 如果原始位置有效，直接返回
+        if (canStandAt(original)) return original;
+        
+        // 尝试脚下 (防止因为半个台阶导致判定在上面)
+        if (canStandAt(original.down())) return original.down();
 
-        List<BlockPos> smoothed = new ArrayList<>();
-        smoothed.add(path.get(0));
-        int currentIdx = 0;
-
-        while (currentIdx < path.size() - 1) {
-            int nextIdx = currentIdx + 1;
-            // 贪婪搜索：尽可能连最远的点
-            for (int i = path.size() - 1; i > currentIdx + 1; i--) {
-                BlockPos p1 = path.get(currentIdx);
-                BlockPos p2 = path.get(i);
-                
-                // 仅在高度差为0时尝试激进平滑
-                if (p1.getY() == p2.getY()) {
-                    if (checkCollisionPath(p1, p2)) {
-                        nextIdx = i;
-                        break;
-                    }
-                }
+        // 2. 搜索周围 4 个邻居，找出所有可行的候选点
+        List<BlockPos> candidates = new ArrayList<>();
+        for (EnumFacing facing : EnumFacing.HORIZONTALS) {
+            BlockPos neighbor = original.offset(facing);
+            if (canStandAt(neighbor)) {
+                candidates.add(neighbor);
             }
-            smoothed.add(path.get(nextIdx));
-            currentIdx = nextIdx;
         }
-        return smoothed;
+
+        // 3. 如果没找到候选点，只能硬着头皮返回原始的
+        if (candidates.isEmpty()) return original;
+
+        // 4. [关键步骤] 按距离排序！
+        // 找出离玩家真实坐标 (double) 最近的那个候选点
+        // 这样如果你在 10.9 (靠近 10)，它绝对不会选到 12 (墙后)
+        final Vec3 playerPos = new Vec3(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ);
+        
+        candidates.sort((pos1, pos2) -> {
+            // 计算中心点距离
+            double d1 = playerPos.squareDistanceTo(new Vec3(pos1.getX() + 0.5, pos1.getY(), pos1.getZ() + 0.5));
+            double d2 = playerPos.squareDistanceTo(new Vec3(pos2.getX() + 0.5, pos2.getY(), pos2.getZ() + 0.5));
+            return Double.compare(d1, d2);
+        });
+
+        // 返回最近的那个
+        return candidates.get(0);
     }
 
-    /**
-     * 物理碰撞箱扫描 (Box Sweep)
-     * 检测从 start 滑动到 end 是否会撞到任何东西
-     */
-    private static boolean checkCollisionPath(BlockPos start, BlockPos end) {
-        double startX = start.getX() + 0.5;
-        double startY = start.getY();
-        double startZ = start.getZ() + 0.5;
-        
-        double endX = end.getX() + 0.5;
-        double endY = end.getY();
-        double endZ = end.getZ() + 0.5;
+    private static double getEnvironmentPenalty(BlockPos pos) {
+        double penalty = 0;
+        if (!isPassable(pos.north())) penalty += WALL_PENALTY;
+        if (!isPassable(pos.south())) penalty += WALL_PENALTY;
+        if (!isPassable(pos.east()))  penalty += WALL_PENALTY;
+        if (!isPassable(pos.west()))  penalty += WALL_PENALTY;
+        return penalty;
+    }
 
-        double dist = Math.sqrt(start.distanceSq(end));
-        // 步长设为 0.4，确保不漏掉方块
-        int steps = (int) Math.ceil(dist / 0.4); 
-        
-        // [关键调整] 半径设为 0.2
-        // 玩家实际半径 0.3，设为 0.2 可以允许轻微擦边，避免在狭窄斜道被误判为卡住
-        double r = 0.2; 
-
-        for (int i = 1; i < steps; i++) {
-            double progress = (double) i / steps;
-            double x = startX + (endX - startX) * progress;
-            double y = startY + (endY - startY) * progress;
-            double z = startZ + (endZ - startZ) * progress;
-
-            // 1. 碰撞检测
-            AxisAlignedBB entityBB = new AxisAlignedBB(x - r, y, z - r, x + r, y + 1.8, z + r);
-            if (!mc.theWorld.getCollidingBoundingBoxes(null, entityBB).isEmpty()) {
-                return false; // 路径上有障碍
-            }
-            
-            // 2. 坠落检测
-            // 检查每一步的脚下是否有方块，防止平滑后走出悬崖
-            BlockPos groundPos = new BlockPos(x, y - 0.5, z);
-            if (!isSafeFloor(groundPos)) {
-                return false; 
-            }
-        }
-        
-        return true;
+    private static double getHeuristic(BlockPos pos, BlockPos end) {
+        return Math.abs(pos.getX() - end.getX()) + Math.abs(pos.getZ() - end.getZ()) + Math.abs(pos.getY() - end.getY());
     }
 
     private static List<BlockPos> retracePath(Node endNode) {
@@ -167,86 +138,64 @@ public class Pathfinder {
 
     private static List<Neighbor> getNeighbors(BlockPos pos) {
         List<Neighbor> neighbors = new ArrayList<>();
-        
         BlockPos n = pos.north();
         BlockPos s = pos.south();
         BlockPos e = pos.east();
         BlockPos w = pos.west();
 
-        boolean wn = addWithVerticalChecks(neighbors, n, 1.0);
-        boolean ws = addWithVerticalChecks(neighbors, s, 1.0);
-        boolean we = addWithVerticalChecks(neighbors, e, 1.0);
-        boolean ww = addWithVerticalChecks(neighbors, w, 1.0);
-
-        // 对角线检测
-        // 稍微放宽条件：只要对角线目标点本身是安全的，且正交方向至少有一个没完全堵死，就尝试加入
-        // 实际上 checkCollisionPath 会负责最后的安全把关，这里可以稍微宽容一点让 A* 能找到路
-        if (wn && we) checkDiagonal(neighbors, pos.north().east());
-        if (wn && ww) checkDiagonal(neighbors, pos.north().west());
-        if (ws && we) checkDiagonal(neighbors, pos.south().east());
-        if (ws && ww) checkDiagonal(neighbors, pos.south().west());
+        addIfSafe(neighbors, n, 1.0);
+        addIfSafe(neighbors, s, 1.0);
+        addIfSafe(neighbors, e, 1.0);
+        addIfSafe(neighbors, w, 1.0);
 
         return neighbors;
     }
 
-    private static boolean addWithVerticalChecks(List<Neighbor> neighbors, BlockPos target, double cost) {
-        if (isWalkable(target)) {
+    private static boolean addIfSafe(List<Neighbor> neighbors, BlockPos target, double cost) {
+        if (canStandAt(target)) {
             neighbors.add(new Neighbor(target, cost));
             return true;
         } 
-        // 上台阶
         else if (isSafeFloor(target) && isPassable(target.up()) && isPassable(target.up(2))) {
-            neighbors.add(new Neighbor(target.up(), cost));
-            return false; // 上台阶算作阻挡，防止对角线穿模
+            neighbors.add(new Neighbor(target.up(), cost + 0.5)); 
+            return false; 
         } 
-        // 下台阶
-        else if (isPassable(target) && isPassable(target.down()) && isWalkable(target.down())) {
-            neighbors.add(new Neighbor(target.down(), cost));
+        else if (isPassable(target) && isPassable(target.down()) && canStandAt(target.down())) {
+            neighbors.add(new Neighbor(target.down(), cost + 0.5));
             return true;
         }
         return false;
     }
 
-    private static void checkDiagonal(List<Neighbor> list, BlockPos target) {
-        if (isWalkable(target)) {
-            list.add(new Neighbor(target, DIAGONAL_COST));
-        }
-    }
-
-    // --- 核心判定逻辑 (修复版) ---
-
-    // 一个位置是否可以站人：脚下有地，身体和头不撞墙，不危险
-    private static boolean isWalkable(BlockPos pos) {
+    private static boolean canStandAt(BlockPos pos) {
         return isSafeFloor(pos.down()) && isPassable(pos) && isPassable(pos.up()) && !isDangerous(pos) && !isDangerous(pos.down());
     }
 
-    // 检查方块是否可以穿过 (例如空气、草、花)
     private static boolean isPassable(BlockPos pos) {
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();
-        // 门、栅栏门如果是开着的，理论上可以走，但为了简化，这里只判断碰撞箱
-        // getCollisionBoundingBox 返回 null 表示无碰撞体积
-        return block.getCollisionBoundingBox(mc.theWorld, pos, state) == null;
+        if (block == Blocks.air || block instanceof BlockAir) return true;
+        if (block instanceof BlockTallGrass || block instanceof BlockFlower || block instanceof BlockBush || block instanceof BlockReed) return true;
+        if (block instanceof BlockSnow && state.getValue(BlockSnow.LAYERS) == 1) return true;
+        if (block.getCollisionBoundingBox(mc.theWorld, pos, state) == null) return true;
+
+        AxisAlignedBB box = block.getCollisionBoundingBox(mc.theWorld, pos, state);
+        if (box != null && (box.maxY - pos.getY() > 0.1)) {
+            return false;
+        }
+        return true;
     }
 
-    // 检查方块是否可以作为地面 (防止地毯、半砖被误判为虚空)
     private static boolean isSafeFloor(BlockPos pos) {
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();
         
-        // 1. 绝对不可行
         if (block == Blocks.air) return false;
         if (isDangerous(pos)) return false;
-
-        // 2. 特殊白名单 (虽然材质属性可能奇怪，但确实能踩)
         if (block instanceof BlockCarpet || block instanceof BlockSnow || block instanceof BlockLilyPad) return true;
-        if (block instanceof BlockSlab || block instanceof BlockStairs) return true;
-        
-        // 3. 通用检测
-        // 如果方块是完整的立方体，或者是顶部实心的(如倒置楼梯)，就可以踩
+        if (block instanceof BlockSlab || block instanceof BlockStairs || block instanceof BlockFence || block instanceof BlockWall) return true;
         if (block.isFullCube() || mc.theWorld.doesBlockHaveSolidTopSurface(mc.theWorld, pos)) return true;
         
-        // 4. 材质检测 (保底)
         Material mat = block.getMaterial();
         return mat.isSolid() && mat != Material.cactus && mat != Material.lava;
     }
@@ -254,7 +203,7 @@ public class Pathfinder {
     private static boolean isDangerous(BlockPos pos) {
         Block block = mc.theWorld.getBlockState(pos).getBlock();
         return block == Blocks.lava || block == Blocks.flowing_lava || 
-               block == Blocks.cactus || block == Blocks.fire || block == Blocks.web;
+               block == Blocks.cactus || block == Blocks.fire;
     }
 
     private static class Node implements Comparable<Node> {
@@ -275,12 +224,6 @@ public class Pathfinder {
         @Override
         public int compareTo(Node other) {
             return Double.compare(this.getFCost(), other.getFCost());
-        }
-        
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof Node) return pos.equals(((Node) obj).pos);
-            return false;
         }
     }
 }

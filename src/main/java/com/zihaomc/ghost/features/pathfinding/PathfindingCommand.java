@@ -1,6 +1,5 @@
 package com.zihaomc.ghost.features.pathfinding;
 
-import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -51,24 +50,54 @@ public class PathfindingCommand extends CommandBase {
             throw new WrongUsageException(getCommandUsage(sender));
         }
 
-        BlockPos targetPos = GhostBlockHelper.parseBlockPosLegacy(sender, args, 0);
+        final int x, y, z;
+        try {
+            x = Integer.parseInt(args[0]);
+            y = Integer.parseInt(args[1]);
+            z = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "坐标格式错误，请输入整数。"));
+            return;
+        }
+
+        BlockPos targetPos = new BlockPos(x, y, z);
         BlockPos startPos = Minecraft.getMinecraft().thePlayer.getPosition();
 
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[Ghost] 正在计算路径..."));
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[Ghost] 正在计算路径... (目标: " + x + ", " + y + ", " + z + ")"));
 
-        // 在独立线程中计算路径，防止卡顿主线程
-        new Thread(() -> {
-            List<BlockPos> path = Pathfinder.computePath(startPos, targetPos, 5000); // 5000次迭代限制
+        Minecraft.getMinecraft().addScheduledTask(() -> {
+            try {
+                long t1 = System.currentTimeMillis();
+                
+                // 5000 迭代限制
+                List<BlockPos> path = Pathfinder.computePath(startPos, targetPos, 5000);
 
-            Minecraft.getMinecraft().addScheduledTask(() -> {
+                long t2 = System.currentTimeMillis();
+
                 if (path != null && !path.isEmpty()) {
                     PathfindingHandler.setPath(path);
-                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 路径已找到 (" + path.size() + " 步)，开始移动。"));
+                    String msg = String.format("[Ghost] 路径找到! 长度: %d, 耗时: %dms", path.size(), (t2 - t1));
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + msg));
+                    
+                    // --- 调试输出 ---
+                    // 打印前 5 个节点，看看它到底想去哪
+                    StringBuilder sb = new StringBuilder(EnumChatFormatting.GOLD + "前5步: ");
+                    for (int i = 0; i < Math.min(5, path.size()); i++) {
+                        BlockPos p = path.get(i);
+                        sb.append(String.format("[%d,%d,%d] ", p.getX(), p.getY(), p.getZ()));
+                    }
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(sb.toString()));
+                    
                 } else {
-                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 无法到达指定坐标 (路径未找到或距离太远)。"));
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 寻路失败：未找到路径。"));
                 }
-            });
-        }).start();
+            } catch (Exception e) {
+                e.printStackTrace();
+                if (Minecraft.getMinecraft().thePlayer != null) {
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.DARK_RED + "[Ghost] 错误: " + e.getMessage()));
+                }
+            }
+        });
     }
     
     @Override
