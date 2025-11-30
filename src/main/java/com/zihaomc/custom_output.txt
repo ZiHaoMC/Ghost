@@ -1238,48 +1238,40 @@ public class GhostConfigCommand extends CommandBase {
 features/pathfinding/Pathfinder.java:
 package com.zihaomc.ghost.features.pathfinding;
 
-import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.util.Vec3;
 
 import java.util.*;
 
 public class Pathfinder {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private static final double DIAGONAL_COST = 1.414;
-    
-    // 允许的最大寻路消耗（防止死循环）
-    private static final int MAX_COST = 10000; 
+    private static final double WALL_PENALTY = 1000.0; 
 
     public static List<BlockPos> computePath(BlockPos start, BlockPos end, int maxIterations) {
-        // 由于必须在主线程运行，这里不再包裹 try-catch 来隐藏错误，直接暴露以便调试
         return computePathInternal(start, end, maxIterations);
     }
 
-    private static List<BlockPos> computePathInternal(BlockPos start, BlockPos end, int maxIterations) {
-        // 1. 起终点修正
-        if (!canStandAt(start)) {
-            if (canStandAt(start.down())) start = start.down();
-            else if (canStandAt(start.up())) start = start.up();
-        }
-        
-        // 修正终点：如果点击的是地面，目标应为地面上方
+    private static List<BlockPos> computePathInternal(BlockPos rawStart, BlockPos end, int maxIterations) {
+        // [核心修复] 智能起点选择
+        // 现在会根据玩家的真实距离，选择最近的那个空地，防止选到墙后面去
+        BlockPos start = getValidStart(rawStart);
+
         if (isSafeFloor(end) && isPassable(end.up()) && isPassable(end.up(2))) {
             end = end.up();
         }
 
-        // 2. A* 算法初始化
         PriorityQueue<Node> openSet = new PriorityQueue<>();
-        // 使用 Map 记录已发现节点的最小 Cost，替代 closedSet 和 inefficient remove
         Map<BlockPos, Double> costMap = new HashMap<>();
         
-        Node startNode = new Node(start, null, 0, start.distanceSq(end));
+        Node startNode = new Node(start, null, 0, getHeuristic(start, end));
         openSet.add(startNode);
         costMap.put(start, 0.0);
 
@@ -1289,81 +1281,80 @@ public class Pathfinder {
             iterations++;
             Node current = openSet.poll();
 
-            // 如果当前路径并没有比已知的更优，跳过（Lazy Removal 策略）
             if (current.gCost > costMap.getOrDefault(current.pos, Double.MAX_VALUE)) {
                 continue;
             }
 
-            // 到达判定 (距离小于 1.5 即认为到达相邻格或目标格)
-            if (current.pos.distanceSq(end) < 2.25) {
-                return smoothPath(retracePath(current));
+            if (current.pos.distanceSq(end) < 1.5) {
+                return retracePath(current);
             }
 
             for (Neighbor neighbor : getNeighbors(current.pos)) {
                 BlockPos neighborPos = neighbor.pos;
-                double newGCost = current.gCost + neighbor.cost;
+                double penalty = getEnvironmentPenalty(neighborPos);
+                double newGCost = current.gCost + neighbor.cost + penalty;
 
-                // 如果发现了更短的路径
                 if (newGCost < costMap.getOrDefault(neighborPos, Double.MAX_VALUE)) {
                     costMap.put(neighborPos, newGCost);
-                    double hCost = Math.sqrt(neighborPos.distanceSq(end));
+                    double hCost = getHeuristic(neighborPos, end);
                     openSet.add(new Node(neighborPos, current, newGCost, hCost));
                 }
             }
         }
-
-        LogUtil.warn("[Pathfinder] 寻路失败：未找到路径 (迭代: " + iterations + ")");
+        
         return new ArrayList<>();
     }
 
-    // ... smoothPath, checkCollisionPath, retracePath 代码保持不变，可以直接复制原来的 ...
-    // 这里为了节省篇幅省略 smoothPath 相关代码，逻辑不需要变动，重点是上面的 computePathInternal
-    
-    // 请保留原来的 smoothPath, checkCollisionPath, retracePath 方法
+    /**
+     * [修复版] 获取有效起点
+     * 如果 rawStart 是墙壁，寻找周围最近的空气格，而不是随机找一个
+     */
+    private static BlockPos getValidStart(BlockPos original) {
+        // 1. 如果原始位置有效，直接返回
+        if (canStandAt(original)) return original;
+        
+        // 尝试脚下 (防止因为半个台阶导致判定在上面)
+        if (canStandAt(original.down())) return original.down();
 
-    private static List<BlockPos> smoothPath(List<BlockPos> path) {
-        if (path.size() <= 2) return path;
-        List<BlockPos> smoothed = new ArrayList<>();
-        smoothed.add(path.get(0));
-        int currentIdx = 0;
-        while (currentIdx < path.size() - 1) {
-            int nextIdx = currentIdx + 1;
-            for (int i = path.size() - 1; i > currentIdx + 1; i--) {
-                BlockPos p1 = path.get(currentIdx);
-                BlockPos p2 = path.get(i);
-                if (p1.getY() == p2.getY() && checkCollisionPath(p1, p2)) {
-                    nextIdx = i;
-                    break;
-                }
+        // 2. 搜索周围 4 个邻居，找出所有可行的候选点
+        List<BlockPos> candidates = new ArrayList<>();
+        for (EnumFacing facing : EnumFacing.HORIZONTALS) {
+            BlockPos neighbor = original.offset(facing);
+            if (canStandAt(neighbor)) {
+                candidates.add(neighbor);
             }
-            smoothed.add(path.get(nextIdx));
-            currentIdx = nextIdx;
         }
-        return smoothed;
+
+        // 3. 如果没找到候选点，只能硬着头皮返回原始的
+        if (candidates.isEmpty()) return original;
+
+        // 4. [关键步骤] 按距离排序！
+        // 找出离玩家真实坐标 (double) 最近的那个候选点
+        // 这样如果你在 10.9 (靠近 10)，它绝对不会选到 12 (墙后)
+        final Vec3 playerPos = new Vec3(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ);
+        
+        candidates.sort((pos1, pos2) -> {
+            // 计算中心点距离
+            double d1 = playerPos.squareDistanceTo(new Vec3(pos1.getX() + 0.5, pos1.getY(), pos1.getZ() + 0.5));
+            double d2 = playerPos.squareDistanceTo(new Vec3(pos2.getX() + 0.5, pos2.getY(), pos2.getZ() + 0.5));
+            return Double.compare(d1, d2);
+        });
+
+        // 返回最近的那个
+        return candidates.get(0);
     }
 
-    private static boolean checkCollisionPath(BlockPos start, BlockPos end) {
-        // 原有代码逻辑正确，保持不变
-        double startX = start.getX() + 0.5;
-        double startY = start.getY();
-        double startZ = start.getZ() + 0.5;
-        double endX = end.getX() + 0.5;
-        double endY = end.getY();
-        double endZ = end.getZ() + 0.5;
-        double dist = Math.sqrt(start.distanceSq(end));
-        int steps = (int) Math.ceil(dist * 2.0); 
-        double r = 0.25; 
-        for (int i = 1; i < steps; i++) {
-            double progress = (double) i / steps;
-            double x = startX + (endX - startX) * progress;
-            double y = startY + (endY - startY) * progress;
-            double z = startZ + (endZ - startZ) * progress;
-            AxisAlignedBB entityBB = new AxisAlignedBB(x - r, y, z - r, x + r, y + 1.8, z + r);
-            if (!mc.theWorld.getCollidingBoundingBoxes(null, entityBB).isEmpty()) return false;
-            BlockPos groundPos = new BlockPos(x, y - 0.5, z);
-            if (!isSafeFloor(groundPos)) return false;
-        }
-        return true;
+    private static double getEnvironmentPenalty(BlockPos pos) {
+        double penalty = 0;
+        if (!isPassable(pos.north())) penalty += WALL_PENALTY;
+        if (!isPassable(pos.south())) penalty += WALL_PENALTY;
+        if (!isPassable(pos.east()))  penalty += WALL_PENALTY;
+        if (!isPassable(pos.west()))  penalty += WALL_PENALTY;
+        return penalty;
+    }
+
+    private static double getHeuristic(BlockPos pos, BlockPos end) {
+        return Math.abs(pos.getX() - end.getX()) + Math.abs(pos.getZ() - end.getZ()) + Math.abs(pos.getY() - end.getY());
     }
 
     private static List<BlockPos> retracePath(Node endNode) {
@@ -1377,8 +1368,6 @@ public class Pathfinder {
         return path;
     }
 
-    // --- 邻居节点逻辑 ---
-    // 这部分需要微调逻辑，特别是对 up(2) 的判定
     private static class Neighbor {
         BlockPos pos;
         double cost;
@@ -1392,66 +1381,47 @@ public class Pathfinder {
         BlockPos e = pos.east();
         BlockPos w = pos.west();
 
-        boolean wn = addWithVerticalChecks(neighbors, n, 1.0);
-        boolean ws = addWithVerticalChecks(neighbors, s, 1.0);
-        boolean we = addWithVerticalChecks(neighbors, e, 1.0);
-        boolean ww = addWithVerticalChecks(neighbors, w, 1.0);
-
-        // 对角线检查
-        checkDiagonal(neighbors, wn && we, n.east());
-        checkDiagonal(neighbors, wn && ww, n.west());
-        checkDiagonal(neighbors, ws && we, s.east());
-        checkDiagonal(neighbors, ws && ww, s.west());
+        addIfSafe(neighbors, n, 1.0);
+        addIfSafe(neighbors, s, 1.0);
+        addIfSafe(neighbors, e, 1.0);
+        addIfSafe(neighbors, w, 1.0);
 
         return neighbors;
     }
 
-    private static boolean addWithVerticalChecks(List<Neighbor> neighbors, BlockPos target, double cost) {
-        // 1. 平地移动
+    private static boolean addIfSafe(List<Neighbor> neighbors, BlockPos target, double cost) {
         if (canStandAt(target)) {
             neighbors.add(new Neighbor(target, cost));
             return true;
         } 
-        // 2. 向上跳跃 (修复：不需要 target.up(2) 完全通过，只要头顶不被压住即可)
-        else if (isSafeFloor(target) && isPassable(target.up()) && isPassable(target.up(2))) { // 这里的 up(2) 其实对于 1.8格高的人来说，如果是半砖可能有问题，但一般没事
-            neighbors.add(new Neighbor(target.up(), cost));
+        else if (isSafeFloor(target) && isPassable(target.up()) && isPassable(target.up(2))) {
+            neighbors.add(new Neighbor(target.up(), cost + 0.5)); 
             return false; 
         } 
-        // 3. 向下掉落 (允许掉落距离加大一点以防半砖误差)
         else if (isPassable(target) && isPassable(target.down()) && canStandAt(target.down())) {
-            neighbors.add(new Neighbor(target.down(), cost));
+            neighbors.add(new Neighbor(target.down(), cost + 0.5));
             return true;
         }
         return false;
     }
 
-    private static void checkDiagonal(List<Neighbor> list, boolean bothSidesOpen, BlockPos target) {
-        // 对角线移动要求两侧都是通的，防止穿墙
-        if (bothSidesOpen && canStandAt(target)) {
-            list.add(new Neighbor(target, DIAGONAL_COST));
-        }
-    }
-
-    // --- 核心判定逻辑 (修复重点) ---
-
     private static boolean canStandAt(BlockPos pos) {
-        // 脚下有地，脚部空间可通行，头部空间可通行，不是危险方块
         return isSafeFloor(pos.down()) && isPassable(pos) && isPassable(pos.up()) && !isDangerous(pos) && !isDangerous(pos.down());
     }
 
     private static boolean isPassable(BlockPos pos) {
         IBlockState state = mc.theWorld.getBlockState(pos);
         Block block = state.getBlock();
-        
-        // 获取碰撞箱
+        if (block == Blocks.air || block instanceof BlockAir) return true;
+        if (block instanceof BlockTallGrass || block instanceof BlockFlower || block instanceof BlockBush || block instanceof BlockReed) return true;
+        if (block instanceof BlockSnow && state.getValue(BlockSnow.LAYERS) == 1) return true;
+        if (block.getCollisionBoundingBox(mc.theWorld, pos, state) == null) return true;
+
         AxisAlignedBB box = block.getCollisionBoundingBox(mc.theWorld, pos, state);
-        
-        // 如果没有碰撞箱 (如空气、草、花)，则可以通过
-        if (box == null) return true;
-        
-        // [修复] 如果碰撞箱非常矮 (如地毯 < 0.2)，视为可以通过
-        // 1.8.9 的 getCollisionBoundingBox 返回的是世界坐标，所以要算相对高度
-        return (box.maxY - pos.getY()) < 0.2;
+        if (box != null && (box.maxY - pos.getY() > 0.1)) {
+            return false;
+        }
+        return true;
     }
 
     private static boolean isSafeFloor(BlockPos pos) {
@@ -1460,13 +1430,8 @@ public class Pathfinder {
         
         if (block == Blocks.air) return false;
         if (isDangerous(pos)) return false;
-
-        // 白名单：地毯、雪层、睡莲、半砖、楼梯
-        if (block instanceof BlockCarpet || block instanceof BlockSnow || block instanceof BlockLilyPad || block instanceof BlockSlab || block instanceof BlockStairs) return true;
-        
-        // 栅栏和墙也是安全的落脚点
-        if (block instanceof BlockFence || block instanceof BlockWall) return true;
-
+        if (block instanceof BlockCarpet || block instanceof BlockSnow || block instanceof BlockLilyPad) return true;
+        if (block instanceof BlockSlab || block instanceof BlockStairs || block instanceof BlockFence || block instanceof BlockWall) return true;
         if (block.isFullCube() || mc.theWorld.doesBlockHaveSolidTopSurface(mc.theWorld, pos)) return true;
         
         Material mat = block.getMaterial();
@@ -1476,7 +1441,7 @@ public class Pathfinder {
     private static boolean isDangerous(BlockPos pos) {
         Block block = mc.theWorld.getBlockState(pos).getBlock();
         return block == Blocks.lava || block == Blocks.flowing_lava || 
-               block == Blocks.cactus || block == Blocks.fire; // 蜘蛛网 Blocks.web 可以走，只是慢
+               block == Blocks.cactus || block == Blocks.fire;
     }
 
     private static class Node implements Comparable<Node> {
@@ -1504,7 +1469,6 @@ public class Pathfinder {
 features/pathfinding/PathfindingCommand.java:
 package com.zihaomc.ghost.features.pathfinding;
 
-import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -1555,34 +1519,52 @@ public class PathfindingCommand extends CommandBase {
             throw new WrongUsageException(getCommandUsage(sender));
         }
 
-        // 解析坐标
-        BlockPos targetPos;
+        final int x, y, z;
         try {
-            // 这里假设你有 GhostBlockHelper，如果没有可以用原版的 CommandBase.parseBlockPos
-             targetPos = GhostBlockHelper.parseBlockPosLegacy(sender, args, 0);
-        } catch (Exception e) {
-             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "坐标格式错误。"));
-             return;
+            x = Integer.parseInt(args[0]);
+            y = Integer.parseInt(args[1]);
+            z = Integer.parseInt(args[2]);
+        } catch (NumberFormatException e) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "坐标格式错误，请输入整数。"));
+            return;
         }
-        
+
+        BlockPos targetPos = new BlockPos(x, y, z);
         BlockPos startPos = Minecraft.getMinecraft().thePlayer.getPosition();
 
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[Ghost] 正在计算路径..."));
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[Ghost] 正在计算路径... (目标: " + x + ", " + y + ", " + z + ")"));
 
-        // [重要修复] 使用 addScheduledTask 将计算任务扔回主线程执行
-        // 只有在主线程才能安全访问 World 数据，否则远距离寻路会因为读取到空气而失败
         Minecraft.getMinecraft().addScheduledTask(() -> {
-            long startTime = System.currentTimeMillis();
-            
-            // 执行寻路 (5000次迭代在主线程通常耗时 < 20ms，不会造成明显卡顿)
-            List<BlockPos> path = Pathfinder.computePath(startPos, targetPos, 5000);
+            try {
+                long t1 = System.currentTimeMillis();
+                
+                // 5000 迭代限制
+                List<BlockPos> path = Pathfinder.computePath(startPos, targetPos, 5000);
 
-            if (path != null && !path.isEmpty()) {
-                PathfindingHandler.setPath(path);
-                long timeTaken = System.currentTimeMillis() - startTime;
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 路径已找到 (" + path.size() + " 步, 耗时 " + timeTaken + "ms)，开始移动。"));
-            } else {
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 无法到达指定坐标 (路径未找到或距离太远)。"));
+                long t2 = System.currentTimeMillis();
+
+                if (path != null && !path.isEmpty()) {
+                    PathfindingHandler.setPath(path);
+                    String msg = String.format("[Ghost] 路径找到! 长度: %d, 耗时: %dms", path.size(), (t2 - t1));
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + msg));
+                    
+                    // --- 调试输出 ---
+                    // 打印前 5 个节点，看看它到底想去哪
+                    StringBuilder sb = new StringBuilder(EnumChatFormatting.GOLD + "前5步: ");
+                    for (int i = 0; i < Math.min(5, path.size()); i++) {
+                        BlockPos p = path.get(i);
+                        sb.append(String.format("[%d,%d,%d] ", p.getX(), p.getY(), p.getZ()));
+                    }
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(sb.toString()));
+                    
+                } else {
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 寻路失败：未找到路径。"));
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                if (Minecraft.getMinecraft().thePlayer != null) {
+                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.DARK_RED + "[Ghost] 错误: " + e.getMessage()));
+                }
             }
         });
     }
@@ -1599,18 +1581,18 @@ public class PathfindingCommand extends CommandBase {
 features/pathfinding/PathfindingHandler.java:
 package com.zihaomc.ghost.features.pathfinding;
 
-import com.zihaomc.ghost.utils.LogUtil;
 import com.zihaomc.ghost.utils.RotationUtil;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockAir;
+import net.minecraft.block.BlockLiquid;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.util.BlockPos;
-import net.minecraft.util.ChatComponentText;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.Vec3;
+import net.minecraft.util.*;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 import java.util.List;
+import java.util.Random;
 
 public class PathfindingHandler {
 
@@ -1618,107 +1600,169 @@ public class PathfindingHandler {
     private static List<BlockPos> currentPath = null;
     private static boolean isPathfinding = false;
     private static int currentPathIndex = 0;
-    
-    private static final float ROTATION_SPEED = 20.0f; 
-    private static int stuckTicks = 0;
-    private static BlockPos lastPosition = null;
-    
-    private static final boolean DEBUG_HANDLER = true;
+    private static final Random random = new Random();
 
     public static void setPath(List<BlockPos> path) {
-        // [新增] 如果路径为空，说明寻路失败，直接报错
-        if (path == null || path.isEmpty()) {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 寻路失败：无法计算到目标的路径。"));
-            stop();
-            return;
-        }
-
+        if (path == null || path.isEmpty()) return;
         currentPath = path;
         currentPathIndex = 0;
-        stuckTicks = 0;
-        lastPosition = null;
-        
-        if (path.size() > 1 && path.get(0).distanceSq(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ) < 2.0) {
-            currentPathIndex = 1;
-        }
-        
         isPathfinding = true;
     }
 
     public static void stop() {
-        if (isPathfinding) {
-            isPathfinding = false;
-            currentPath = null;
-            resetKeys();
-            if (DEBUG_HANDLER) LogUtil.info("[Handler] 寻路已停止");
-        }
-    }
-
-    public static boolean isPathfinding() {
-        return isPathfinding;
+        isPathfinding = false;
+        currentPath = null;
+        resetKeys();
     }
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || mc.theWorld == null) return;
+        if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || !isPathfinding) return;
 
-        if (!isPathfinding || currentPath == null || currentPath.isEmpty()) return;
-
-        if (currentPathIndex >= currentPath.size()) {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 目的地已到达。"));
+        // --- 1. 终点判定 ---
+        if (currentPath == null || currentPathIndex >= currentPath.size()) {
             stop();
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 目的地已到达。"));
             return;
-        }
-
-        // --- 卡死检测 ---
-        if (mc.thePlayer.ticksExisted % 20 == 0) {
-            BlockPos currentPos = mc.thePlayer.getPosition();
-            if (lastPosition != null && currentPos.distanceSq(lastPosition) < 0.5) { 
-                stuckTicks++;
-            } else {
-                stuckTicks = 0;
-                lastPosition = currentPos;
-            }
-            if (stuckTicks > 4) { 
-                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 检测到卡死，自动停止。"));
-                stop();
-                return;
-            }
         }
 
         BlockPos targetNode = currentPath.get(currentPathIndex);
         Vec3 targetCenter = new Vec3(targetNode.getX() + 0.5, targetNode.getY(), targetNode.getZ() + 0.5);
-        
-        float[] targetRots = RotationUtil.getRotations(targetCenter.addVector(0, mc.thePlayer.getEyeHeight(), 0));
-        float[] smoothRots = RotationUtil.getSmoothRotations(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, targetRots[0], targetRots[1], ROTATION_SPEED);
-        mc.thePlayer.rotationYaw = smoothRots[0];
-        mc.thePlayer.rotationPitch = smoothRots[1];
+        double distToTarget = mc.thePlayer.getDistanceSq(targetCenter.xCoord, mc.thePlayer.posY, targetCenter.zCoord);
 
-        double distSqFlat = Math.pow(mc.thePlayer.posX - targetCenter.xCoord, 2) + Math.pow(mc.thePlayer.posZ - targetCenter.zCoord, 2);
-        if (distSqFlat < 0.25) { 
+        if (currentPathIndex == currentPath.size() - 1 && distToTarget < 0.1) {
+            stop();
+            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 精准到达。"));
+            return;
+        }
+
+        // --- 2. 前瞻更新 (Safe Lookahead) ---
+        updatePathIndexWithLookahead();
+        targetNode = currentPath.get(currentPathIndex);
+        targetCenter = new Vec3(targetNode.getX() + 0.5, targetNode.getY(), targetNode.getZ() + 0.5);
+
+        // --- 3. 到达判定 ---
+        boolean isNarrow = isNarrowPath(new BlockPos(mc.thePlayer.posX, mc.thePlayer.getEntityBoundingBox().minY, mc.thePlayer.posZ));
+        double reachThreshold = isNarrow || (currentPathIndex == currentPath.size() - 1) ? 0.4 : 2.0; 
+        
+        distToTarget = mc.thePlayer.getDistanceSq(targetCenter.xCoord, mc.thePlayer.posY, targetCenter.zCoord);
+        if (distToTarget < (reachThreshold * reachThreshold)) {
             currentPathIndex++;
             return;
         }
 
-        KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), true);
+        // --- 4. 平滑旋转 ---
+        float[] rotations = RotationUtil.getRotations(targetCenter.addVector(0, mc.thePlayer.getEyeHeight(), 0));
+        float targetYaw = rotations[0];
+        float turnSpeed = 15.0f + random.nextFloat() * 15.0f;
+        float smoothYaw = limitAngleChange(mc.thePlayer.rotationYaw, targetYaw, turnSpeed);
+        
+        mc.thePlayer.rotationYaw = smoothYaw;
+        mc.thePlayer.rotationPitch = 0; 
+
+        // --- 5. 移动控制 ---
+        float yawDiff = Math.abs(MathHelper.wrapAngleTo180_float(targetYaw - mc.thePlayer.rotationYaw));
+        boolean moveForward = true;
+
+        if (isNarrow && yawDiff > 10.0f) moveForward = false;
+        if (!isNarrow && yawDiff > 45.0f) moveForward = false;
+
+        KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), moveForward);
         mc.thePlayer.setSprinting(false); 
 
+        // --- 6. 跳跃逻辑 ---
         boolean needJump = false;
-        double speed = Math.sqrt(mc.thePlayer.motionX * mc.thePlayer.motionX + mc.thePlayer.motionZ * mc.thePlayer.motionZ);
-
         if (mc.thePlayer.isInWater() || mc.thePlayer.isInLava()) {
-            needJump = true; 
+            needJump = true;
+        } else if (targetNode.getY() > mc.thePlayer.posY + 0.1) {
+             needJump = true;
         }
-        else if (mc.thePlayer.onGround) {
-            if (targetNode.getY() > Math.floor(mc.thePlayer.posY)) {
-                needJump = true;
-            }
-            else if (mc.thePlayer.isCollidedHorizontally && speed < 0.01) {
-                needJump = true;
-            }
-        }
-        
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), needJump);
+    }
+
+    private float limitAngleChange(float current, float target, float maxChange) {
+        float change = MathHelper.wrapAngleTo180_float(target - current);
+        if (change > maxChange) change = maxChange;
+        if (change < -maxChange) change = -maxChange;
+        return current + change;
+    }
+
+    private void updatePathIndexWithLookahead() {
+        // 向前看 4 个点。不要看太远，太远容易忽略中间的障碍细节
+        int searchLimit = 4;
+        int maxIndex = Math.min(currentPathIndex + searchLimit, currentPath.size() - 1);
+        
+        for (int i = maxIndex; i > currentPathIndex; i--) {
+            BlockPos node = currentPath.get(i);
+            if (Math.abs(node.getY() - mc.thePlayer.posY) > 0.5) continue;
+            
+            // 使用严格的物理碰撞检测
+            if (canSafeWalk(node)) {
+                currentPathIndex = i;
+                return;
+            }
+        }
+    }
+
+    /**
+     * [核心修复] 物理碰撞扫描 (Collision Sweep)
+     * 模拟一个玩家宽度的盒子沿着路径移动，检测是否会撞墙。
+     */
+    private boolean canSafeWalk(BlockPos target) {
+        Vec3 start = mc.thePlayer.getPositionVector();
+        Vec3 end = new Vec3(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
+
+        double dist = start.distanceTo(end);
+        Vec3 dir = end.subtract(start).normalize();
+        
+        // 步长要小，防止漏掉薄墙 (0.2 比较安全)
+        double step = 0.2;
+        
+        // 玩家碰撞箱半径 (0.3)，我们稍微设大一点 (0.35) 作为安全余量
+        // 这样可以保证机器人不会贴着墙走，预留出空间
+        double r = 0.35; 
+
+        for (double d = 0; d < dist; d += step) {
+            Vec3 checkPos = start.addVector(dir.xCoord * d, dir.yCoord * d, dir.zCoord * d);
+            
+            // 1. 墙壁碰撞检测
+            // 在当前检查点创建一个碰撞箱
+            AxisAlignedBB checkBB = new AxisAlignedBB(
+                checkPos.xCoord - r, checkPos.yCoord, checkPos.zCoord - r,
+                checkPos.xCoord + r, checkPos.yCoord + 1.8, checkPos.zCoord + r
+            );
+            
+            // 问世界：这个盒子里有东西吗？
+            if (!mc.theWorld.getCollidingBoundingBoxes(null, checkBB).isEmpty()) {
+                return false; // 碰到墙了！Lookahead 失败，必须绕路
+            }
+            
+            // 2. 地面塌陷检测 (Gap Check)
+            // 检查脚下有没有路
+            BlockPos blockUnder = new BlockPos(checkPos).down();
+            if (!isSafe(blockUnder)) {
+                return false; // 脚下是坑！Lookahead 失败
+            }
+        }
+
+        return true;
+    }
+
+    private boolean isNarrowPath(BlockPos playerPos) {
+        BlockPos under = playerPos.down();
+        if (!isSafe(under)) under = under.down();
+        boolean n = isSafe(under.north());
+        boolean s = isSafe(under.south());
+        boolean e = isSafe(under.east());
+        boolean w = isSafe(under.west());
+        return (!e && !w) || (!n && !s) || ((!n ? 1:0) + (!s ? 1:0) + (!e ? 1:0) + (!w ? 1:0) >= 3);
+    }
+
+    private boolean isSafe(BlockPos pos) {
+        Block block = mc.theWorld.getBlockState(pos).getBlock();
+        if (block instanceof BlockAir || block instanceof BlockLiquid) return false;
+        // 简单的碰撞箱检查
+        return block.getCollisionBoundingBox(mc.theWorld, pos, mc.theWorld.getBlockState(pos)) != null;
     }
 
     private static void resetKeys() {

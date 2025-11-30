@@ -55,7 +55,7 @@ public class PathfindingHandler {
             return;
         }
 
-        // --- 2. 前瞻与目标更新 ---
+        // --- 2. 前瞻更新 (Safe Lookahead) ---
         updatePathIndexWithLookahead();
         targetNode = currentPath.get(currentPathIndex);
         targetCenter = new Vec3(targetNode.getX() + 0.5, targetNode.getY(), targetNode.getZ() + 0.5);
@@ -70,39 +70,22 @@ public class PathfindingHandler {
             return;
         }
 
-        // --- 4. 平滑旋转逻辑 (核心修改) ---
+        // --- 4. 平滑旋转 ---
         float[] rotations = RotationUtil.getRotations(targetCenter.addVector(0, mc.thePlayer.getEyeHeight(), 0));
-        
-        // 目标角度
         float targetYaw = rotations[0];
-        float targetPitch = 0; // 走路通常平视即可，如果需要看路可以改为 rotations[1]
-
-        // 随机旋转速度 (15 ~ 30 度/tick)，模拟真人手速波动
+        // 随机速度模拟真人
         float turnSpeed = 15.0f + random.nextFloat() * 15.0f;
-
-        // 平滑插值：当前角度 -> 目标角度
         float smoothYaw = limitAngleChange(mc.thePlayer.rotationYaw, targetYaw, turnSpeed);
-        float smoothPitch = limitAngleChange(mc.thePlayer.rotationPitch, targetPitch, turnSpeed);
-
-        // 应用旋转
+        
         mc.thePlayer.rotationYaw = smoothYaw;
-        mc.thePlayer.rotationPitch = smoothPitch;
+        mc.thePlayer.rotationPitch = 0; 
 
         // --- 5. 移动控制 ---
-        // 计算当前还要转多少度才能对准
         float yawDiff = Math.abs(MathHelper.wrapAngleTo180_float(targetYaw - mc.thePlayer.rotationYaw));
-
         boolean moveForward = true;
 
-        // 窄路保护：如果没对准 (>10度)，原地转头，不许走
-        if (isNarrow && yawDiff > 10.0f) {
-            moveForward = false;
-        }
-        
-        // 普通转弯保护：如果角度差太大 (>45度)，减速/停顿，等待转头
-        if (!isNarrow && yawDiff > 45.0f) {
-            moveForward = false;
-        }
+        if (isNarrow && yawDiff > 10.0f) moveForward = false;
+        if (!isNarrow && yawDiff > 45.0f) moveForward = false;
 
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), moveForward);
         mc.thePlayer.setSprinting(false); 
@@ -117,10 +100,6 @@ public class PathfindingHandler {
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), needJump);
     }
 
-    /**
-     * [新增] 限制角度变化幅度 (平滑核心)
-     * 确保从 current 到 target 的变化量不超过 maxChange
-     */
     private float limitAngleChange(float current, float target, float maxChange) {
         float change = MathHelper.wrapAngleTo180_float(target - current);
         if (change > maxChange) change = maxChange;
@@ -129,37 +108,53 @@ public class PathfindingHandler {
     }
 
     private void updatePathIndexWithLookahead() {
-        int searchLimit = 5;
+        int searchLimit = 4;
         int maxIndex = Math.min(currentPathIndex + searchLimit, currentPath.size() - 1);
         
         for (int i = maxIndex; i > currentPathIndex; i--) {
             BlockPos node = currentPath.get(i);
+            // 高度差太大不走捷径
             if (Math.abs(node.getY() - mc.thePlayer.posY) > 0.5) continue;
-            if (canSeeAndWalkTo(node)) {
+            
+            if (canSafeWalk(node)) {
                 currentPathIndex = i;
                 return;
             }
         }
     }
 
-    private boolean canSeeAndWalkTo(BlockPos target) {
+    /**
+     * [修复版] 物理碰撞扫描 (Fix: 修复了 NullPointerException)
+     */
+    private boolean canSafeWalk(BlockPos target) {
         Vec3 start = mc.thePlayer.getPositionVector();
         Vec3 end = new Vec3(target.getX() + 0.5, target.getY(), target.getZ() + 0.5);
-
-        Vec3 eyes = start.addVector(0, mc.thePlayer.getEyeHeight(), 0);
-        Vec3 targetEyes = new Vec3(target.getX() + 0.5, target.getY() + 1.5, target.getZ() + 0.5);
-        MovingObjectPosition mop = mc.theWorld.rayTraceBlocks(eyes, targetEyes, false, true, false);
-        if (mop != null && mop.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
-            return false;
-        }
 
         double dist = start.distanceTo(end);
         Vec3 dir = end.subtract(start).normalize();
         
-        for (double d = 0; d < dist; d += 0.5) {
+        double step = 0.2;
+        double r = 0.35; 
+
+        for (double d = 0; d < dist; d += step) {
             Vec3 checkPos = start.addVector(dir.xCoord * d, dir.yCoord * d, dir.zCoord * d);
+            
+            // 1. 墙壁碰撞检测
+            AxisAlignedBB checkBB = new AxisAlignedBB(
+                checkPos.xCoord - r, checkPos.yCoord, checkPos.zCoord - r,
+                checkPos.xCoord + r, checkPos.yCoord + 1.8, checkPos.zCoord + r
+            );
+            
+            // [CRITICAL FIX] 将 null 改为 mc.thePlayer，防止 NPE
+            if (!mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB).isEmpty()) {
+                return false; 
+            }
+            
+            // 2. 地面塌陷检测
             BlockPos blockUnder = new BlockPos(checkPos).down();
-            if (!isSafe(blockUnder)) return false;
+            if (!isSafe(blockUnder)) {
+                return false; 
+            }
         }
 
         return true;
@@ -168,12 +163,10 @@ public class PathfindingHandler {
     private boolean isNarrowPath(BlockPos playerPos) {
         BlockPos under = playerPos.down();
         if (!isSafe(under)) under = under.down();
-
         boolean n = isSafe(under.north());
         boolean s = isSafe(under.south());
         boolean e = isSafe(under.east());
         boolean w = isSafe(under.west());
-
         return (!e && !w) || (!n && !s) || ((!n ? 1:0) + (!s ? 1:0) + (!e ? 1:0) + (!w ? 1:0) >= 3);
     }
 
