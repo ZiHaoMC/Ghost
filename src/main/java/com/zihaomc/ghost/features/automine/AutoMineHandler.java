@@ -59,7 +59,10 @@ public class AutoMineHandler {
     private int delayTicks = 0;
 
     private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
-    private Long miningStartTime = null;
+    // [已移除] miningStartTime
+
+    // 用于跟踪空闲搜索的时间 (找不到目标的时间)
+    private static Long searchStartTime = null;
 
     private static boolean modIsControllingSneak = false;
 
@@ -157,6 +160,8 @@ public class AutoMineHandler {
         mithrilOptimizationIsActive = false;
         cleanupToolTooWeakNotified = false;
         lastSkippedBlock = null;
+        
+        searchStartTime = null; // 重置搜索计时器
     }
 
     public static void setMiningMode(MiningMode mode) {
@@ -273,7 +278,7 @@ public class AutoMineHandler {
 
     private void handleSwitchingTarget() {
         if (currentStrategy != null) currentStrategy.onStopMining();
-        miningStartTime = null;
+        // miningStartTime = null; // [已移除] 不再需要重置挖掘计时器
         initialTargetState = null;
 
         BlockPos veinTarget = findVeinMineTarget();
@@ -285,10 +290,34 @@ public class AutoMineHandler {
         }
 
         if (currentTarget != null) {
+            // 找到了目标，重置搜索计时器
+            searchStartTime = null;
+            
             initialTargetState = mc.theWorld.getBlockState(currentTarget);
             if (currentStrategy != null) currentStrategy.onStartMining(currentTarget);
             currentState = State.MINING;
         } else {
+            // 没有找到目标
+            
+            // --- 超时停止逻辑 (搜索超时 - 找不到目标) ---
+            if (GhostConfig.AutoMine.stopOnTimeout) {
+                if (searchStartTime == null) {
+                    searchStartTime = System.currentTimeMillis();
+                }
+                long elapsed = System.currentTimeMillis() - searchStartTime;
+                long timeoutMs = GhostConfig.AutoMine.mineTimeoutSeconds * 1000L;
+
+                // 如果搜索时间超过了设定的超时时间
+                if (elapsed > timeoutMs) {
+                     mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] AutoMine stopped: No targets found for " + GhostConfig.AutoMine.mineTimeoutSeconds + "s."));
+                     toggle();
+                     return;
+                }
+            } else {
+                // 如果功能未开启，确保计时器重置
+                searchStartTime = null;
+            }
+            
             if (currentState != State.IDLE) {
                 mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.status.waiting")));
                 currentState = State.WAITING;
@@ -343,7 +372,7 @@ public class AutoMineHandler {
                     currentTarget = crosshairTargetPos;
                     initialTargetState = mc.theWorld.getBlockState(currentTarget);
                     currentStrategy.onStartMining(currentTarget);
-                    miningStartTime = null;
+                    // miningStartTime = null; // [已移除]
                     return;
                 }
             }
@@ -354,10 +383,7 @@ public class AutoMineHandler {
             lastMinedState = currentStateAtTarget;
         }
 
-        if (checkTimeout(blockAtTarget)) {
-            currentState = State.SWITCHING_TARGET;
-            return;
-        }
+        // [已移除] 删除了挖掘超时的检查 (checkTimeout)
         
         MovingObjectPosition mouseOver = mc.objectMouseOver;
         Vec3 bestPointToLookAt = (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget))
@@ -434,19 +460,7 @@ public class AutoMineHandler {
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "====================================================="));
     }
 
-    private boolean checkTimeout(Block blockAtTarget) {
-        if (miningStartTime == null) {
-            miningStartTime = System.currentTimeMillis();
-            return false;
-        }
-        long mineTimeoutMs = GhostConfig.AutoMine.mineTimeoutSeconds * 1000L;
-        if (System.currentTimeMillis() - miningStartTime > mineTimeoutMs) {
-            unmineableBlacklist.put(currentTarget, blockAtTarget);
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.mining_timeout_blacklisted", blockAtTarget.getLocalizedName(), currentTarget.getX(), currentTarget.getY(), currentTarget.getZ())));
-            return true;
-        }
-        return false;
-    }
+    // [已移除] private boolean checkTimeout(Block blockAtTarget) { ... }
 
     private void handleMovementKeys() {
         if (!isActive || !GhostConfig.AutoMine.enableRandomMovements) {

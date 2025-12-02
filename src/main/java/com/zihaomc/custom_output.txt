@@ -1654,6 +1654,7 @@ public class PathfindingHandler {
         // --- 4. 平滑旋转 ---
         float[] rotations = RotationUtil.getRotations(targetCenter.addVector(0, mc.thePlayer.getEyeHeight(), 0));
         float targetYaw = rotations[0];
+        // 随机速度模拟真人
         float turnSpeed = 15.0f + random.nextFloat() * 15.0f;
         float smoothYaw = limitAngleChange(mc.thePlayer.rotationYaw, targetYaw, turnSpeed);
         
@@ -1688,15 +1689,14 @@ public class PathfindingHandler {
     }
 
     private void updatePathIndexWithLookahead() {
-        // 向前看 4 个点。不要看太远，太远容易忽略中间的障碍细节
         int searchLimit = 4;
         int maxIndex = Math.min(currentPathIndex + searchLimit, currentPath.size() - 1);
         
         for (int i = maxIndex; i > currentPathIndex; i--) {
             BlockPos node = currentPath.get(i);
+            // 高度差太大不走捷径
             if (Math.abs(node.getY() - mc.thePlayer.posY) > 0.5) continue;
             
-            // 使用严格的物理碰撞检测
             if (canSafeWalk(node)) {
                 currentPathIndex = i;
                 return;
@@ -1705,8 +1705,7 @@ public class PathfindingHandler {
     }
 
     /**
-     * [核心修复] 物理碰撞扫描 (Collision Sweep)
-     * 模拟一个玩家宽度的盒子沿着路径移动，检测是否会撞墙。
+     * [修复版] 物理碰撞扫描 (Fix: 修复了 NullPointerException)
      */
     private boolean canSafeWalk(BlockPos target) {
         Vec3 start = mc.thePlayer.getPositionVector();
@@ -1715,33 +1714,27 @@ public class PathfindingHandler {
         double dist = start.distanceTo(end);
         Vec3 dir = end.subtract(start).normalize();
         
-        // 步长要小，防止漏掉薄墙 (0.2 比较安全)
         double step = 0.2;
-        
-        // 玩家碰撞箱半径 (0.3)，我们稍微设大一点 (0.35) 作为安全余量
-        // 这样可以保证机器人不会贴着墙走，预留出空间
         double r = 0.35; 
 
         for (double d = 0; d < dist; d += step) {
             Vec3 checkPos = start.addVector(dir.xCoord * d, dir.yCoord * d, dir.zCoord * d);
             
             // 1. 墙壁碰撞检测
-            // 在当前检查点创建一个碰撞箱
             AxisAlignedBB checkBB = new AxisAlignedBB(
                 checkPos.xCoord - r, checkPos.yCoord, checkPos.zCoord - r,
                 checkPos.xCoord + r, checkPos.yCoord + 1.8, checkPos.zCoord + r
             );
             
-            // 问世界：这个盒子里有东西吗？
-            if (!mc.theWorld.getCollidingBoundingBoxes(null, checkBB).isEmpty()) {
-                return false; // 碰到墙了！Lookahead 失败，必须绕路
+            // [CRITICAL FIX] 将 null 改为 mc.thePlayer，防止 NPE
+            if (!mc.theWorld.getCollidingBoundingBoxes(mc.thePlayer, checkBB).isEmpty()) {
+                return false; 
             }
             
-            // 2. 地面塌陷检测 (Gap Check)
-            // 检查脚下有没有路
+            // 2. 地面塌陷检测
             BlockPos blockUnder = new BlockPos(checkPos).down();
             if (!isSafe(blockUnder)) {
-                return false; // 脚下是坑！Lookahead 失败
+                return false; 
             }
         }
 
@@ -1761,7 +1754,6 @@ public class PathfindingHandler {
     private boolean isSafe(BlockPos pos) {
         Block block = mc.theWorld.getBlockState(pos).getBlock();
         if (block instanceof BlockAir || block instanceof BlockLiquid) return false;
-        // 简单的碰撞箱检查
         return block.getCollisionBoundingBox(mc.theWorld, pos, mc.theWorld.getBlockState(pos)) != null;
     }
 

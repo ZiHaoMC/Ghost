@@ -145,6 +145,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoMineMiningMode", GhostConfig.AutoMine.miningMode));
         sender.addChatMessage(formatSettingLine("autoMineRotationSpeed", String.format("%.1f", GhostConfig.AutoMine.rotationSpeed)));
         sender.addChatMessage(formatSettingLine("autoMineMithrilOptimization", GhostConfig.AutoMine.enableMithrilOptimization));
+        sender.addChatMessage(formatSettingLine("autoMineStopOnTimeout", GhostConfig.AutoMine.stopOnTimeout));
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
@@ -256,6 +257,7 @@ public class GhostConfigCommand extends CommandBase {
                key.equals("automineanticheatcheck") ||
                key.equals("autominevoidsafetycheck") ||
                key.equals("autominemithriloptimization") ||
-               key.equals("automineenabletoolswitching");
+               key.equals("automineenabletoolswitching") ||
+               key.equals("autominestopontimeout"); // Added new command here
     }
 }
