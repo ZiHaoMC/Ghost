@@ -97,15 +97,33 @@ public class AutoMineHandler {
     private static boolean cleanupToolTooWeakNotified = false;
     private static BlockPos lastSkippedBlock = null;
 
+    /**
+     * 发送带统一格式 [Ghost] 前缀的聊天消息。
+     * 前缀颜色固定为深灰色，内容颜色由参数指定。
+     */
+    private static void sendMessage(String text, EnumChatFormatting color) {
+        if (mc.thePlayer == null) return;
+        
+        ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
+        prefix.getChatStyle().setColor(EnumChatFormatting.DARK_GRAY);
+        
+        // 这里的空格是为了防止前缀和内容粘在一起，如果语言文件里的前缀自带空格则可以去掉
+        ChatComponentText body = new ChatComponentText(text); 
+        body.getChatStyle().setColor(color);
+        
+        prefix.appendSibling(body);
+        mc.thePlayer.addChatMessage(prefix);
+    }
+
     public static void toggle() {
         if (awaitingRollbackConfirmation) {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.rollback_confirm_pending")));
+            sendMessage(LangUtil.translate("ghost.automine.error.rollback_confirm_pending"), EnumChatFormatting.RED);
             return;
         }
 
         boolean hasAnyTargets = !AutoMineTargetManager.getCurrentTargetBlocks().isEmpty() || !AutoMineTargetManager.targetBlockTypes.isEmpty();
         if (!isActive && !hasAnyTargets) {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.automine.error.no_targets_set")));
+            sendMessage(LangUtil.translate("ghost.automine.error.no_targets_set"), EnumChatFormatting.RED);
             return;
         }
 
@@ -113,7 +131,7 @@ public class AutoMineHandler {
         isPausedByGui = false;
 
         String status = isActive ? EnumChatFormatting.GREEN + LangUtil.translate("ghost.generic.enabled") : EnumChatFormatting.RED + LangUtil.translate("ghost.generic.disabled");
-        mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + LangUtil.translate("ghost.keybind.toggle.automine") + " " + status));
+        sendMessage(LangUtil.translate("ghost.keybind.toggle.automine") + " " + status, EnumChatFormatting.AQUA);
 
         if (isActive) {
             validateAndActivateMithrilOptimization();
@@ -179,7 +197,7 @@ public class AutoMineHandler {
                 reset();
                 toggle();
             }
-            mc.thePlayer.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.mode.set", mode.name())));
+            sendMessage(LangUtil.translate("ghost.automine.command.mode.set", mode.name()), EnumChatFormatting.GRAY);
         }
     }
 
@@ -213,14 +231,14 @@ public class AutoMineHandler {
 
         if ("continue".equalsIgnoreCase(action)) {
             checksTemporarilyDisabled = true;
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + LangUtil.translate("ghost.automine.feedback.continue")));
+            sendMessage(LangUtil.translate("ghost.automine.feedback.continue"), EnumChatFormatting.YELLOW);
             toggle();
         } else if ("disable".equalsIgnoreCase(action)) {
             GhostConfig.setAutoMineAntiCheatCheck(false);
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + LangUtil.translate("ghost.automine.feedback.disable")));
+            sendMessage(LangUtil.translate("ghost.automine.feedback.disable"), EnumChatFormatting.GOLD);
             toggle();
         } else {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + LangUtil.translate("ghost.automine.feedback.stop")));
+            sendMessage(LangUtil.translate("ghost.automine.feedback.stop"), EnumChatFormatting.GREEN);
         }
     }
 
@@ -278,7 +296,6 @@ public class AutoMineHandler {
 
     private void handleSwitchingTarget() {
         if (currentStrategy != null) currentStrategy.onStopMining();
-        // miningStartTime = null; // [已移除] 不再需要重置挖掘计时器
         initialTargetState = null;
 
         BlockPos veinTarget = findVeinMineTarget();
@@ -309,7 +326,7 @@ public class AutoMineHandler {
 
                 // 如果搜索时间超过了设定的超时时间
                 if (elapsed > timeoutMs) {
-                     mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] AutoMine stopped: No targets found for " + GhostConfig.AutoMine.mineTimeoutSeconds + "s."));
+                     sendMessage("AutoMine stopped: No targets found for " + GhostConfig.AutoMine.mineTimeoutSeconds + "s.", EnumChatFormatting.RED);
                      toggle();
                      return;
                 }
@@ -319,7 +336,10 @@ public class AutoMineHandler {
             }
             
             if (currentState != State.IDLE) {
-                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + LangUtil.translate("ghost.automine.status.waiting")));
+                // 只有在第一次进入等待状态时才提示，避免刷屏
+                if (waitTicks == 0) {
+                    sendMessage(LangUtil.translate("ghost.automine.status.waiting"), EnumChatFormatting.GRAY);
+                }
                 currentState = State.WAITING;
                 waitTicks = 0;
             }
@@ -354,8 +374,8 @@ public class AutoMineHandler {
             unmineableBlacklist.put(currentTarget, currentStateAtTarget.getBlock());
             if (!currentTarget.equals(lastSkippedBlock)) {
                 int requiredPower = isTitanium(currentStateAtTarget) ? 5 : 4;
-                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + String.format("[Ghost] Skipping %s, tool is too weak (BP %d < %d)",
-                        currentStateAtTarget.getBlock().getLocalizedName(), getBreakingPower(mc.thePlayer.getCurrentEquippedItem()), requiredPower)));
+                sendMessage(String.format("Skipping %s, tool is too weak (BP %d < %d)",
+                        currentStateAtTarget.getBlock().getLocalizedName(), getBreakingPower(mc.thePlayer.getCurrentEquippedItem()), requiredPower), EnumChatFormatting.GOLD);
                 lastSkippedBlock = currentTarget;
             }
             currentState = State.SWITCHING_TARGET;
@@ -372,7 +392,6 @@ public class AutoMineHandler {
                     currentTarget = crosshairTargetPos;
                     initialTargetState = mc.theWorld.getBlockState(currentTarget);
                     currentStrategy.onStartMining(currentTarget);
-                    // miningStartTime = null; // [已移除]
                     return;
                 }
             }
@@ -383,7 +402,13 @@ public class AutoMineHandler {
             lastMinedState = currentStateAtTarget;
         }
 
-        // [已移除] 删除了挖掘超时的检查 (checkTimeout)
+        if (checkTimeout(blockAtTarget)) {
+            // 如果 checkTimeout 因为超时关闭了功能，立即返回，防止下面代码重置状态
+            if (!isActive) return;
+            
+            currentState = State.SWITCHING_TARGET;
+            return;
+        }
         
         MovingObjectPosition mouseOver = mc.objectMouseOver;
         Vec3 bestPointToLookAt = (mouseOver != null && mouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK && mouseOver.getBlockPos().equals(currentTarget))
@@ -460,7 +485,10 @@ public class AutoMineHandler {
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "====================================================="));
     }
 
-    // [已移除] private boolean checkTimeout(Block blockAtTarget) { ... }
+    private boolean checkTimeout(Block blockAtTarget) {
+        // [已移除] 挖掘超时的逻辑
+        return false;
+    }
 
     private void handleMovementKeys() {
         if (!isActive || !GhostConfig.AutoMine.enableRandomMovements) {
@@ -563,18 +591,17 @@ public class AutoMineHandler {
         if (shouldEnterCleanupMode) {
             if (!isCleanupMode) {
                 isCleanupMode = true;
-                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GOLD + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_start")));
+                sendMessage(LangUtil.translate("ghost.automine.status.cleanup_start"), EnumChatFormatting.GOLD);
             }
             return findBestCandidate(titaniumCandidates, blockToTemporarilyIgnore);
         } else {
             if (isCleanupMode) {
                 isCleanupMode = false;
-                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] " + LangUtil.translate("ghost.automine.status.cleanup_complete")));
+                sendMessage(LangUtil.translate("ghost.automine.status.cleanup_complete"), EnumChatFormatting.GREEN);
             }
             
             if (mithrilCandidates.isEmpty() && !titaniumCandidates.isEmpty() && !hasAbilityToMineTitanium && !cleanupToolTooWeakNotified) {
-                String warningMessage = "[Ghost] " + LangUtil.translate("ghost.automine.warning.tool_too_weak_for_cleanup");
-                mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + warningMessage));
+                sendMessage(LangUtil.translate("ghost.automine.warning.tool_too_weak_for_cleanup"), EnumChatFormatting.YELLOW);
                 cleanupToolTooWeakNotified = true;
             }
             
@@ -736,7 +763,7 @@ public class AutoMineHandler {
         int toolSlot = findToolByBreakingPower(requiredPower, isTargetTitanium);
         
         if (toolSlot == -1) {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] " + LangUtil.translate("ghost.automine.error.no_tool_found", requiredPower)));
+            sendMessage(LangUtil.translate("ghost.automine.error.no_tool_found", requiredPower), EnumChatFormatting.RED);
             reset();
             return false;
         }
@@ -805,7 +832,7 @@ public class AutoMineHandler {
             if (hasMithrilInTargets) break;
         }
         if (!hasMithrilInTargets) {
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[Ghost] " + LangUtil.translate("ghost.automine.warning.no_mithril_targets")));
+            sendMessage(LangUtil.translate("ghost.automine.warning.no_mithril_targets"), EnumChatFormatting.YELLOW);
             return;
         }
         mithrilOptimizationIsActive = true;
