@@ -274,7 +274,9 @@ public class KeybindHandler {
         
         ChatComponentText message = new ChatComponentText("");
         ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
-        prefix.getChatStyle().setColor(EnumChatFormatting.AQUA);
+        
+        // --- 统一颜色为深灰色 ---
+        prefix.getChatStyle().setColor(EnumChatFormatting.DARK_GRAY);
         
         ChatComponentTranslation content = new ChatComponentTranslation(
             "ghost.generic.toggle.feedback",

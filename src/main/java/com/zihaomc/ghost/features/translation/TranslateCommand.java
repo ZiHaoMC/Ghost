@@ -84,7 +84,10 @@ public class TranslateCommand extends CommandBase {
                 if (result.startsWith(TranslationUtil.ERROR_PREFIX)) {
                     String errorContent = result.substring(TranslationUtil.ERROR_PREFIX.length());
                     ChatComponentText errorPrefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
-                    errorPrefix.getChatStyle().setColor(EnumChatFormatting.RED);
+                    
+                    // --- 统一颜色为深灰色 ---
+                    errorPrefix.getChatStyle().setColor(EnumChatFormatting.DARK_GRAY);
+                    
                     ChatComponentText errorText = new ChatComponentText(errorContent);
                     errorText.getChatStyle().setColor(EnumChatFormatting.RED);
                     resultMessage.appendSibling(errorPrefix).appendSibling(errorText);
