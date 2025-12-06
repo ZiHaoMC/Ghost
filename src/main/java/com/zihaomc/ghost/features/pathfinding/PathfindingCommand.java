@@ -9,7 +9,6 @@ import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 
-import java.util.Collections;
 import java.util.List;
 
 public class PathfindingCommand extends CommandBase {
@@ -60,44 +59,13 @@ public class PathfindingCommand extends CommandBase {
             return;
         }
 
-        BlockPos targetPos = new BlockPos(x, y, z);
-        BlockPos startPos = Minecraft.getMinecraft().thePlayer.getPosition();
-
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[Ghost] 正在计算路径... (目标: " + x + ", " + y + ", " + z + ")"));
-
-        Minecraft.getMinecraft().addScheduledTask(() -> {
-            try {
-                long t1 = System.currentTimeMillis();
-                
-                // 5000 迭代限制
-                List<BlockPos> path = Pathfinder.computePath(startPos, targetPos, 5000);
-
-                long t2 = System.currentTimeMillis();
-
-                if (path != null && !path.isEmpty()) {
-                    PathfindingHandler.setPath(path);
-                    String msg = String.format("[Ghost] 路径找到! 长度: %d, 耗时: %dms", path.size(), (t2 - t1));
-                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + msg));
-                    
-                    // --- 调试输出 ---
-                    // 打印前 5 个节点，看看它到底想去哪
-                    StringBuilder sb = new StringBuilder(EnumChatFormatting.GOLD + "前5步: ");
-                    for (int i = 0; i < Math.min(5, path.size()); i++) {
-                        BlockPos p = path.get(i);
-                        sb.append(String.format("[%d,%d,%d] ", p.getX(), p.getY(), p.getZ()));
-                    }
-                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(sb.toString()));
-                    
-                } else {
-                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Ghost] 寻路失败：未找到路径。"));
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                if (Minecraft.getMinecraft().thePlayer != null) {
-                    Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.DARK_RED + "[Ghost] 错误: " + e.getMessage()));
-                }
-            }
-        });
+        BlockPos globalTarget = new BlockPos(x, y, z);
+        
+        // 这里不再计算路径，而是直接设置全局目标，启动动态引擎
+        PathfindingHandler.setGlobalTarget(globalTarget);
+        
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 长途寻路已启动！目标: " + x + ", " + y + ", " + z));
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "[Ghost] 系统将分段计算路径..."));
     }
     
     @Override
