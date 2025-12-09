@@ -4,8 +4,9 @@ import com.zihaomc.ghost.features.autocraft.AutoCraftCommand;
 import com.zihaomc.ghost.features.automine.AutoMineCommand;
 import com.zihaomc.ghost.features.ghostblock.GhostBlockCommand;
 import com.zihaomc.ghost.commands.GhostConfigCommand;
-import com.zihaomc.ghost.features.pathfinding.PathfindingCommand; 
-import com.zihaomc.ghost.features.pathfinding.PathfindingHandler; 
+import com.zihaomc.ghost.features.pathfinding.PathfindingCommand;
+import com.zihaomc.ghost.features.pathfinding.PathfindingHandler;
+import com.zihaomc.ghost.features.pathfinding.PathRenderer;
 import com.zihaomc.ghost.features.translation.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
 import com.zihaomc.ghost.features.autocraft.AutoCraftHandler;
@@ -115,6 +116,7 @@ public class Ghost {
             LogUtil.debug("log.handler.registered.ghostBlockCommand");
 
             MinecraftForge.EVENT_BUS.register(new PathfindingHandler()); // 注册寻路事件
+            MinecraftForge.EVENT_BUS.register(new PathRenderer()); // 寻路渲染
             LogUtil.debug("log.handler.registered.pathfinding");
         }
     }
