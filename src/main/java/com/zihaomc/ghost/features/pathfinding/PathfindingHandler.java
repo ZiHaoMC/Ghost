@@ -13,12 +13,9 @@ import net.minecraft.util.*;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
-import java.io.File;
-import java.io.PrintWriter;
+import java.io.*;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class PathfindingHandler {
@@ -33,11 +30,18 @@ public class PathfindingHandler {
 
     // 参数
     private static final int MAX_SEGMENT_LENGTH = 60; 
-    private static final int MIN_SEGMENT_LENGTH = 2; // 允许搜寻更近的点
+    private static final int MIN_SEGMENT_LENGTH = 2;
 
-    private static final boolean DEBUG = true; // 开启调试看日志
+    private static final boolean DEBUG = true; 
+
+    // --- 缓存系统 ---
+    private static final PathCache cache = new PathCache();
 
     public static void setGlobalTarget(BlockPos target) {
+        if (globalTarget == null || !globalTarget.equals(target)) {
+            cache.clearRuntimeHistory(); 
+        }
+        
         globalTarget = target;
         currentPath = null;
         currentPathIndex = 0;
@@ -45,6 +49,7 @@ public class PathfindingHandler {
         isCalculating = false;
         
         debug(">>> 启动新寻路，目标: " + target);
+        cache.load(); 
         runTerrainAnalysis(target);
     }
 
@@ -55,6 +60,7 @@ public class PathfindingHandler {
         globalTarget = null;
         isCalculating = false;
         resetKeys();
+        cache.save();
     }
 
     public static List<BlockPos> getCurrentPath() { return currentPath; }
@@ -63,6 +69,9 @@ public class PathfindingHandler {
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || !isPathfinding) return;
+
+        BlockPos currentPos = new BlockPos(mc.thePlayer);
+        cache.markVisited(currentPos); // 记录足迹
 
         double distToTarget = mc.thePlayer.getDistanceSq(globalTarget);
         boolean verticalMatch = Math.abs(mc.thePlayer.posY - globalTarget.getY()) < 2.0;
@@ -74,7 +83,7 @@ public class PathfindingHandler {
         }
 
         if (!isCalculating) {
-            boolean needsNewPath = (currentPath == null) || (currentPathIndex >= currentPath.size() - 5);
+            boolean needsNewPath = (currentPath == null) || (currentPathIndex >= currentPath.size() - 4);
             if (needsNewPath) {
                 generateNextSegment();
             }
@@ -96,70 +105,84 @@ public class PathfindingHandler {
             try {
                 if (globalTarget == null) return;
 
-                BlockPos segmentTarget = null;
+                List<BlockPos> pathSegment = null;
                 boolean forceManualDrop = false;
 
                 double dx = globalTarget.getX() - startPos.getX();
                 double dz = globalTarget.getZ() - startPos.getZ();
                 double distToGlobalSq = dx * dx + dz * dz;
-                double distToGlobal = Math.sqrt(distToGlobalSq);
 
-                // A. 垂直下落
-                if (distToGlobalSq < 2.5) { 
-                    if (globalTarget.getY() < startPos.getY()) {
-                        BlockPos dropSpot = findNearestDropSpot(startPos);
-                        if (dropSpot != null) {
-                            segmentTarget = dropSpot;
-                            forceManualDrop = true;
-                        } else {
-                            segmentTarget = globalTarget; 
-                        }
-                    } else {
-                        segmentTarget = globalTarget;
-                    }
-                } else {
-                    // B. 分级扫描
-                    double baseAngle = Math.atan2(dz, dx);
-                    
-                    // [修复] 传入实际距离，防止“远视眼”跳过近处目标
-                    segmentTarget = scanGreedy(startPos, baseAngle, distToGlobal);
-                    
-                    if (segmentTarget == null) {
-                        debugErr("前方受阻，启动逃逸扫描...");
-                        segmentTarget = scanEscape(startPos, baseAngle);
-                    }
-                    
-                    if (segmentTarget == null && distToGlobalSq < MAX_SEGMENT_LENGTH * MAX_SEGMENT_LENGTH) {
-                        segmentTarget = globalTarget;
+                // 1. 优先检查是否可以直接垂直下落到达
+                if (distToGlobalSq < 4.0 && globalTarget.getY() < startPos.getY()) { 
+                    BlockPos dropSpot = findNearestDropSpot(startPos);
+                    if (dropSpot != null) {
+                        pathSegment = new ArrayList<>();
+                        pathSegment.add(dropSpot);
+                        forceManualDrop = true;
                     }
                 }
 
-                if (segmentTarget != null) {
-                    final BlockPos finalTarget = segmentTarget;
-                    final boolean manualDrop = forceManualDrop;
+                // 2. 如果不需要下落，开始多候选点路径计算
+                if (pathSegment == null) {
+                    double baseAngle = Math.atan2(dz, dx);
                     
-                    List<BlockPos> newSegment = null;
-                    if (!manualDrop) {
-                        newSegment = Pathfinder.computePath(startPos, segmentTarget, 8000);
+                    List<BlockPos> candidates = scanForCandidates(startPos, baseAngle, Math.sqrt(distToGlobalSq));
+                    
+                    if (candidates.isEmpty()) {
+                         if(DEBUG) debug("常规扫描无果（可能周围都被拉黑了），启动逃逸模式...");
+                         candidates = scanEscapeCandidates(startPos);
                     }
                     
-                    final List<BlockPos> calculatedPath = newSegment;
+                    // 终点永远是最高优先级，除非终点本身就在黑名单区域里
+                    if (distToGlobalSq < MAX_SEGMENT_LENGTH * MAX_SEGMENT_LENGTH) {
+                        if (!cache.isBadRegion(globalTarget)) {
+                            candidates.add(0, globalTarget);
+                        }
+                    }
 
+                    int tryCount = 0;
+                    for (BlockPos candidate : candidates) {
+                        if (candidate.equals(startPos)) continue;
+                        tryCount++;
+                        if (tryCount > 8) break;
+
+                        List<BlockPos> testPath = Pathfinder.computePath(startPos, candidate, 6000);
+                        
+                        if (testPath != null && !testPath.isEmpty()) {
+                            pathSegment = testPath;
+                            if(DEBUG) debug("选中第 " + tryCount + " 个候选点: " + candidate);
+                            break;
+                        } else {
+                            // [核心修改]：拉黑时，不再只拉黑一个点，而是拉黑所在的 3x3 区域
+                            cache.markAsBadRegion(candidate);
+                            if(DEBUG) debug("区域不可达，已拉黑周边: " + candidate);
+                        }
+
+                        if (canWalkDirectly(mc.thePlayer.getPositionVector(), candidate)) {
+                            pathSegment = new ArrayList<>();
+                            pathSegment.add(candidate);
+                            if(DEBUG) debug("直线强制模式 -> " + candidate);
+                            break;
+                        }
+                    }
+                }
+
+                if (pathSegment != null && !pathSegment.isEmpty()) {
+                    final List<BlockPos> finalPath = pathSegment;
+                    final boolean manualDrop = forceManualDrop;
                     mc.addScheduledTask(() -> {
                         if (!isPathfinding) return;
-                        
-                        if (calculatedPath != null && !calculatedPath.isEmpty()) {
-                            applyNewPath(calculatedPath);
-                        } else if (manualDrop) {
-                            List<BlockPos> manualPath = new ArrayList<>();
-                            manualPath.add(finalTarget);
-                            applyNewPath(manualPath);
+                        if (manualDrop) {
+                            List<BlockPos> p = new ArrayList<>();
+                            p.add(finalPath.get(0));
+                            applyNewPath(p);
                         } else {
-                            // A* 失败
+                            applyNewPath(finalPath);
                         }
                         isCalculating = false;
                     });
                 } else {
+                    if (DEBUG) debugErr("寻路陷入僵局，尝试随机漫步以重置状态...");
                     mc.addScheduledTask(() -> isCalculating = false);
                 }
 
@@ -170,60 +193,57 @@ public class PathfindingHandler {
         }).start();
     }
 
-    // --- 扫描逻辑 ---
+    // --- 增强的扫描逻辑 ---
 
-    private BlockPos scanGreedy(BlockPos startPos, double baseAngle, double distToGlobal) {
-        BlockPos bestCandidate = null;
-        // 如果离终点很近，阈值放宽，只要能到就行，不一定要更近
-        double threshold = (distToGlobal < 5.0) ? 0.0 : 2.0;
-        double minDistToGlobal = startPos.distanceSq(globalTarget) - threshold;
+    private List<BlockPos> scanForCandidates(BlockPos startPos, double baseAngle, double distToGlobal) {
+        List<BlockPos> candidates = new ArrayList<>();
+        Set<BlockPos> visited = new HashSet<>(); 
         
-        int[] angles = {0, 10, -10, 20, -20, 30, -30, 45, -45, 60, -60, 90, -90};
+        int[] angles = {0, 5, -5, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90, 120, -120, 135, -135};
         
         for (int angleOffset : angles) {
-            // [修复] 搜索范围限制为实际距离和最大距离之间的较小值
-            // 这样能确保我们优先检查终点附近的点
-            double searchDist = Math.min(distToGlobal + 2.0, MAX_SEGMENT_LENGTH);
+            double searchDist = Math.min(distToGlobal + 5.0, MAX_SEGMENT_LENGTH);
+            double rad = baseAngle + Math.toRadians(angleOffset);
             
-            BlockPos candidate = raycastFindValidSpot(startPos, baseAngle + Math.toRadians(angleOffset), searchDist);
+            BlockPos spot = raycastFindValidSpot(startPos, rad, searchDist);
             
-            if (candidate != null) {
-                double dist = candidate.distanceSq(globalTarget);
-                if (dist < minDistToGlobal) {
-                    minDistToGlobal = dist;
-                    bestCandidate = candidate;
-                    break; 
+            if (spot != null && !visited.contains(spot)) {
+                // 过滤逻辑升级：
+                // 1. 检查该点所在的区域是否在黑名单中 (isBadRegion)
+                if (cache.isBadRegion(spot)) continue; 
+                
+                // 2. 检查是否在最近走过的足迹附近 (hasRecentlyVisitedNear)
+                if (cache.hasRecentlyVisitedNear(spot, 4.0)) continue;
+
+                if (spot.distanceSq(startPos) > 4.0 || distToGlobal < 10.0) {
+                    candidates.add(spot);
+                    visited.add(spot);
                 }
             }
         }
-        return bestCandidate;
-    }
 
-    private BlockPos scanEscape(BlockPos startPos, double baseAngle) {
-        BlockPos bestCandidate = null;
-        double maxDistFromStart = 0.0;
+        candidates.sort(Comparator.comparingDouble(pos -> pos.distanceSq(globalTarget)));
         
-        for (int i = 0; i < 24; i++) {
-            double angle = baseAngle + Math.toRadians(i * 15);
-            // 逃逸模式还是看远一点
-            BlockPos candidate = raycastFindValidSpot(startPos, angle, MAX_SEGMENT_LENGTH);
-            
-            if (candidate != null) {
-                double distFromStart = candidate.distanceSq(startPos);
-                if (distFromStart > 25.0 && distFromStart > maxDistFromStart) {
-                    maxDistFromStart = distFromStart;
-                    bestCandidate = candidate;
-                }
-            }
+        if (candidates.size() > 10) {
+            return candidates.subList(0, 10);
         }
-        return bestCandidate;
+        return candidates;
     }
 
-    /**
-     * [核心修复] 射线检测
-     * 1. startDist: 根据情况动态调整，不再固定 50
-     * 2. step: 降低到 1.0，防止漏掉近处的点
-     */
+    private List<BlockPos> scanEscapeCandidates(BlockPos startPos) {
+        List<BlockPos> candidates = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            double angle = Math.toRadians(i * 30);
+            BlockPos spot = raycastFindValidSpot(startPos, angle, MAX_SEGMENT_LENGTH);
+            // 逃逸也要避开黑名单区域
+            if (spot != null && spot.distanceSq(startPos) > 16.0 && !cache.isBadRegion(spot)) {
+                candidates.add(spot);
+            }
+        }
+        candidates.sort((p1, p2) -> Double.compare(p2.distanceSq(startPos), p1.distanceSq(startPos)));
+        return candidates;
+    }
+
     private BlockPos raycastFindValidSpot(BlockPos start, double angleRad, double startDist) {
         double nx = Math.cos(angleRad);
         double nz = Math.sin(angleRad);
@@ -234,23 +254,25 @@ public class PathfindingHandler {
             int tx = (int) (start.getX() + nx * checkDist);
             int tz = (int) (start.getZ() + nz * checkDist);
             
-            BlockPos candidate = findSafeY(tx, tz, start.getY());
-            if (candidate != null) {
-                return candidate;
+            if (mc.theWorld.getChunkProvider().chunkExists(tx >> 4, tz >> 4)) {
+                BlockPos candidate = findSafeY(tx, tz, start.getY());
+                if (candidate != null) {
+                    return candidate;
+                }
             }
-            checkDist -= 1.0; // [修复] 步长改为 1.0，高精度扫描
+            checkDist -= 3.0; 
         }
         return null;
     }
 
     private void applyNewPath(List<BlockPos> newPath) {
         Vec3 playerPos = mc.thePlayer.getPositionVector();
-        while (newPath.size() > 1) {
+        while (!newPath.isEmpty()) {
             BlockPos node = newPath.get(0);
             Vec3 nodeCenter = new Vec3(node.getX() + 0.5, node.getY(), node.getZ() + 0.5);
             double distSq = (playerPos.xCoord - nodeCenter.xCoord) * (playerPos.xCoord - nodeCenter.xCoord) + 
                             (playerPos.zCoord - nodeCenter.zCoord) * (playerPos.zCoord - nodeCenter.zCoord);
-            if (distSq < 1.0) { 
+            if (distSq < 2.0 && newPath.size() > 1) { 
                 newPath.remove(0);
             } else {
                 break;
@@ -267,7 +289,7 @@ public class PathfindingHandler {
         if (currentPathIndex >= currentPath.size()) return;
 
         BlockPos aimTarget = currentPath.get(currentPathIndex);
-        int lookAheadDist = 6; 
+        int lookAheadDist = 4; 
         for (int i = 1; i <= lookAheadDist; i++) {
             int testIndex = currentPathIndex + i;
             if (testIndex >= currentPath.size()) break;
@@ -287,8 +309,8 @@ public class PathfindingHandler {
         }
         
         float[] rotations = RotationUtil.getRotations(targetCenter);
-        float smoothYaw = limitAngleChange(mc.thePlayer.rotationYaw, rotations[0], 40.0f); 
-        float smoothPitch = limitAngleChange(mc.thePlayer.rotationPitch, rotations[1], 40.0f);
+        float smoothYaw = limitAngleChange(mc.thePlayer.rotationYaw, rotations[0], 50.0f); 
+        float smoothPitch = limitAngleChange(mc.thePlayer.rotationPitch, rotations[1], 50.0f);
 
         mc.thePlayer.rotationYaw = smoothYaw;
         if (aimTarget.getY() < mc.thePlayer.posY - 1.0) {
@@ -317,7 +339,6 @@ public class PathfindingHandler {
             BlockPos hitPos = result.getBlockPos();
             if (!hitPos.equals(end)) {
                 if (hitPos.getY() > startPos.yCoord) {
-                    Block hitBlock = mc.theWorld.getBlockState(hitPos).getBlock();
                     if (!canWalkThrough(hitPos)) return false; 
                 }
             }
@@ -551,6 +572,91 @@ public class PathfindingHandler {
     private static void debugErr(String msg) {
         if (DEBUG && mc.thePlayer != null) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Error] " + msg));
+        }
+    }
+
+    /**
+     * 修改后的缓存逻辑：支持区域拉黑和模糊足迹
+     */
+    private static class PathCache {
+        // 存储的是 "区域ID"，一个ID代表一个 3x3x3 的空间
+        private final Set<String> blacklistedRegions = new HashSet<>();
+        private final List<BlockPos> runtimeHistory = new LinkedList<>(); // 使用List以保留顺序，方便限制大小
+        
+        private final File cacheFile;
+
+        public PathCache() {
+            this.cacheFile = new File(mc.mcDataDir, "ghost_path_blacklist.txt");
+        }
+
+        // 计算区域ID：将坐标除以3，实现网格化
+        private String getRegionKey(BlockPos pos) {
+            int rx = pos.getX() / 3;
+            int ry = pos.getY() / 3;
+            int rz = pos.getZ() / 3;
+            return rx + "," + ry + "," + rz;
+        }
+
+        public void load() {
+            blacklistedRegions.clear();
+            if (!cacheFile.exists()) return;
+            try (BufferedReader reader = new BufferedReader(new FileReader(cacheFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    blacklistedRegions.add(line.trim());
+                }
+                debug("已加载 " + blacklistedRegions.size() + " 个死胡同区域。");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public void save() {
+            try (PrintWriter writer = new PrintWriter(cacheFile)) {
+                for (String regionKey : blacklistedRegions) {
+                    writer.println(regionKey);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // 拉黑整个 3x3x3 区域
+        public void markAsBadRegion(BlockPos pos) {
+            String key = getRegionKey(pos);
+            if (blacklistedRegions.add(key)) {
+                // 每次新增死胡同也自动保存一次，防止游戏崩溃数据丢失
+                save(); 
+            }
+        }
+
+        public boolean isBadRegion(BlockPos pos) {
+            return blacklistedRegions.contains(getRegionKey(pos));
+        }
+
+        public void markVisited(BlockPos pos) {
+            // 防止列表无限膨胀
+            if (runtimeHistory.size() > 100) {
+                runtimeHistory.remove(0);
+            }
+            runtimeHistory.add(pos);
+        }
+
+        // 模糊检查：是否最近去过 radius 范围内的点
+        public boolean hasRecentlyVisitedNear(BlockPos pos, double radius) {
+            double rSq = radius * radius;
+            // 倒序检查，优先检查最近的足迹
+            for (int i = runtimeHistory.size() - 1; i >= 0; i--) {
+                BlockPos visited = runtimeHistory.get(i);
+                if (visited.distanceSq(pos) < rSq) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void clearRuntimeHistory() {
+            runtimeHistory.clear();
         }
     }
 }
