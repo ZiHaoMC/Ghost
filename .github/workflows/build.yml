@@ -27,6 +27,6 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: Ghost-Build-${{ github.sha }} # 文件名带上版本号
+        name: Ghost-Build-${{ github.ref_name }}
         path: build/libs/*.jar
         retention-days: 90
