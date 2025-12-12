@@ -7,6 +7,8 @@ out/
 
 # Gradle
 .gradle/
+# 彻底忽略 build 目录，不再保留任何 jar
+build/
 
 # Compiled class files
 *.class
@@ -22,22 +24,13 @@ Desktop.ini
 # Mac OS X
 .DS_Store
 
-# Other
+# Archives - 防止以后不小心把依赖包传上去
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
 
-# Default ignore build directory contents
-build/*
-
-# But DO NOT ignore the build/libs directory AND its .jar files
-!build/libs/
-!build/libs/*.jar
-
-# General rule to ignore .jar files elsewhere (THIS MUST COME AFTER the !build/libs/*.jar)
-# Or, be more specific if you only want to ignore jars in certain places.
-# For now, let's comment this out to ensure build/libs/*.jar is kept.
-# If you need to ignore .jar files in other locations, add more specific rules.
-# *.jar
-# *.war
-# *.ear
-# *.zip
-# *.tar.gz
-# *.rar
+# Wrapper - 保留 Gradle Wrapper 的 jar
+!gradle/wrapper/gradle-wrapper.jar
