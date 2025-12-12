@@ -1,0 +1,32 @@
+name: Auto Build Jar
+
+on:
+  push:
+    branches: [ "master" ]  # 只有推送到 master 才自动构建
+  workflow_dispatch:        # 允许在网页上手动点按钮构建
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up JDK 8
+      uses: actions/setup-java@v3
+      with:
+        java-version: '8'
+        distribution: 'temurin'
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build with Gradle
+      run: ./gradlew build
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Ghost-Build-${{ github.sha }} # 文件名带上版本号
+        path: build/libs/*.jar
+        retention-days: 90
