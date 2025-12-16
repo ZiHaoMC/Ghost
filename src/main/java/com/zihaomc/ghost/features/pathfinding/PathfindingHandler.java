@@ -11,19 +11,17 @@ import net.minecraft.util.*;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
-import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * 路径导航管理器 (重构版)
+ * 路径导航管理器 (修复增强版)
  * 
- * 修改日志：
- * 1. 修复栅栏门/围墙高度判定。
- * 2. 移除错误的粘液块原地起跳逻辑。
- * 3. 新增粘液块与水体的“高空安全坠落”判定 (Safe Fall)。
- * 4. 优化水体游泳逻辑。
- * 5. 修复 IBlockState 编译错误 (getMaterial -> getBlock().getMaterial())。
+ * 修复日志：
+ * 1. [严重] 修复 FastBinaryHeap 在移除节点时的空指针崩溃问题。
+ * 2. [功能] 恢复对角线移动，解决远距离路径规划失败的问题。
+ * 3. [性能] 搜索节点上限提升至 15000，支持更远距离。
+ * 4. [逻辑] 恢复 20 格下落检测，优化空气墙判断逻辑。
  */
 public class PathfindingHandler {
 
@@ -43,7 +41,7 @@ public class PathfindingHandler {
 
     // 配置参数
     private static final boolean DEBUG = true;
-    private static final int MAX_CALC_NODES = 5000; 
+    private static final int MAX_CALC_NODES = 15000; // 提升搜索上限
     
     // 卡死检测
     private static int stuckTimer = 0;
@@ -83,18 +81,20 @@ public class PathfindingHandler {
 
         cache.incrementDensity(new BlockPos(mc.thePlayer));
 
-        if (globalTarget != null && mc.thePlayer.getDistanceSq(globalTarget) < 2.0) {
+        if (globalTarget != null && mc.thePlayer.getDistanceSq(globalTarget) < 1.5) {
             stop();
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 已到达目的地！"));
             return;
         }
 
+        // 路径预生成逻辑
         if (!isCalculating && (currentPath.isEmpty() || currentPathIndex >= currentPath.size() - 5)) {
             if (globalTarget != null && mc.thePlayer.getDistanceSq(globalTarget) > 2.0) {
                 generateNextSegment();
             }
         }
 
+        // 卡死处理
         if (checkStuck()) {
             BlockPos head = new BlockPos(mc.thePlayer).offset(mc.thePlayer.getHorizontalFacing());
             cache.incrementDensity(head); 
@@ -120,18 +120,22 @@ public class PathfindingHandler {
 
         pathPool.execute(() -> {
             try {
+                // 核心计算入口
                 List<BlockPos> path = PathCalculator.compute(startPos, finalTarget, MAX_CALC_NODES, cache);
 
                 mc.addScheduledTask(() -> {
                     if (isPathfinding) {
                         if (path != null && !path.isEmpty()) {
-                            smoothPath(path);
-                            currentPath = new CopyOnWriteArrayList<>(path);
+                            // 使用更高级的射线平滑
+                            List<BlockPos> smoothed = smoothPathRaytrace(path);
+                            currentPath = new CopyOnWriteArrayList<>(smoothed);
                             currentPathIndex = 0;
                             resetStuckTimers();
                         } else {
-                            debugErr("无路可走！");
-                            stop();
+                            // 如果算不出路径，不要停止，可能是暂时未加载或者地形复杂
+                            // 只有连续多次失败才停止，这里仅提示
+                            debugErr("寻路失败: 无法到达目标 (过远或无路径)");
+                            // 可选：stop();
                         }
                     }
                     isCalculating = false;
@@ -139,36 +143,53 @@ public class PathfindingHandler {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                mc.addScheduledTask(() -> isCalculating = false);
+                mc.addScheduledTask(() -> {
+                    debugErr("计算线程崩溃: " + e.getMessage());
+                    isCalculating = false;
+                });
             }
         });
     }
 
-    // --- 辅助方法 ---
-
-    private static void smoothPath(List<BlockPos> path) {
-        if (mc.thePlayer == null || path.isEmpty()) return;
-        Vec3 playerPos = mc.thePlayer.getPositionVector();
-        while (!path.isEmpty()) {
-            BlockPos next = path.get(0);
-            if (playerPos.squareDistanceTo(new Vec3(next.getX()+0.5, next.getY(), next.getZ()+0.5)) < 2.0) {
-                path.remove(0);
-            } else {
-                break;
+    // --- 平滑算法 ---
+    private static List<BlockPos> smoothPathRaytrace(List<BlockPos> rawPath) {
+        if (rawPath.size() <= 2) return rawPath;
+        List<BlockPos> smoothed = new ArrayList<>();
+        smoothed.add(rawPath.get(0));
+        int currentIdx = 0;
+        while (currentIdx < rawPath.size() - 1) {
+            int bestNext = currentIdx + 1;
+            for (int i = Math.min(rawPath.size() - 1, currentIdx + 12); i > currentIdx + 1; i--) {
+                BlockPos start = rawPath.get(currentIdx);
+                BlockPos end = rawPath.get(i);
+                if (Math.abs(start.getY() - end.getY()) > 1) continue; 
+                if (canSee(start, end)) {
+                    bestNext = i;
+                    break;
+                }
             }
+            smoothed.add(rawPath.get(bestNext));
+            currentIdx = bestNext;
         }
+        return smoothed;
     }
 
+    private static boolean canSee(BlockPos start, BlockPos end) {
+        Vec3 startVec = new Vec3(start.getX() + 0.5, start.getY() + 1.0, start.getZ() + 0.5);
+        Vec3 endVec = new Vec3(end.getX() + 0.5, end.getY() + 1.0, end.getZ() + 0.5);
+        MovingObjectPosition result = mc.theWorld.rayTraceBlocks(startVec, endVec, false, true, false);
+        return result == null;
+    }
+
+    // --- 移动执行逻辑 ---
     private static void executeMovement() {
         updatePathIndex();
         if (currentPathIndex >= currentPath.size()) return;
 
         BlockPos nextNode = currentPath.get(currentPathIndex);
-        
         boolean inWater = mc.thePlayer.isInWater();
         boolean onLadder = isOnLadder();
 
-        // 视角控制
         Vec3 lookTarget;
         double jitter = (rng.nextDouble() - 0.5) * 0.1;
         double targetX = nextNode.getX() + 0.5 + jitter;
@@ -179,7 +200,7 @@ public class PathfindingHandler {
         } else {
             double yDiff = nextNode.getY() - mc.thePlayer.posY;
             if (yDiff > 0.5) {
-                lookTarget = new Vec3(targetX, nextNode.getY() + 1.2, targetZ); 
+                lookTarget = new Vec3(targetX, nextNode.getY() + 1.5, targetZ); 
             } else if (yDiff < -0.5) {
                 lookTarget = new Vec3(targetX, nextNode.getY() - 0.5, targetZ);
             } else {
@@ -188,11 +209,10 @@ public class PathfindingHandler {
         }
 
         float[] rotations = RotationUtil.getRotations(lookTarget);
-        float smoothFactor = 30f; 
+        float smoothFactor = 20f; 
         mc.thePlayer.rotationYaw = limitAngleChange(mc.thePlayer.rotationYaw, rotations[0], smoothFactor);
         mc.thePlayer.rotationPitch = limitAngleChange(mc.thePlayer.rotationPitch, rotations[1], smoothFactor);
 
-        // 移动控制
         boolean jump = false;
         boolean forward = true;
         boolean sprint = true;
@@ -202,7 +222,6 @@ public class PathfindingHandler {
             if (Math.abs(nextNode.getY() - mc.thePlayer.posY) < 0.2) forward = false;
         } else if (inWater) {
             sprint = false;
-            // 水中：如果目标在上方，按跳跃上浮
             if (nextNode.getY() > mc.thePlayer.posY || (nextNode.getY() == Math.floor(mc.thePlayer.posY) && mc.thePlayer.posY % 1 > 0.8)) {
                 jump = true;
             }
@@ -212,18 +231,16 @@ public class PathfindingHandler {
                     jump = true;
                 } else if (nextNode.getY() == Math.floor(mc.thePlayer.posY)) {
                     double dist = Math.hypot(nextNode.getX() + 0.5 - mc.thePlayer.posX, nextNode.getZ() + 0.5 - mc.thePlayer.posZ);
-                    if (dist > 1.0) {
+                    if (dist > 1.2 && !mc.thePlayer.isCollidedHorizontally) {
                          BlockPos belowNext = nextNode.down();
                          if (!PathCalculator.isSolid(belowNext) && !PathCalculator.isLadder(belowNext) && !PathCalculator.isWater(belowNext)) {
                              jump = true;
-                             sprint = true;
                          }
                     }
                 }
                 
-                // 落地缓冲：如果落在粘液块上，可以考虑按Shift停止弹跳，这里简化为继续走
                 if (mc.theWorld.getBlockState(new BlockPos(mc.thePlayer).down()).getBlock() == Blocks.slime_block) {
-                    sprint = false; // 粘液块上走路滑，不疾跑
+                    sprint = false;
                 }
 
                 if (mc.thePlayer.isCollidedHorizontally && forward) {
@@ -236,7 +253,7 @@ public class PathfindingHandler {
         }
         
         float yawDiff = Math.abs(MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw - rotations[0]));
-        if (yawDiff > 30) sprint = false; 
+        if (yawDiff > 45) sprint = false;
 
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindForward.getKeyCode(), forward);
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindJump.getKeyCode(), jump);
@@ -245,8 +262,8 @@ public class PathfindingHandler {
 
     private static void updatePathIndex() {
         Vec3 playerPos = mc.thePlayer.getPositionVector();
-        int bestIndex = currentPathIndex;
         double minDistance = Double.MAX_VALUE;
+        int bestIndex = currentPathIndex;
 
         for (int i = currentPathIndex; i < Math.min(currentPathIndex + 8, currentPath.size()); i++) {
             BlockPos node = currentPath.get(i);
@@ -261,7 +278,7 @@ public class PathfindingHandler {
         if (currentPathIndex < currentPath.size()) {
             BlockPos current = currentPath.get(currentPathIndex);
             double hDist = Math.pow(current.getX() + 0.5 - playerPos.xCoord, 2) + Math.pow(current.getZ() + 0.5 - playerPos.zCoord, 2);
-            if (hDist < 0.6 * 0.6) { 
+            if (hDist < 0.6 * 0.6 && Math.abs(current.getY() - playerPos.yCoord) < 1.5) { 
                 currentPathIndex++;
             }
         }
@@ -269,12 +286,12 @@ public class PathfindingHandler {
 
     private static boolean checkStuck() {
         stuckTimer++;
-        if (stuckTimer > 30) { 
+        if (stuckTimer > 40) {
             stuckTimer = 0;
             Vec3 currentPos = mc.thePlayer.getPositionVector();
             if (lastCheckPos != null) {
                 double moved = currentPos.distanceTo(lastCheckPos);
-                if (moved < 0.3) { 
+                if (moved < 0.2) { 
                     debugErr("卡顿检测，尝试重新规划...");
                     return true;
                 }
@@ -314,22 +331,16 @@ public class PathfindingHandler {
     public static class PathCache {
         private final ConcurrentHashMap<Long, Integer> densityMap = new ConcurrentHashMap<>();
 
-        private long getDensityKey(BlockPos pos) { 
-            long x = pos.getX() >> 1; 
-            long y = pos.getY() >> 1; 
-            long z = pos.getZ() >> 1;
-            return (x & 0x3FFFFF) | ((z & 0x3FFFFF) << 22) | ((y & 0xFF) << 44); 
+        public static long toLong(BlockPos pos) {
+            return ((long) pos.getX() & 0x7FFFFFF) | (((long) pos.getZ() & 0x7FFFFFF) << 27) | ((long) pos.getY() << 54);
         }
-
         public void load() { densityMap.clear(); } 
         public void save() { } 
-
         public void incrementDensity(BlockPos pos) { 
-            densityMap.merge(getDensityKey(pos), 1, Integer::sum); 
+            densityMap.merge(toLong(pos), 1, Integer::sum); 
         }
-        
         public double getCostPenalty(BlockPos pos) {
-            return densityMap.getOrDefault(getDensityKey(pos), 0) * 2.0; 
+            return densityMap.getOrDefault(toLong(pos), 0) * 1.5; 
         }
     }
 
@@ -338,18 +349,19 @@ public class PathfindingHandler {
     // =======================================================
     private static class PathCalculator {
         private static final double COST_WALK = 1.0;
-        private static final double COST_JUMP = 2.0; 
+        private static final double COST_JUMP = 1.2; 
         private static final double COST_FALL = 1.0; 
         private static final double COST_LADDER = 1.5;
         private static final double COST_SWIM = 2.0;
 
         public static List<BlockPos> compute(BlockPos start, BlockPos end, int limit, PathCache cache) {
-            PriorityQueue<Node> openSet = new PriorityQueue<>();
-            Map<BlockPos, Node> allNodes = new HashMap<>();
+            FastBinaryHeap openSet = new FastBinaryHeap(limit + 100);
+            Map<Long, Node> allNodes = new HashMap<>(4096);
 
+            // 使用 Euclidean 距离以获得更精确的远距离导向
             Node startNode = new Node(start, null, 0, getHeuristic(start, end));
             openSet.add(startNode);
-            allNodes.put(start, startNode);
+            allNodes.put(PathCache.toLong(start), startNode);
 
             Node bestNodeSoFar = startNode;
             double minHeuristic = startNode.hCost;
@@ -358,35 +370,40 @@ public class PathfindingHandler {
 
             while (!openSet.isEmpty() && iterations < limit) {
                 iterations++;
-                Node current = openSet.poll();
+                Node current = openSet.removeFirst();
 
                 if (current.hCost < minHeuristic) {
                     minHeuristic = current.hCost;
                     bestNodeSoFar = current;
                 }
 
-                if (current.pos.distanceSq(end) < 2.25) {
+                if (current.pos.distanceSq(end) < 2.5) {
                     return reconstructPath(current);
                 }
 
-                for (Node neighborProto : getNeighbors(current.pos)) {
-                    double penalty = (cache != null) ? cache.getCostPenalty(neighborProto.pos) : 0;
-                    double newGCost = current.gCost + neighborProto.gCost + penalty;
+                List<BlockPos> neighbors = getNeighborsPos(current.pos);
+                for (BlockPos neighborPos : neighbors) {
+                    long neighborKey = PathCache.toLong(neighborPos);
+                    
+                    double moveCost = getCost(current.pos, neighborPos);
+                    double penalty = (cache != null) ? cache.getCostPenalty(neighborPos) : 0;
+                    double newGCost = current.gCost + moveCost + penalty;
 
-                    Node existingNode = allNodes.get(neighborProto.pos);
+                    Node existingNode = allNodes.get(neighborKey);
 
-                    if (existingNode == null || newGCost < existingNode.gCost) {
-                        double hCost = getHeuristic(neighborProto.pos, end);
-                        if (existingNode == null) {
-                            Node newNode = new Node(neighborProto.pos, current, newGCost, hCost);
-                            allNodes.put(neighborProto.pos, newNode);
-                            openSet.add(newNode);
+                    if (existingNode == null) {
+                        double hCost = getHeuristic(neighborPos, end);
+                        Node newNode = new Node(neighborPos, current, newGCost, hCost);
+                        allNodes.put(neighborKey, newNode);
+                        openSet.add(newNode);
+                    } else if (newGCost < existingNode.gCost) {
+                        existingNode.parent = current;
+                        existingNode.gCost = newGCost;
+                        existingNode.fCost = newGCost + existingNode.hCost;
+                        
+                        if (openSet.contains(existingNode)) {
+                            openSet.update(existingNode);
                         } else {
-                            openSet.remove(existingNode);
-                            existingNode.parent = current;
-                            existingNode.gCost = newGCost;
-                            existingNode.hCost = hCost;
-                            existingNode.fCost = newGCost + hCost;
                             openSet.add(existingNode);
                         }
                     }
@@ -411,108 +428,87 @@ public class PathfindingHandler {
         }
 
         private static double getHeuristic(BlockPos pos, BlockPos target) {
+            // 恢复 Euclidean 距离，虽然计算稍慢，但在远距离和有对角线移动时更准确
             return Math.sqrt(pos.distanceSq(target));
         }
 
-        private static List<Node> getNeighbors(BlockPos pos) {
-            List<Node> moves = new ArrayList<>();
+        private static double getCost(BlockPos current, BlockPos next) {
+            if (next.getY() > current.getY()) return COST_JUMP;
+            if (next.getY() < current.getY()) return COST_FALL;
+            if (isLadder(next)) return COST_LADDER;
+            if (isWater(next)) return COST_SWIM;
+            return COST_WALK;
+        }
+
+        private static List<BlockPos> getNeighborsPos(BlockPos pos) {
+            List<BlockPos> moves = new ArrayList<>(8);
             IBlockState state = mc.theWorld.getBlockState(pos);
-            // 修复点1：state.getMaterial() -> state.getBlock().getMaterial()
             boolean inWater = state.getBlock().getMaterial() == Material.water;
 
-            // --- 0. 水中逻辑 (Swim) ---
             if (inWater) {
                 BlockPos up = pos.up();
-                if (canGoThrough(up)) {
-                    moves.add(new Node(up, null, COST_SWIM, 0)); // 向上游
-                }
+                if (canGoThrough(up)) moves.add(up);
                 for (EnumFacing dir : EnumFacing.HORIZONTALS) {
                     BlockPos offset = pos.offset(dir);
-                    // 水中只要目标格不是实心即可
-                    if (canGoThrough(offset)) {
-                         moves.add(new Node(offset, null, COST_SWIM, 0));
-                    }
+                    if (canGoThrough(offset)) moves.add(offset);
                 }
                 return moves;
             }
 
-            // --- 1. 陆地移动 (包含高空坠落判定) ---
+            // 直线移动
             for (EnumFacing dir : EnumFacing.HORIZONTALS) {
                 BlockPos offset = pos.offset(dir);
-
-                // 平走
                 if (isWalkable(offset)) {
-                    moves.add(new Node(offset, null, COST_WALK, 0));
+                    moves.add(offset);
                 }
-                // 跳跃 (1格)
                 else if (isWalkable(offset.up()) && canGoThrough(pos.up(2))) {
-                    moves.add(new Node(offset.up(), null, COST_JUMP, 0)); 
+                    moves.add(offset.up()); 
                 }
-                // 下落 (普通下落3格 + 粘液块/水 高空下落)
                 else {
-                    // 向下搜索最多 20 格
+                    // 下落检测 (恢复到20格，处理空气墙)
                     for (int i = 1; i <= 20; i++) {
                         BlockPos target = offset.down(i);
-                        
-                        // 检查垂直通道是否通畅（头顶不能撞到，脚下不能踩到空气墙）
-                        // 这里的检查是为了确保从 pos 走到 offset 然后掉下去的过程中没有阻挡
-                        boolean airClear = true;
-                        for(int j=0; j<i; j++) {
-                            // offset.down(j) 必须是可穿过的
-                             if (!canGoThrough(offset.down(j))) { airClear = false; break; }
-                        }
-                        if (!airClear) break; // 通道被堵死，停止向下搜索
+                        // 优化：只需检查该格是否阻挡
+                        if (!canGoThrough(offset.down(i-1))) break; 
 
                         if (isWalkable(target)) {
-                            // 找到落脚点了
-                            if (i <= 3) {
-                                // 正常下落
-                                moves.add(new Node(target, null, COST_FALL * i, 0));
-                            } else {
-                                // 高空下落 (>3格)：必须检查落点材质
-                                // isWalkable 已经确认了 target.down() 是实心的，现在检查它是什么
-                                if (isSafeHighFall(target)) {
-                                     moves.add(new Node(target, null, COST_FALL * i, 0));
-                                }
+                            if (i <= 3 || isSafeHighFall(target)) {
+                                moves.add(target);
                             }
-                            break; // 找到地面后就不用继续往下看了
+                            break; 
                         }
                     }
                 }
             }
             
-            // --- 2. 对角线移动 ---
+            // 对角线移动 (恢复，提升远距离效率)
             for (int x = -1; x <= 1; x += 2) {
                 for (int z = -1; z <= 1; z += 2) {
                     BlockPos diag = pos.add(x, 0, z);
                     if (isWalkable(diag)) {
-                        if (canGoThrough(pos.add(x, 0, 0)) && canGoThrough(pos.add(0, 0, z))) {
-                             moves.add(new Node(diag, null, COST_WALK * 1.414, 0));
+                        // 检查是否会被卡住 (对角线的两边不能都是实心)
+                        boolean b1 = canGoThrough(pos.add(x, 0, 0));
+                        boolean b2 = canGoThrough(pos.add(0, 0, z));
+                        if (b1 && b2) {
+                             moves.add(diag);
                         }
                     }
                 }
             }
 
-            // --- 3. 梯子逻辑 ---
             if (isLadder(pos)) {
-                if (isLadder(pos.up()) || isWalkable(pos.up())) moves.add(new Node(pos.up(), null, COST_LADDER, 0));
-                if (isLadder(pos.down()) || isWalkable(pos.down())) moves.add(new Node(pos.down(), null, COST_LADDER, 0));
+                if (isLadder(pos.up()) || isWalkable(pos.up())) moves.add(pos.up());
+                if (isLadder(pos.down()) || isWalkable(pos.down())) moves.add(pos.down());
             }
 
             return moves;
         }
 
         public static boolean isWalkable(BlockPos pos) { 
-            // 水中特判：如果已经在水里，视为可行走（游泳）
             if (isWater(pos)) return canGoThrough(pos);
-
-            // 1. 基础地面实体检查
             if (!isSolid(pos.down())) return false;
-            
-            // 2. 身体空间检查
             if (!canGoThrough(pos) || !canGoThrough(pos.up())) return false;
             
-            // 3. 栅栏/墙的高度修正 (修复卡门问题)
             IBlockState downState = mc.theWorld.getBlockState(pos.down());
             Block downBlock = downState.getBlock();
             boolean isHighGround = downBlock instanceof BlockFence || downBlock instanceof BlockWall || 
@@ -520,7 +516,6 @@ public class PathfindingHandler {
             if (isHighGround) {
                 if (!canGoThrough(pos.up(2))) return false;
             }
-            
             return isSafe(pos);
         }
 
@@ -536,13 +531,11 @@ public class PathfindingHandler {
             Block block = state.getBlock();
             if (block instanceof BlockFenceGate && state.getValue(BlockFenceGate.OPEN)) return true;
             if (block instanceof BlockDoor && state.getValue(BlockDoor.OPEN)) return true;
-            
             return block.getCollisionBoundingBox(mc.theWorld, pos, state) == null 
                 || block instanceof BlockAir || block instanceof BlockLiquid || block instanceof BlockLadder || block instanceof BlockVine || !block.getMaterial().isSolid();
         }
 
         public static boolean isWater(BlockPos pos) {
-            // 修复点2：getBlockState(pos).getMaterial() -> .getBlock().getMaterial()
             return mc.theWorld.getBlockState(pos).getBlock().getMaterial() == Material.water;
         }
         
@@ -551,24 +544,18 @@ public class PathfindingHandler {
             return block instanceof BlockLadder || block instanceof BlockVine; 
         }
 
-        // 普通行走安全检查
         public static boolean isSafe(BlockPos pos) { 
             Block in = mc.theWorld.getBlockState(pos).getBlock();
-            // 允许水，拒绝岩浆
             if (in.getMaterial() == Material.lava || in instanceof BlockFire) return false; 
-            
-            // 检查脚下
             Block down = mc.theWorld.getBlockState(pos.down()).getBlock();
             if (down instanceof BlockCactus) return false; 
-            
             return true;
         }
 
-        // 高空下落安全检查
         private static boolean isSafeHighFall(BlockPos pos) {
-            if (isWater(pos)) return true; // 落在水里安全
+            if (isWater(pos)) return true;
             Block blockBelow = mc.theWorld.getBlockState(pos.down()).getBlock();
-            return blockBelow == Blocks.slime_block || blockBelow == Blocks.hay_block; // 粘液块或干草块
+            return blockBelow == Blocks.slime_block || blockBelow == Blocks.hay_block;
         }
 
         private static class Node implements Comparable<Node> {
@@ -577,6 +564,7 @@ public class PathfindingHandler {
             double gCost; 
             double hCost; 
             double fCost; 
+            int heapIndex = -1;
 
             public Node(BlockPos p, Node pa, double g, double h) { 
                 pos = p; parent = pa; gCost = g; hCost = h; fCost = g + h; 
@@ -585,6 +573,100 @@ public class PathfindingHandler {
             @Override public int compareTo(Node o) { 
                 int cmp = Double.compare(this.fCost, o.fCost); 
                 return (cmp == 0) ? Double.compare(this.hCost, o.hCost) : cmp; 
+            }
+        }
+
+        // --- 修复后的 FastBinaryHeap ---
+        private static class FastBinaryHeap {
+            private final Node[] items;
+            private int currentItemCount;
+
+            public FastBinaryHeap(int maxHeapSize) {
+                items = new Node[maxHeapSize + 1];
+                currentItemCount = 0;
+            }
+
+            public void add(Node item) {
+                if (currentItemCount >= items.length - 1) return; // 防止溢出
+                currentItemCount++;
+                item.heapIndex = currentItemCount;
+                items[currentItemCount] = item;
+                sortUp(item);
+            }
+
+            public Node removeFirst() {
+                if (currentItemCount == 0) return null; // 安全性检查
+                
+                Node firstItem = items[1];
+                currentItemCount--;
+                
+                if (currentItemCount > 0) {
+                    items[1] = items[currentItemCount + 1];
+                    items[1].heapIndex = 1;
+                    items[currentItemCount + 1] = null;
+                    sortDown(items[1]);
+                } else {
+                    items[1] = null;
+                }
+                
+                return firstItem;
+            }
+
+            public void update(Node item) {
+                sortUp(item);
+            }
+
+            public boolean contains(Node item) {
+                return item.heapIndex != -1;
+            }
+
+            public boolean isEmpty() {
+                return currentItemCount == 0;
+            }
+
+            private void sortUp(Node item) {
+                int parentIndex = item.heapIndex / 2;
+                while (parentIndex > 0) {
+                    Node parentItem = items[parentIndex];
+                    if (item.compareTo(parentItem) < 0) {
+                        swap(item, parentItem);
+                    } else {
+                        break;
+                    }
+                    parentIndex = item.heapIndex / 2;
+                }
+            }
+
+            private void sortDown(Node item) {
+                while (true) {
+                    int childIndexLeft = item.heapIndex * 2;
+                    int childIndexRight = item.heapIndex * 2 + 1;
+                    int swapIndex = 0;
+
+                    if (childIndexLeft <= currentItemCount) {
+                        swapIndex = childIndexLeft;
+                        if (childIndexRight <= currentItemCount) {
+                            if (items[childIndexLeft].compareTo(items[childIndexRight]) > 0) {
+                                swapIndex = childIndexRight;
+                            }
+                        }
+                        if (item.compareTo(items[swapIndex]) > 0) {
+                            swap(item, items[swapIndex]);
+                        } else {
+                            return;
+                        }
+                    } else {
+                        return;
+                    }
+                }
+            }
+
+            private void swap(Node itemA, Node itemB) {
+                items[itemA.heapIndex] = itemB;
+                items[itemB.heapIndex] = itemA;
+                int itemAIndex = itemA.heapIndex;
+                itemA.heapIndex = itemB.heapIndex;
+                itemB.heapIndex = itemAIndex;
             }
         }
     }
