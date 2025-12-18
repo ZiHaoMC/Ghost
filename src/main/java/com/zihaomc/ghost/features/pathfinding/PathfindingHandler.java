@@ -353,6 +353,9 @@ public class PathfindingHandler {
         private static final double COST_FALL = 1.0; 
         private static final double COST_LADDER = 1.5;
         private static final double COST_SWIM = 2.0;
+        // 设置为 4.0 意味着算法认为走 1 格粘液块的负担等于走 4 格普通方块，从而强迫它绕路
+        private static final double COST_SLIME_BLOCK = 4.0;
+        private static final double COST_SOUL_SAND = 4.0;
 
         public static List<BlockPos> compute(BlockPos start, BlockPos end, int limit, PathCache cache) {
             FastBinaryHeap openSet = new FastBinaryHeap(limit + 100);
@@ -433,12 +436,37 @@ public class PathfindingHandler {
         }
 
         private static double getCost(BlockPos current, BlockPos next) {
-            if (next.getY() > current.getY()) return COST_JUMP;
-            if (next.getY() < current.getY()) return COST_FALL;
-            if (isLadder(next)) return COST_LADDER;
-            if (isWater(next)) return COST_SWIM;
-            return COST_WALK;
+            double baseCost = COST_WALK;
+
+            // 1. 基础动作判定
+            if (next.getY() > current.getY()) {
+                baseCost = COST_JUMP;
+            } else if (next.getY() < current.getY()) {
+                baseCost = COST_FALL;
+            } else if (isLadder(next)) {
+                baseCost = COST_LADDER;
+            } else if (isWater(next)) {
+                baseCost = COST_SWIM;
+            }
+
+            // 2. 地面材质判定 (避让逻辑)
+            // 我们检查 next 位置下方的方块（即玩家落脚的方块）
+            Block groundBlock = mc.theWorld.getBlockState(next.down()).getBlock();
+            
+            if (groundBlock == Blocks.slime_block) {
+                baseCost += COST_SLIME_BLOCK;
+            } else if (groundBlock == Blocks.soul_sand) {
+                baseCost += COST_SOUL_SAND;
+            }
+
+            return baseCost;
+            
+        // --- 优化建议：平滑算法可能会无视代价强行“拉直”路径 ---
+        // 为了防止 smoothPathRaytrace 把绕开的路径又强行连回去，
+        // 建议在平滑检查中也加入对减速块的判断，或者略微调低平滑距离（已在主类中）。
+        
         }
+
 
         private static List<BlockPos> getNeighborsPos(BlockPos pos) {
             List<BlockPos> moves = new ArrayList<>(8);
