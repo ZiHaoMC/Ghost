@@ -38,6 +38,7 @@ public class GhostConfig {
     public static final String CATEGORY_GUI_TWEAKS = "gui_tweaks";
     public static final String CATEGORY_AUTO_MINE = "auto_mine_feature";
     public static final String CATEGORY_AUTO_CRAFT = "auto_craft_feature";
+    public static final String CATEGORY_SKYBLOCK = "skyblock_features";
 
     // --- 用于命令的统一配置更新器 ---
     public static final Map<String, BiConsumer<String, String>> settingUpdaters = new HashMap<>();
@@ -170,6 +171,10 @@ public class GhostConfig {
         public static int autoCraftTableOpenDelayTicks;
         public static int autoCraftPickupStashWaitTicks;
     }
+    
+    public static class Skyblock {
+        public static boolean enableDungeonProfitCalc;
+    }
 
     // --- 核心方法 ---
     public static void init(File configFile) {
@@ -266,7 +271,6 @@ public class GhostConfig {
         Translation.showTranslationOnly = loadBoolean(CATEGORY_TRANSLATION, "showTranslationOnly", false, "ghost.config.comment.showTranslationOnly");
         Translation.hideTranslationKeybindTooltip = loadBoolean(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false, "ghost.config.comment.hideTranslationKeybindTooltip");
         
-        // *** 关键修复点：加载这个变量 ***
         Translation.showProviderSwitchButtons = loadBoolean(CATEGORY_TRANSLATION, "showProviderSwitchButtons", true, "ghost.config.comment.showProviderSwitchButtons");
         
         Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
@@ -324,6 +328,10 @@ public class GhostConfig {
         AutoCraft.autoCraftMenuOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftMenuOpenDelayTicks", 5, 1, 200, "ghost.config.comment.autoCraftMenuOpenDelay");
         AutoCraft.autoCraftTableOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftTableOpenDelayTicks", 8, 1, 100, "ghost.config.comment.autoCraftTableOpenDelay");
         AutoCraft.autoCraftPickupStashWaitTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftPickupStashWaitTicks", 5, 1, 200, "ghost.config.comment.autoCraftPickupStashWait");
+    }
+    
+    private static void loadSkyblockSettings() {
+        Skyblock.enableDungeonProfitCalc = loadBoolean(CATEGORY_SKYBLOCK, "enableDungeonProfitCalc", true, "ghost.config.comment.dungeonProfit");
     }
 
     // --- 加载辅助方法 ---
@@ -674,7 +682,6 @@ public class GhostConfig {
         settingUpdaters.put("translationtargetlang", (k, v) -> setTranslationTargetLang(v));
         settingUpdaters.put("translationprovider", (k, v) -> setTranslationProvider(v));
         
-        // *** 关键修复点：注册这个命令 ***
         settingUpdaters.put("showproviderswitchbuttons", (k, v) -> setShowProviderSwitchButtons(parseBoolean(v)));
         
         settingUpdaters.put("enablenotefeature", (k, v) -> setEnableNoteFeature(parseBoolean(v)));
@@ -703,7 +710,6 @@ public class GhostConfig {
         settingUpdaters.put("automineanticheatcheck", (k, v) -> setAutoMineAntiCheatCheck(parseBoolean(v)));
         settingUpdaters.put("autominevoidsafetycheck", (k, v) -> setAutoMineEnableVoidSafetyCheck(parseBoolean(v)));
         settingUpdaters.put("autominevoidsafetylimit", (k, v) -> setAutoMineVoidSafetyYLimit(parseInt(v)));
-        // 注册新命令
         settingUpdaters.put("autominestopontimeout", (k, v) -> setAutoMineStopOnTimeout(parseBoolean(v)));
         
         // --- 注册 Mithril 优化命令更新器 ---
@@ -716,6 +722,11 @@ public class GhostConfig {
         settingUpdaters.put("autocraftmenuopendelay", (k, v) -> setAutoCraftMenuOpenDelayTicks(parseInt(v)));
         settingUpdaters.put("autocrafttableopendelay", (k, v) -> setAutoCraftTableOpenDelayTicks(parseInt(v)));
         settingUpdaters.put("autocraftpickupstashwait", (k, v) -> setAutoCraftPickupStashWaitTicks(parseInt(v)));
+        
+        settingUpdaters.put("enabledungeonprofitcalc", (k, v) -> {
+             boolean val = parseBoolean(v);
+             updateAndSave(CATEGORY_SKYBLOCK, "enableDungeonProfitCalc", val, () -> Skyblock.enableDungeonProfitCalc = val);
+        });
     }
     
     // --- 解析辅助方法 ---

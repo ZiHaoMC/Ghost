@@ -118,6 +118,10 @@ public class Ghost {
             MinecraftForge.EVENT_BUS.register(new PathfindingHandler()); // 注册寻路事件
             MinecraftForge.EVENT_BUS.register(new PathRenderer()); // 寻路渲染
             LogUtil.debug("log.handler.registered.pathfinding");
+            
+            // 注册地牢结算处理器
+            MinecraftForge.EVENT_BUS.register(new com.zihaomc.ghost.features.skyblock.DungeonChestHandler());
+            LogUtil.debug("log.handler.registered.dungeonProfit");
         }
     }
 
@@ -130,6 +134,8 @@ public class Ghost {
         ItemTooltipTranslationHandler.loadCacheFromFile();
         AutoMineTargetManager.loadTargets();
         AutoCraftRecipeManager.initialize();
+        // 启动价格更新服务
+        com.zihaomc.ghost.features.skyblock.SkyblockPriceManager.startUpdating();
 
         if (event.getSide() == Side.CLIENT) {
             try {
