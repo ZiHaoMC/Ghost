@@ -110,24 +110,24 @@ public class AutoCraftHandler {
         setState(State.IDLE);
         tickCounter = 0;
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.status.disabled")));
-        LogUtil.info("[AutoCraft] Service stopped.");
+    //    LogUtil.info("[AutoCraft] Service stopped.");
     }
 
     private static void setState(State newState) {
         lastState = currentState;
         currentState = newState;
         if (lastState != newState) {
-             LogUtil.info("[AutoCraft] State change: " + lastState + " -> " + newState);
+        //     LogUtil.info("[AutoCraft] State change: " + lastState + " -> " + newState);
         }
     }
 
     private static void handleRecoverableError(String reason) {
         retryCount++;
-        LogUtil.warn("[AutoCraft] Recoverable error: " + reason + ". Retry attempt " + retryCount + "/" + MAX_RETRIES);
+    //    LogUtil.warn("[AutoCraft] Recoverable error: " + reason + ". Retry attempt " + retryCount + "/" + MAX_RETRIES);
         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[AutoCraft] An error occurred: " + reason + ". Attempting to recover... (" + retryCount + "/" + MAX_RETRIES + ")"));
 
         if (retryCount > MAX_RETRIES) {
-            LogUtil.error("[AutoCraft] Max retries reached. Stopping service.");
+        //    LogUtil.error("[AutoCraft] Max retries reached. Stopping service.");
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[AutoCraft] Recovery failed. Stopping."));
             stop();
             return;
@@ -165,7 +165,7 @@ public class AutoCraftHandler {
         }
         String message = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
         if (message.contains("You picked up") && message.contains("from your material stash")) {
-            LogUtil.info("[AutoCraft] Stash pickup confirmation message received.");
+        //    LogUtil.info("[AutoCraft] Stash pickup confirmation message received.");
             // 收到消息后，重置超时计数器，并设置短暂延迟后进入检查状态
             // 这里给予足够的时间（如3秒）让客户端同步库存
             timeoutCounter = INVENTORY_SYNC_TIMEOUT_TICKS; 
@@ -195,13 +195,13 @@ public class AutoCraftHandler {
 
                 case CHECK_SUPPLIES:
                     if (mc.currentScreen != null) { 
-                        LogUtil.info("[AutoCraft] Found open screen, closing it before checking supplies.");
+                    //    LogUtil.info("[AutoCraft] Found open screen, closing it before checking supplies.");
                         mc.thePlayer.closeScreen(); 
                         setDelay(10); 
                         break; 
                     }
                     int ingredientCount = getIngredientCount();
-                    LogUtil.info("[AutoCraft] Checking supplies for " + activeRecipe.ingredientDisplayName + ". Found " + ingredientCount + ". Required: " + activeRecipe.requiredAmount);
+                //    LogUtil.info("[AutoCraft] Checking supplies for " + activeRecipe.ingredientDisplayName + ". Found " + ingredientCount + ". Required: " + activeRecipe.requiredAmount);
                     if (ingredientCount >= activeRecipe.requiredAmount) {
                         setState(State.OPEN_MENU);
                     } else {
@@ -211,7 +211,7 @@ public class AutoCraftHandler {
                     break;
 
                 case GET_SUPPLIES:
-                    LogUtil.info("[AutoCraft] Sending /pickupstash command.");
+                //    LogUtil.info("[AutoCraft] Sending /pickupstash command.");
                     mc.thePlayer.sendChatMessage("/pickupstash");
                     timeoutCounter = STASH_MESSAGE_TIMEOUT_TICKS; // 设置超时
                     setState(State.WAITING_FOR_STASH_MESSAGE);
@@ -220,7 +220,7 @@ public class AutoCraftHandler {
                 case WAITING_FOR_STASH_MESSAGE:
                     timeoutCounter--;
                     if (timeoutCounter <= 0) {
-                        LogUtil.error("[AutoCraft] Timed out waiting for /pickupstash confirmation message.");
+                    //    LogUtil.error("[AutoCraft] Timed out waiting for /pickupstash confirmation message.");
                         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.stash_timeout")));
                         stop();
                     }
@@ -231,7 +231,7 @@ public class AutoCraftHandler {
                     int finalIngredientCount = getIngredientCount();
                     
                     if (finalIngredientCount >= activeRecipe.requiredAmount) {
-                        LogUtil.info("[AutoCraft] Supplies confirmed after sync: " + finalIngredientCount + ". Proceeding.");
+                    //    LogUtil.info("[AutoCraft] Supplies confirmed after sync: " + finalIngredientCount + ". Proceeding.");
                         setState(State.OPEN_MENU);
                     } else {
                         if (timeoutCounter > 0) {
@@ -239,12 +239,12 @@ public class AutoCraftHandler {
                             int waitInterval = 5; // 每5 ticks检查一次
                             timeoutCounter -= waitInterval;
                             setDelay(waitInterval);
-                            LogUtil.debug("[AutoCraft] Supplies insufficient (" + finalIngredientCount + "/" + activeRecipe.requiredAmount + "). Waiting for inventory sync... " + timeoutCounter + " ticks left.");
+                        //    LogUtil.debug("[AutoCraft] Supplies insufficient (" + finalIngredientCount + "/" + activeRecipe.requiredAmount + "). Waiting for inventory sync... " + timeoutCounter + " ticks left.");
                         } else {
                             // 超时了，说明真的不够
-                            LogUtil.info("[AutoCraft] Final supply check failed. Found " + finalIngredientCount + ". Required: " + activeRecipe.requiredAmount);
+                        //    LogUtil.info("[AutoCraft] Final supply check failed. Found " + finalIngredientCount + ". Required: " + activeRecipe.requiredAmount);
                             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.insufficient_after_stash", activeRecipe.ingredientDisplayName)));
-                            LogUtil.error("[AutoCraft] Insufficient " + activeRecipe.ingredientDisplayName + " after picking up stash (timed out). Stopping.");
+                        //    LogUtil.error("[AutoCraft] Insufficient " + activeRecipe.ingredientDisplayName + " after picking up stash (timed out). Stopping.");
                             stop();
                         }
                     }
@@ -253,13 +253,13 @@ public class AutoCraftHandler {
                 case OPEN_MENU:
                     ItemStack ninthSlot = mc.thePlayer.inventory.getStackInSlot(8);
                     if (ninthSlot != null && ninthSlot.getItem() == Items.nether_star) {
-                        LogUtil.info("[AutoCraft] Found Nether Star in slot 9. Using item...");
+                    //    LogUtil.info("[AutoCraft] Found Nether Star in slot 9. Using item...");
                         mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, ninthSlot);
                         setDelay(GhostConfig.AutoCraft.autoCraftMenuOpenDelayTicks);
                         setState(State.WAIT_FOR_MENU_GUI);
                     } else {
                         mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + LangUtil.translate("ghost.autocraft.error.no_nether_star")));
-                        LogUtil.error("[AutoCraft] Nether Star not found in slot 9!");
+                   //     LogUtil.error("[AutoCraft] Nether Star not found in slot 9!");
                         stop();
                     }
                     break;
@@ -274,7 +274,7 @@ public class AutoCraftHandler {
 
                 case CLICK_CRAFT_TABLE:
                     if (isCorrectGuiOpen(SKYBLOCK_MENU_NAME)) {
-                        LogUtil.info("[AutoCraft] Clicking on craft table slot: " + CRAFT_TABLE_SLOT);
+                    //    LogUtil.info("[AutoCraft] Clicking on craft table slot: " + CRAFT_TABLE_SLOT);
                         mc.playerController.windowClick(mc.thePlayer.openContainer.windowId, CRAFT_TABLE_SLOT, 0, 0, mc.thePlayer);
                         setDelay(GhostConfig.AutoCraft.autoCraftTableOpenDelayTicks);
                         setState(State.WAIT_FOR_CRAFT_GUI);
@@ -285,7 +285,7 @@ public class AutoCraftHandler {
 
                 case WAIT_FOR_CRAFT_GUI:
                      if (isCorrectGuiOpen(CRAFT_GUI_NAME)) {
-                        LogUtil.info("[AutoCraft] Craft Item GUI opened. Resetting placed ingredients count.");
+                     //   LogUtil.info("[AutoCraft] Craft Item GUI opened. Resetting placed ingredients count.");
                         ingredientsPlaced = 0; 
                         setState(State.DO_CRAFT);
                     } else {
@@ -295,11 +295,11 @@ public class AutoCraftHandler {
 
                 case DO_CRAFT:
                     if (!isCorrectGuiOpen(CRAFT_GUI_NAME)) { 
-                        LogUtil.warn("[AutoCraft] Craft GUI is not open! Returning to OPEN_MENU state.");
+                    //    LogUtil.warn("[AutoCraft] Craft GUI is not open! Returning to OPEN_MENU state.");
                         setState(State.OPEN_MENU); 
                         break; 
                     }
-                    LogUtil.info("[AutoCraft] In DO_CRAFT state. Placed: " + ingredientsPlaced + "/" + activeRecipe.requiredAmount);
+                //    LogUtil.info("[AutoCraft] In DO_CRAFT state. Placed: " + ingredientsPlaced + "/" + activeRecipe.requiredAmount);
 
                     if (ingredientsPlaced < activeRecipe.requiredAmount) {
                         int ingredientSlotId = findAnyIngredientSlot();
@@ -309,19 +309,19 @@ public class AutoCraftHandler {
                             if (stackBeforeClick != null) {
                                 slotToWatch = ingredientSlotId;
                                 stackSizeToWatch = stackBeforeClick.stackSize;
-                                LogUtil.info("[AutoCraft] Performing SHIFT+CLICK on slot " + slotToWatch + " which has " + stackSizeToWatch + " items.");
+                            //    LogUtil.info("[AutoCraft] Performing SHIFT+CLICK on slot " + slotToWatch + " which has " + stackSizeToWatch + " items.");
                                 mc.playerController.windowClick(mc.thePlayer.openContainer.windowId, slotToWatch, 0, 1, mc.thePlayer);
                                 timeoutCounter = PLACEMENT_TIMEOUT_TICKS;
                                 setState(State.WAIT_FOR_ITEM_PLACEMENT);
                             } else {
-                                LogUtil.warn("[AutoCraft] Slot " + ingredientSlotId + " became empty before click. Retrying search.");
+                            //    LogUtil.warn("[AutoCraft] Slot " + ingredientSlotId + " became empty before click. Retrying search.");
                             }
                         } else {
-                            LogUtil.warn("[AutoCraft] No " + activeRecipe.ingredientDisplayName + " found in inventory mid-craft! Returning to CHECK_SUPPLIES.");
+                        //    LogUtil.warn("[AutoCraft] No " + activeRecipe.ingredientDisplayName + " found in inventory mid-craft! Returning to CHECK_SUPPLIES.");
                             setState(State.CHECK_SUPPLIES); 
                         }
                     } else {
-                        LogUtil.info("[AutoCraft] All required ingredients placed. Moving to wait for craft result.");
+                    //    LogUtil.info("[AutoCraft] All required ingredients placed. Moving to wait for craft result.");
                         timeoutCounter = WAIT_TIMEOUT_TICKS;
                         setState(State.WAIT_FOR_CRAFT_RESULT);
                     }
@@ -341,13 +341,13 @@ public class AutoCraftHandler {
                     if (currentStack == null || currentStackSize < stackSizeToWatch) {
                         int amountPlaced = stackSizeToWatch - currentStackSize;
                         ingredientsPlaced += amountPlaced;
-                        LogUtil.info("[AutoCraft] Placement confirmed. " + amountPlaced + " items placed. Total placed: " + ingredientsPlaced);
+                    //    LogUtil.info("[AutoCraft] Placement confirmed. " + amountPlaced + " items placed. Total placed: " + ingredientsPlaced);
                         slotToWatch = -1;
                         stackSizeToWatch = -1;
                         setDelay(GhostConfig.AutoCraft.autoCraftPlacementDelayTicks);
                         setState(State.DO_CRAFT);
                     } else if (timeoutCounter <= 0) {
-                        LogUtil.error("[AutoCraft] Timed out waiting for item placement from slot " + slotToWatch + ".");
+                    //    LogUtil.error("[AutoCraft] Timed out waiting for item placement from slot " + slotToWatch + ".");
                         handleRecoverableError("Item placement timeout");
                     }
                     break;
@@ -358,7 +358,7 @@ public class AutoCraftHandler {
                     
                     ItemStack resultStack = mc.thePlayer.openContainer.getSlot(CRAFT_RESULT_SLOT).getStack();
                     if (resultStack != null && !isBarrier(resultStack)) {
-                        LogUtil.info("[AutoCraft] Crafting result detected in output slot!");
+                    //    LogUtil.info("[AutoCraft] Crafting result detected in output slot!");
                         setState(State.TAKE_PRODUCT);
                     } else if (timeoutCounter <= 0) {
                         handleRecoverableError("Crafting result timeout");
@@ -367,10 +367,10 @@ public class AutoCraftHandler {
 
                 case TAKE_PRODUCT:
                     if (!isCorrectGuiOpen(CRAFT_GUI_NAME)) { setState(State.OPEN_MENU); break; }
-                    LogUtil.info("[AutoCraft] Taking product from slot " + CRAFT_RESULT_SLOT);
+                //    LogUtil.info("[AutoCraft] Taking product from slot " + CRAFT_RESULT_SLOT);
                     mc.playerController.windowClick(mc.thePlayer.openContainer.windowId, CRAFT_RESULT_SLOT, 0, 1, mc.thePlayer);
                     retryCount = 0;
-                    LogUtil.info("[AutoCraft] Craft cycle successful. Retry counter reset.");
+                //    LogUtil.info("[AutoCraft] Craft cycle successful. Retry counter reset.");
                     timeoutCounter = WAIT_TIMEOUT_TICKS;
                     setState(State.WAIT_FOR_SLOT_CLEAR);
                     break;
@@ -381,17 +381,17 @@ public class AutoCraftHandler {
 
                     ItemStack slotContent = mc.thePlayer.openContainer.getSlot(CRAFT_RESULT_SLOT).getStack();
                     if (isBarrier(slotContent)) {
-                        LogUtil.info("[AutoCraft] Slot cleared. Checking supplies for next cycle.");
+                    //    LogUtil.info("[AutoCraft] Slot cleared. Checking supplies for next cycle.");
                         
                         // 优化：在进入下一次合成循环前立即检查材料是否充足
                         if (getIngredientCount() < activeRecipe.requiredAmount) {
-                            LogUtil.info("[AutoCraft] Insufficient supplies for next cycle. Triggering supply check.");
+                        //    LogUtil.info("[AutoCraft] Insufficient supplies for next cycle. Triggering supply check.");
                             if (mc.currentScreen != null) {
                                 mc.thePlayer.closeScreen();
                             }
                             setState(State.CHECK_SUPPLIES);
                         } else {
-                            LogUtil.info("[AutoCraft] Supplies sufficient. Pausing before next cycle.");
+                        //    LogUtil.info("[AutoCraft] Supplies sufficient. Pausing before next cycle.");
                             setDelay(GhostConfig.AutoCraft.autoCraftCycleDelayTicks);
                             ingredientsPlaced = 0;
                             setState(State.DO_CRAFT);
@@ -402,7 +402,7 @@ public class AutoCraftHandler {
                     break;
             }
         } catch (Exception e) {
-            LogUtil.error("[AutoCraft] An unexpected error occurred: " + e.getMessage());
+        //    LogUtil.error("[AutoCraft] An unexpected error occurred: " + e.getMessage());
             e.printStackTrace();
             stop();
         }
