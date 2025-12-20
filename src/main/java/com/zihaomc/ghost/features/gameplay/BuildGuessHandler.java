@@ -1,3 +1,9 @@
+
+/*
+ * Copyright (c) 2025 ZiHaoMC.
+ * Licensed under the MIT License.
+ */
+ 
 package com.zihaomc.ghost.features.gameplay;
 
 import com.zihaomc.ghost.config.GhostConfig;

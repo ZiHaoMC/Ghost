@@ -48,3 +48,14 @@
     ```bash
     ./gradlew build -x test
     ```
+    
+## ⚖️ 开源协议 (License)
+
+本项目采用多协议授权：
+
+*   **核心框架及原创功能**：[MIT License](LICENSE) (Copyright © 2025 ZiHaoMC)
+*   **AutoMine & Pathfinding 模块**：衍生自 [Baritone](https://github.com/cabaletta/baritone)，遵循 **GNU LGPL v3.0** 协议。
+*   **BuildGuess 词库**：数据来源于 [GTB-Solver](https://github.com/oycyc/GTB-Solver)，遵循 **MIT License**。
+
+详细协议文本请查阅项目根目录下的 `LICENSE` 文件。
+    
