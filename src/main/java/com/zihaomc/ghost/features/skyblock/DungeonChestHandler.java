@@ -1,5 +1,6 @@
 package com.zihaomc.ghost.features.skyblock;
 
+import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumChatFormatting;
@@ -114,13 +115,13 @@ public class DungeonChestHandler {
     private void renderProfitTooltip(ItemTooltipEvent event, double value, long cost) {
         double profit = value - cost;
         event.toolTip.add("");
-        event.toolTip.add("§6§lGhost Dungeon Helper");
-        event.toolTip.add("§7Contents Value: §e" + format(value));
-        event.toolTip.add("§7Opening Cost: §c-" + format(cost));
+        event.toolTip.add(LangUtil.translate("ghost.dungeon.helper.title"));
+        event.toolTip.add(LangUtil.translate("ghost.dungeon.value", format(value)));
+        event.toolTip.add(LangUtil.translate("ghost.dungeon.cost", format(cost)));
         
         EnumChatFormatting color = profit >= 0 ? EnumChatFormatting.GREEN : EnumChatFormatting.RED;
         String sign = profit >= 0 ? "+" : "";
-        event.toolTip.add("§fEstimated Profit: " + color + EnumChatFormatting.BOLD + sign + format(profit));
+        event.toolTip.add(LangUtil.translate("ghost.dungeon.profit", color.toString() + EnumChatFormatting.BOLD, sign + format(profit)));
     }
 
     private String format(double n) {

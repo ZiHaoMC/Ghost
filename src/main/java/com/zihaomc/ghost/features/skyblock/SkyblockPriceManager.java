@@ -42,10 +42,10 @@ public class SkyblockPriceManager {
                 for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
                     prices.put(entry.getKey(), entry.getValue().getAsDouble());
                 }
-                LogUtil.info("Skyblock LBIN Prices updated.");
+                LogUtil.info("log.info.skyblock.lbin_updated");
             }
         } catch (Exception e) {
-            LogUtil.error("LBIN Update Failed: " + e.getMessage());
+            LogUtil.error("log.error.skyblock.lbin_failed", e.getMessage());
         }
     }
 
@@ -69,10 +69,10 @@ public class SkyblockPriceManager {
                 addBazaarItem(products, "FUMING_POTATO_BOOK");
                 addBazaarItem(products, "STOCK_OF_STONKS"); // 额外示例
                 
-                LogUtil.info("Skyblock Bazaar Prices updated.");
+                LogUtil.info("log.info.skyblock.bazaar_updated");
             }
         } catch (Exception e) {
-            LogUtil.error("Bazaar Update Failed: " + e.getMessage());
+            LogUtil.error("log.error.skyblock.bazaar_failed", e.getMessage());
         }
     }
 

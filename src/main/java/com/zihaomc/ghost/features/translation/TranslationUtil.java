@@ -249,7 +249,7 @@ public class TranslationUtil {
                 return performBingTranslationInternal(sourceText);
             } catch (Exception ex) {
                 String exMsg = ex.getMessage() != null ? ex.getMessage() : "Unknown error";
-                throw new Exception("Bing failed on both domains: " + exMsg);
+                throw new Exception(LangUtil.translate("ghost.error.translation.bing.failed_domains") + ": " + exMsg);
             }
         }
     }
@@ -259,7 +259,7 @@ public class TranslationUtil {
         
         // 检查所有必要参数
         if (bingIG == null || bingKey == null || bingToken == null) {
-            throw new Exception("Token missing (IG/Key/Token null). Fetch failed?");
+            throw new Exception(LangUtil.translate("log.error.translation.bing.missing_params"));
         }
 
         String[] langs = mapLanguageCodes("BING");
@@ -291,7 +291,7 @@ public class TranslationUtil {
                         return firstObj.getAsJsonArray("translations").get(0).getAsJsonObject().get("text").getAsString();
                     }
                 }
-                throw new Exception("Empty translation array returned");
+                throw new Exception(LangUtil.translate("ghost.error.translation.bing.empty"));
             } else if (root.isJsonObject()) {
                 // 处理 Bing 返回的错误对象，避免 ClassCastException
                 JsonObject obj = root.getAsJsonObject();
@@ -341,7 +341,7 @@ public class TranslationUtil {
                     bingIID = bingIG + ".1";
                 }
             } else {
-                throw new Exception("IG param not found in HTML");
+                throw new Exception(LangUtil.translate("ghost.error.translation.bing.tokens"));
             }
             
             // 2. 提取 Key 和 Token
@@ -352,7 +352,7 @@ public class TranslationUtil {
                 bingToken = authMatcher.group(2); // 第二个组是字符串 (Token)
                 bingTokenTime = System.currentTimeMillis();
             } else {
-                throw new Exception("Key/Token params not found in HTML (Structure changed?)");
+                throw new Exception(LangUtil.translate("log.error.translation.bing.structure_changed"));
             }
         } else {
             throw new Exception("Init HTTP " + conn.getResponseCode());

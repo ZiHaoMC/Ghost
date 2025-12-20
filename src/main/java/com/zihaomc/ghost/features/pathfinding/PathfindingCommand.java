@@ -1,11 +1,12 @@
 package com.zihaomc.ghost.features.pathfinding;
 
+import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
 import net.minecraft.util.BlockPos;
-import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.Vec3;
 
@@ -17,7 +18,7 @@ public class PathfindingCommand extends CommandBase {
     public String getCommandName() { return "gpath"; }
 
     @Override
-    public String getCommandUsage(ICommandSender sender) { return "/gpath <x> <y> <z> 或 /gpath stop"; }
+    public String getCommandUsage(ICommandSender sender) { return LangUtil.translate("ghost.pathfinding.command.usage"); }
 
     @Override
     public int getRequiredPermissionLevel() { return 0; }
@@ -32,7 +33,7 @@ public class PathfindingCommand extends CommandBase {
         // 停止寻路逻辑
         if (args[0].equalsIgnoreCase("stop")) {
             PathfindingHandler.stop();
-            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[Ghost] 寻路已停止。"));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghost.pathfinding.stop.success"));
             return;
         }
 
@@ -52,9 +53,9 @@ public class PathfindingCommand extends CommandBase {
             BlockPos target = new BlockPos(x, y, z);
             PathfindingHandler.setGlobalTarget(target);
             
-            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 寻路目标已设定: " + target.getX() + ", " + target.getY() + ", " + target.getZ()));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghost.pathfinding.target.set", target.getX(), target.getY(), target.getZ()));
         } catch (NumberFormatException e) {
-            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "坐标格式错误。"));
+            sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.RED, "ghost.pathfinding.error.invalid_coord"));
         }
     }
     

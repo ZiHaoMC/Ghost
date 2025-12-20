@@ -326,7 +326,7 @@ public class AutoMineHandler {
 
                 // 如果搜索时间超过了设定的超时时间
                 if (elapsed > timeoutMs) {
-                     sendMessage("AutoMine stopped: No targets found for " + GhostConfig.AutoMine.mineTimeoutSeconds + "s.", EnumChatFormatting.RED);
+                     sendMessage(LangUtil.translate("ghost.automine.error.search_timeout", GhostConfig.AutoMine.mineTimeoutSeconds), EnumChatFormatting.RED);
                      toggle();
                      return;
                 }
@@ -374,7 +374,7 @@ public class AutoMineHandler {
             unmineableBlacklist.put(currentTarget, currentStateAtTarget.getBlock());
             if (!currentTarget.equals(lastSkippedBlock)) {
                 int requiredPower = isTitanium(currentStateAtTarget) ? 5 : 4;
-                sendMessage(String.format("Skipping %s, tool is too weak (BP %d < %d)",
+                sendMessage(LangUtil.translate("ghost.automine.warning.tool_too_weak_detailed", 
                         currentStateAtTarget.getBlock().getLocalizedName(), getBreakingPower(mc.thePlayer.getCurrentEquippedItem()), requiredPower), EnumChatFormatting.GOLD);
                 lastSkippedBlock = currentTarget;
             }

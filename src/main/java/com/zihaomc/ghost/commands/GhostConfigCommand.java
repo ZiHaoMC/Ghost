@@ -119,7 +119,7 @@ public class GhostConfigCommand extends CommandBase {
 
     private void displayCurrentSettings(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.current_settings.header")
-                .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.AQUA)));
+                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.AQUA)));
 
         sender.addChatMessage(formatSettingLine("alwaysBatchFill", GhostConfig.FillCommand.alwaysBatchFill));
         sender.addChatMessage(formatSettingLine("forcedBatchSize", GhostConfig.FillCommand.forcedBatchSize));
@@ -150,7 +150,7 @@ public class GhostConfigCommand extends CommandBase {
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
-                .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.DARK_AQUA)));
+                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.DARK_AQUA)));
     }
 
     private ChatComponentText formatSettingLine(String name, Object value) {
@@ -165,7 +165,7 @@ public class GhostConfigCommand extends CommandBase {
 
     private void sendSuccessMessage(ICommandSender sender, String setting, Object value) {
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.success", setting, value)
-                .setChatStyle(new ChatComponentText("").getChatStyle().setColor(EnumChatFormatting.GREEN)));
+                .setChatStyle(new ChatStyle().setColor(EnumChatFormatting.GREEN)));
     }
 
     private void displayHelp(ICommandSender sender) {
@@ -180,11 +180,11 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig <设置项> <值>"));
         
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.available_settings")));
-        sender.addChatMessage(new ChatComponentText(tx + "(输入 /gconfig 并按 Tab 键查看所有可用选项)"));
+        sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.tab_hint")));
 
         sender.addChatMessage(new ChatComponentText(op + "  enable... " + tx + LangUtil.translate("ghost.commands.gconfig.help.type.boolean") + " (true/false)"));
-        sender.addChatMessage(new ChatComponentText(op + "  autoMine... " + tx + "数值或模式"));
-        sender.addChatMessage(new ChatComponentText(op + "  translation... " + tx + "文本代码"));
+        sender.addChatMessage(new ChatComponentText(op + "  autoMine... " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.numeric_or_mode")));
+        sender.addChatMessage(new ChatComponentText(op + "  translation... " + tx + LangUtil.translate("ghostblock.commands.gconfig.help.type.lang_code")));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.examples.header")));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableAutoSave true"));

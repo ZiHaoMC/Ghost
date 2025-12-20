@@ -1,7 +1,7 @@
 # Ghost Mod - English Language File
 
 # ==================================
-# ===      Keybinds             ===
+# ===      Keybinds              ===
 # ==================================
 key.ghost.category=Ghost Mod
 key.ghost.toggleAutoSneak=Toggle Auto Edge Sneak
@@ -18,7 +18,7 @@ ghost.generic.enabled=§aEnabled
 ghost.generic.disabled=§cDisabled
 ghost.generic.toggle.feedback=%s is now %s
 ghost.generic.prefix.default=[Ghost] 
-ghost.generic.prefix.translation=[T]
+ghost.generic.prefix.translation=[Translate]
 commands.generic.player.unsupported=This command can only be executed by a player.
 commands.generic.block.notFound=Error: Block named '%s' not found.
 
@@ -112,10 +112,11 @@ ghost.automine.error.no_targets_set=§cError: No mining targets (coordinates or 
 ghost.automine.error.no_targets_left=§cError: No mining targets left. AutoMine stopped.
 ghost.automine.error.mining_timeout_blacklisted=§eWarning: Timed out mining block %s at (%d, %d, %d). Temporarily blacklisted.
 ghost.automine.status.waiting=§7No mineable targets currently available, waiting...
+ghost.automine.error.search_timeout=§cAutoMine stopped: No targets found within %d seconds.
 
-# Warning Message
-ghost.automine.warning.packet_mode=You have switched to Packet mining mode. This mode communicates directly with the server and is more easily detected by modern anti-cheat systems (like Watchdog) than the default simulate mode, potentially leading to a ban. Use with caution!
-ghost.automine.warning.recommend_simulate=For maximum safety, it is recommended to switch back to simulate mode using /automine mode SIMULATE.
+# Warnings and Modes
+ghost.automine.warning.packet_mode=You have switched to Packet mining mode. This mode communicates directly with the server and is more easily detected by modern anti-cheat systems (like Watchdog) than the default simulate mode. Use with caution!
+ghost.automine.warning.recommend_simulate=For maximum safety, it is recommended to switch back to SIMULATE mode using /automine mode SIMULATE.
 ghost.automine.info.simulate_safe=Switched to SIMULATE mode. This is the safest way to automine and can effectively bypass most anti-cheat detections.
 
 # Anti-Cheat Rollback Detection
@@ -127,62 +128,77 @@ ghost.automine.rollback.option.continue=[Yes, Continue (Disable detection for th
 ghost.automine.rollback.option.disable=[Don't check again (Permanently disable)]
 ghost.automine.rollback.option.stop=[No, Stay stopped]
 ghost.automine.error.rollback_confirm_pending=Please respond to the previous rollback warning in chat first.
-ghost.automine.feedback.continue=Will continue attempting to automine. Rollback detection is disabled for this game session. Please monitor game behavior closely at your own risk.
-ghost.automine.feedback.disable=Rollback detection has been permanently disabled. AutoMine will continue. You can re-enable it with /gconfig automineanticheatcheck true.
+ghost.automine.feedback.continue=Continuing AutoMine. Rollback detection is disabled for this session. Use at your own risk.
+ghost.automine.feedback.disable=Rollback detection permanently disabled. You can re-enable it with /gconfig automineanticheatcheck true.
 ghost.automine.feedback.stop=AutoMine will remain stopped.
-
 
 # ==================================
 # ===      AutoCraft             ===
 # ==================================
 ghost.autocraft.command.usage=§cUsage: /autocraft <start|stop|add|remove|list|reload>
 ghost.autocraft.command.usage.start=§cUsage: /autocraft start <recipe_name>
-ghost.autocraft.command.usage.add=§cUsage: /autocraft add <recipe_key> <material_name> <amount>\n§eHint: Replace spaces in material names with '_'. Press Tab to autocomplete item names from your inventory.\n§eAmount supports expressions (e.g., 64*5 or 64x5).
+ghost.autocraft.command.usage.add=§cUsage: /autocraft add <recipe_key> <material_name> <amount>\n§eHint: Replace spaces in material names with '_'. Press Tab to autocomplete.\n§eAmount supports expressions (e.g., 64*5 or 64x5).
 ghost.autocraft.command.usage.remove=§cUsage: /autocraft remove <recipe_key>
 ghost.autocraft.command.reload.success=§aAutoCraft recipes reloaded from file.
 ghost.autocraft.command.add.success=§aSuccessfully added recipe: %s
 ghost.autocraft.command.remove.success=§aSuccessfully removed recipe: %s
 ghost.autocraft.command.list.header=Registered AutoCraft Recipes
 ghost.autocraft.command.list.empty=§eNo AutoCraft recipes are currently registered.
-ghost.autocraft.status.enabled=§aAutoCraft enabled.
-ghost.autocraft.status.enabled_for=§aAutoCraft enabled for recipe: %s
-ghost.autocraft.status.disabled=§cAutoCraft disabled.
+ghost.autocraft.status.enabled=§aAutoCraft started.
+ghost.autocraft.status.enabled_for=§aAutoCraft started for recipe: %s
+ghost.autocraft.status.disabled=§cAutoCraft stopped.
 ghost.autocraft.status.running=§eAutoCraft is already running.
 ghost.autocraft.status.not_running=§eAutoCraft is not currently running.
-ghost.autocraft.error.insufficient_ingredient=§cInsufficient ingredient '%s', attempting to execute /pickupstash...
-ghost.autocraft.error.insufficient_after_stash=§cIngredient '%s' is still insufficient after picking from stash! AutoCraft stopped.
+ghost.autocraft.error.insufficient_ingredient=§cInsufficient material '%s', attempting /pickupstash...
+ghost.autocraft.error.insufficient_after_stash=§cMaterial '%s' is still insufficient after /pickupstash! AutoCraft stopped.
 ghost.autocraft.error.no_nether_star=§cError: Nether Star not found in slot 9! AutoCraft stopped.
-ghost.autocraft.error.recipe_not_found=§cError: Recipe named '%s' not found.
-ghost.autocraft.error.recipe_already_exists=§cError: A recipe named '%s' already exists.
-ghost.autocraft.error.invalid_amount_format=§cError: Invalid amount format '%s'. Please enter a number or an expression like '64*5'.
-ghost.autocraft.error.recipe_file_read_error=§cError reading recipe file, please check logs.
-ghost.autocraft.error.recipe_invalid_in_file=§eWarning: Recipe '%s' in the recipe file is invalid (unrecognized material name), skipped.
-ghost.autocraft.error.gui_timeout=§cError: Timed out waiting for GUI to open, AutoCraft stopped.
-ghost.autocraft.error.craft_timeout=§cError: Timed out waiting for crafting result!
-ghost.autocraft.error.pickup_timeout=§cError: Timed out waiting for result slot to clear!
-ghost.autocraft.error.stash_timeout=§cError: Timed out waiting for /pickupstash confirmation message. AutoCraft stopped.
-log.handler.registered.autoCraft=AutoCraft event handler (AutoCraftHandler) registered.
-log.command.registered.autoCraft=AutoCraftCommand (/autocraft) registered.
-
+ghost.autocraft.error.recipe_not_found=§cError: Recipe '%s' not found.
+ghost.autocraft.error.recipe_already_exists=§cError: Recipe '%s' already exists.
+ghost.autocraft.error.invalid_amount_format=§cError: Invalid amount format '%s'.
+ghost.autocraft.error.recipe_file_read_error=§cError reading recipe file, check logs.
+ghost.autocraft.error.recipe_invalid_in_file=§eWarning: Recipe '%s' in file is invalid, skipped.
+ghost.autocraft.error.gui_timeout=§cError: GUI opening timed out. AutoCraft stopped.
+ghost.autocraft.error.craft_timeout=§cError: Wait for crafting result timed out!
+ghost.autocraft.error.pickup_timeout=§cError: Wait for result slot to clear timed out!
+ghost.autocraft.error.stash_timeout=§cError: Wait for /pickupstash confirmation timed out.
 
 # ==================================
-# ===        Translation Feature   ===
+# ===         Pathfinding        ===
 # ==================================
-# Online translation command
-ghostblock.commands.gtranslate.usage=Usage: /gtranslate <text to translate...>
+ghost.pathfinding.command.usage=Usage: /gpath <x> <y> <z> or /gpath stop
+ghost.pathfinding.stop.success=Pathfinding stopped.
+ghost.pathfinding.target.set=Pathfinding target set: %d, %d, %d
+ghost.pathfinding.error.invalid_coord=Invalid coordinate format.
+ghost.pathfinding.arrival=§aArrived at destination!
+ghost.pathfinding.error.no_path=Pathfinding failed: Target unreachable (too far or no path).
+ghost.pathfinding.error.crash=Pathfinding thread crashed: %s
+ghost.pathfinding.stuck.horizontal=Horizontal stuck detected, re-pathfinding...
+ghost.pathfinding.stuck.index=Progress stuck detected, forcing re-pathfinding...
+ghost.pathfinding.log.start=>>> Global target set: %s
+ghost.pathfinding.log.stop=<<< Pathfinding stopped
+
+# ==================================
+# ===        Dungeon Helper      ===
+# ==================================
+ghost.dungeon.helper.title=§6§lGhost Dungeon Helper
+ghost.dungeon.value=§7Total Value: §e%s
+ghost.dungeon.cost=§7Open Cost: §c-%s
+ghost.dungeon.profit=§fEstimated Profit: %s%s
+
+# ==================================
+# ===        Translation Feature ===
+# ==================================
+ghostblock.commands.gtranslate.usage=Usage: /gtranslate <text...>
 ghostblock.commands.gtranslate.translating=Translating: %s
 ghostblock.commands.gtranslate.placeholder=<text to translate...>
+ghost.tooltip.switch_provider=Click to switch translation provider: %s
 
-# Chat Translation
-# Note: The two spaces after [Translate] below are intentional for better button clicking. Do not remove them!
 ghostblock.chat.button.translate= [Translate]  
 ghostblock.chat.button.translate.hover=Click to translate this message
 
-# Sign Translation
 ghost.sign.translating=Translating sign content...
 ghost.sign.prefix.translation=[Sign Translation]
 
-# Item Tooltip Translation
 ghost.tooltip.translating=Translating...
 ghost.tooltip.header=--- Translation ---
 ghost.tooltip.requestSent=Translation request sent: %s
@@ -191,17 +207,19 @@ ghost.tooltip.showAndClear=Show %s | Clear Shift+%s | Clear All Ctrl+Shift+%s
 ghost.tooltip.hideAndClear=Hide %s | Clear Shift+%s | Clear All Ctrl+Shift+%s
 ghost.tooltip.retryAndClear=Retry %s | Clear Shift+%s | Clear All Ctrl+Shift+%s
 
-# Translation Errors
-ghost.error.translation.no_api_key=Error: NiuTrans API Key not set in config. Please set it using /gconfig niuTransApiKey <your_key>.
-ghost.error.translation.api_error=Translation API Error: %s (Code: %s)
-ghost.error.translation.unknown_format=Translation failed: Unknown API response format.
-ghost.error.translation.http_error=Translation failed: HTTP Error Code %s
+ghost.error.translation.no_api_key=Error: NiuTrans API Key not set. Use /gconfig niuTransApiKey <key>.
+ghost.error.translation.api_error=API Error: %s (Code: %s)
+ghost.error.translation.unknown_format=Failed: Unknown API response format.
+ghost.error.translation.http_error=Failed: HTTP Error %s
 ghost.error.translation.internal_error=Internal error during translation: %s
-ghost.error.translation.network=Translation failed: Network or unknown error
+ghost.error.translation.network=Failed: Network or unknown error
+ghost.error.translation.api_response=%s API Error (Status: %d)
+ghost.error.translation.bing.failed_domains=Bing translation failed on all domains.
+ghost.error.translation.bing.tokens=Unable to retrieve Bing tokens.
+ghost.error.translation.bing.empty=Bing returned an empty result.
 
-# Cache related
 ghost.cache.cleared=[Ghost] Cleared translation cache for '%s'.
-ghost.cache.cleared_all=[Ghost] Cleared translation cache for all items.
+ghost.cache.cleared_all=[Ghost] Cleared all translation caches.
 
 # ==================================
 # ===         Note Feature       ===
@@ -214,327 +232,308 @@ ghost.gui.note.color.prefix=Color Code Rendering:
 ghost.gui.note.ampersand.prefix=& Color Codes: 
 
 # ==================================
-# ===      Generic Commands & Errors ===
+# ===      Generic Commands      ===
 # ==================================
 ghostblock.commands.usage=Usage: /cgb <set|fill|load|clear|cancel|resume|undo|history|help> [args...]
-ghostblock.commands.error.not_in_world=Error: You are not currently in a world.
-ghostblock.commands.error.invalid_block=Error: The specified block is invalid or does not exist.
-ghostblock.commands.error.invalid_batch_size=Error: Invalid batch size. Please enter a positive integer.
-ghostblock.commands.error.batch_size_too_small=Error: Batch size must be greater than 0.
-ghostblock.commands.error.unloaded=Error: The target coordinate is in an unloaded chunk.
-ghostblock.commands.error.out_of_world=Error: Target coordinate is outside the world boundary (Y-axis should be between 0-255).
-ghostblock.commands.error.invalid_coordinate_format=Error: Invalid coordinate format '%1$s'.
-ghostblock.commands.task.cancelled_world_change=Warning: All active tasks have been cancelled due to a world change/unload.
-ghost.commands.error.internal_sync_place_failed=Internal error: Failed to place block synchronously, please check logs. Position: %s
+ghostblock.commands.error.not_in_world=Error: You are not in a world.
+ghostblock.commands.error.invalid_block=Error: Specified block is invalid.
+ghostblock.commands.error.invalid_batch_size=Error: Invalid batch size.
+ghostblock.commands.error.batch_size_too_small=Error: Batch size must be > 0.
+ghostblock.commands.error.unloaded=Error: Target is in an unloaded chunk.
+ghostblock.commands.error.out_of_world=Error: Coordinate outside world boundary (Y 0-255).
+ghostblock.commands.error.invalid_coordinate_format=Error: Invalid format '%1$s'.
+ghostblock.commands.task.cancelled_world_change=Warning: Tasks cancelled due to world change.
+ghost.commands.error.internal_sync_place_failed=Internal Error: Sync placement failed, check logs. Pos: %s
 
-# AutoMine Mithril Optimization
-ghost.config.comment.autoMineMithrilOptimization=If enabled, activates special logic for Mithril and Titanium mining in Hypixel Skyblock.
-ghost.config.comment.autoMineTitaniumBlockIds=List of block IDs considered as Titanium in optimization mode (e.g., minecraft:stone:4).
-ghost.config.comment.autoMineMithrilCleanupThreshold=When the number of nearby Titanium ores reaches this threshold, enters cleanup mode.
-ghost.config.comment.autoMineEnableToolSwitching=If enabled, the Mod will automatically switch to the strongest/weakest tool for different targets. If disabled, it only verifies the breaking power of the currently held tool.
+# Mithril Optimization
+ghost.config.comment.autoMineMithrilOptimization=Enable special logic for Hypixel Skyblock Mithril/Titanium mining.
+ghost.config.comment.autoMineTitaniumBlockIds=Block IDs considered as Titanium (e.g., minecraft:stone:4).
+ghost.config.comment.autoMineMithrilCleanupThreshold=Titanium count threshold to trigger cleanup mode.
+ghost.config.comment.autoMineEnableToolSwitching=Automatically switch to the best tool for the target.
 
-ghost.commands.gconfig.help.setting.autoMineMithrilOptimization=Toggle Mithril/Titanium mining optimization logic.
+ghost.commands.gconfig.help.setting.autoMineMithrilOptimization=Toggle Mithril/Titanium optimization logic.
 ghost.commands.gconfig.help.setting.autoMineEnableToolSwitching=Toggle automatic tool switching in optimization mode.
-ghost.commands.gconfig.help.setting.autoMineMithrilCleanupThreshold=Set the number of Titanium required to trigger cleanup mode.
+ghost.commands.gconfig.help.setting.autoMineMithrilCleanupThreshold=Set Titanium threshold for cleanup mode.
 
-ghost.automine.error.no_tool_found=No tool with Breaking Power >= %s found in the hotbar. AutoMine stopped.
-ghost.automine.error.tool_too_weak=Your current tool (BP %s) is not strong enough for the target (requires BP %s for %s). AutoMine stopped.
-ghost.automine.warning.no_titanium_tool=Warning: No tool with Breaking Power >= 5 found in the hotbar. All Titanium will be ignored.
-ghost.automine.warning.no_mithril_targets=Mithril optimization is enabled, but no Mithril ore was found in the target list. The optimization feature will not be active for this session.
-ghost.automine.status.cleanup_start=Titanium count reached threshold, entering cleanup mode...
-ghost.automine.status.cleanup_complete=Cleanup complete, resuming Mithril priority mining.
-ghost.automine.warning.tool_too_weak_for_cleanup=Your current tool's breaking power is insufficient to clean up Titanium (requires BP 5+). All Titanium will be ignored for this session.
+ghost.automine.error.no_tool_found=No tool with Breaking Power >= %s found. AutoMine stopped.
+ghost.automine.error.tool_too_weak=Tool (BP %s) insufficient for target (needs %s for %s).
+ghost.automine.warning.no_titanium_tool=Warning: No tool with BP >= 5 found. Ignoring Titanium.
+ghost.automine.warning.no_mithril_targets=Mithril optimization enabled, but no Mithril in targets.
+ghost.automine.status.cleanup_start=Titanium threshold reached, entering cleanup mode...
+ghost.automine.status.cleanup_complete=Cleanup complete, resuming Mithril priority.
+ghost.automine.warning.tool_too_weak_for_cleanup=Tool BP insufficient for Titanium (needs BP 5+). Ignoring Titanium.
+ghost.automine.warning.tool_too_weak_detailed=§eSkipping %s, tool level too low (BP %d < %d)
 
 # ==================================
 # ===       /cgb Command Family    ===
 # ==================================
+ghostblock.commands.cghostblock.set.usage=Usage: /cgb set <x> <y> <z> <block[:meta]> [-s [file]]
+ghostblock.commands.cghostblock.set.success=Ghost block set at (%1$d, %2$d, %3$d).
+ghostblock.commands.cghostblock.set.deferred=Block will be set when chunk loads at (%1$d, %2$d, %3$d).
 
-# set command
-ghostblock.commands.cghostblock.set.usage=Usage: /cgb set <x> <y> <z> <block[:metadata]> [-s [filename]]
-ghostblock.commands.cghostblock.set.success=Successfully set a ghost block at (%1$d, %2$d, %3$d).
-ghostblock.commands.cghostblock.set.deferred=Block will be set at (%1$d, %2$d, %3$d) when the corresponding chunk loads.
-
-# fill command
-ghostblock.commands.cghostblock.fill.usage=Usage: /cgb fill <x1> <y1> <z1> <x2> <y2> <z2> <block[:metadata]> [-b [size]] [-s [filename]]
-ghostblock.commands.fill.empty_area=Warning: The specified area has no blocks to fill.
+ghostblock.commands.cghostblock.fill.usage=Usage: /cgb fill <x1> <y1> <z1> <x2> <y2> <z2> <block[:meta]> [-b [size]] [-s [file]]
+ghostblock.commands.fill.empty_area=Warning: Area has no blocks to fill.
 ghostblock.commands.cghostblock.fill.success=Successfully filled %1$d blocks.
-ghostblock.commands.fill.batch_started=Fill task #%1$d started, total %2$d blocks, processing %3$d per batch.
-ghostblock.commands.fill.progress=Fill progress: {0} {1}
-ghostblock.commands.fill.finish=✔ Fill task complete, successfully placed %1$d blocks.
-ghostblock.commands.fill.finish_single=✔ Ghost block set task complete, successfully placed %1$d blocks.
-ghostblock.commands.fill.implicit_batch_notice=Detected that the target area contains unloaded chunks, will automatically switch to batch mode.
+ghostblock.commands.fill.batch_started=Fill Task #%1$d started: %2$d blocks, %3$d per batch.
+ghostblock.commands.fill.progress=Fill Progress: {0} {1}
+ghostblock.commands.fill.finish=✔ Fill task complete, placed %1$d blocks.
+ghostblock.commands.fill.finish_single=✔ Ghost block set complete, placed %1$d blocks.
+ghostblock.commands.fill.implicit_batch_notice=Unloaded chunks detected, switching to batch mode.
 
-# load command
-ghostblock.commands.cghostblock.load.usage=Usage: /cgb load [filename...] [-b [size]]
+ghostblock.commands.cghostblock.load.usage=Usage: /cgb load [file...] [-b [size]]
 ghostblock.commands.load.ignored_internal_file=Ignored internal file: %1$s
-ghost.commands.load.using_default_file=No filename specified, attempting to load the default file...
-ghost.commands.load.error.default_is_internal=Error: The default filename points to an internal file. Please specify a file to load.
-ghost.commands.load.error.no_valid_files=Error: None of the filenames you provided are valid or they point to internal files.
-ghost.commands.load.empty_or_missing=Warning: File [%1$s] does not exist, is empty, or cannot be accessed.
-ghost.commands.load.complete=Load complete: %1$d / %2$d blocks successful.
-ghost.commands.load.failed=%1$d blocks failed to load (possibly invalid block IDs).
-ghost.commands.load.batch_started=Load task #%1$d started, total %2$d entries, processing %3$d per batch.
-ghost.commands.load.progress=Load progress: {0} {1}
-ghost.commands.load.finish=✔ Load task complete, attempted to process %1$d entries.
-ghost.commands.load.implicit_batch_notice=Detected that the load data contains coordinates in unloaded chunks, will automatically switch to batch mode.
-ghost.commands.task.sync_skipped=Warning: Sync operation skipped %1$d blocks that were in unloaded chunks or failed to process.
+ghostblock.commands.load.using_default_file=No file specified, loading default...
+ghostblock.commands.load.error.default_is_internal=Error: Default filename points to an internal file.
+ghostblock.commands.load.error.no_valid_files=Error: No valid files provided.
+ghostblock.commands.load.empty_or_missing=Warning: File [%1$s] missing or empty.
+ghostblock.commands.load.complete=Load Complete: Success %1$d / Total %2$d.
+ghostblock.commands.load.failed=%1$d blocks failed (invalid IDs).
+ghostblock.commands.load.batch_started=Load Task #%1$d started: %2$d entries, %3$d per batch.
+ghostblock.commands.load.progress=Load Progress: {0} {1}
+ghostblock.commands.load.finish=✔ Load task complete, processed %1$d entries.
+ghostblock.commands.load.implicit_batch_notice=Unloaded chunks detected, switching to batch mode.
+ghostblock.commands.task.sync_skipped=Warning: Sync skipped %1$d blocks (unloaded/failed).
 
-# clear command
-ghost.commands.clear.usage=Usage: /cgb clear <block|file> [args...]
-ghost.commands.clear.usage.file_missing_args=Usage: /cgb clear file <filename...>. Please provide at least one filename.
-ghost.commands.clear.usage.block=Usage: /cgb clear block [-b [size]] [confirm]
-ghost.commands.clear.confirm.question=Warning: Are you sure you want to permanently delete the following files? This action can be undone with /cgb undo!
-ghost.commands.clear.confirm.button=[Confirm Deletion]
-ghost.commands.clear.success=Successfully deleted file: %1$s
-ghost.commands.clear.failed=Failed to delete file: %1$s
-ghost.commands.clear.missing_files=Warning: The following files do not exist or were ignored: %1$s
-ghost.commands.clear.error.no_valid_files_to_delete=Error: No valid user files found to delete.
-ghost.commands.clear.confirm_expired=Error: File deletion confirmation request has timed out or is invalid. Please run the clear file command again.
-ghost.commands.clear.finish=✔ Clear task complete, processed %1$d blocks.
+ghostblock.commands.clear.usage=Usage: /cgb clear <block|file> [args...]
+ghostblock.commands.clear.usage.file_missing_args=Usage: /cgb clear file <file...>.
+ghostblock.commands.clear.usage.block=Usage: /cgb clear block [-b [size]] [confirm]
+ghostblock.commands.clear.confirm.question=Warning: Permanently delete these files? Use /cgb undo to revert.
+ghostblock.commands.clear.confirm.button=[Confirm Delete]
+ghostblock.commands.clear.success=Deleted file: %1$s
+ghostblock.commands.clear.failed=Failed to delete file: %1$s
+ghostblock.commands.clear.missing_files=Warning: Files missing or ignored: %1$s
+ghostblock.commands.clear.error.no_valid_files_to_delete=Error: No valid files found to delete.
+ghostblock.commands.clear.confirm_expired=Error: Confirmation timed out.
+ghostblock.commands.clear.finish=✔ Clear task complete, processed %1$d blocks.
 
-# clear block subcommand
-ghost.commands.clear.block.no_blocks=Info: There are no recorded ghost blocks to clear in the current world/dimension.
-ghost.commands.clear.block.confirm.question=Warning: Are you sure you want to clear all ghost blocks in the current world/dimension and restore them to their original state? This action can be undone with /cgb undo.
-ghost.commands.clear.block.confirm.button=[Confirm Clear All]
-ghost.commands.clear.block.success=Successfully cleared %1$d ghost blocks and restored their original state.
-ghost.commands.clear.block.partial_fail=Cleared %1$d ghost blocks, but %2$d failed to restore.
-ghost.commands.clear.block.delete_failed=Error: After clearing ghost blocks, failed to delete the auto-record file: %1$s
-ghost.commands.clear.batch_started=Clear task #%1$d started, total %2$d blocks, processing %3$d per batch.
-ghost.commands.clear.progress=Clear progress: {0} {1}
+ghostblock.commands.clear.block.no_blocks=Info: No ghost blocks found in this world.
+ghostblock.commands.clear.block.confirm.question=Warning: Clear all ghost blocks in this world? Use /cgb undo to revert.
+ghostblock.commands.clear.block.confirm.button=[Confirm Clear All]
+ghostblock.commands.clear.block.success=Cleared %1$d ghost blocks.
+ghostblock.commands.clear.block.partial_fail=Cleared %1$d blocks, %2$d failed to restore.
+ghostblock.commands.clear.block.delete_failed=Error: Failed to delete auto-record file: %1$s
+ghostblock.commands.clear.batch_started=Clear Task #%1$d started: %2$d blocks, %3$d per batch.
+ghostblock.commands.clear.progress=Clear Progress: {0} {1}
 
-# cancel command
-ghost.commands.cancel.usage=Usage: /cgb cancel <taskID1> [taskID2...]
-ghost.commands.cancel.success.multi=Successfully cancelled or paused %1$d tasks: %2$s
-ghost.commands.cancel.invalid_ids=Error: The following task IDs are invalid or do not exist: %1$s
+ghostblock.commands.cancel.usage=Usage: /cgb cancel <taskID...>
+ghostblock.commands.cancel.success.multi=Cancelled/Paused %1$d tasks: %2$s
+ghost.commands.cancel.invalid_ids=Error: Invalid task IDs: %1$s
 
-# resume command
-ghost.commands.resume.usage=Usage: /cgb resume <taskID>
-ghost.commands.resume.success=Successfully resumed task #%1$d.
-ghost.commands.resume.invalid_id=Error: Task ID %1$s is invalid, completed, or does not exist.
-ghost.commands.resume.error.already_running=Error: Task #%1$d is already running and cannot be resumed.
-ghost.commands.resume.invalid_type=Error: This type of task (%1$s) does not support resuming.
+ghostblock.commands.resume.usage=Usage: /cgb resume <taskID>
+ghostblock.commands.resume.success=Resumed Task #%1$d.
+ghostblock.commands.resume.invalid_id=Error: Task #%1$s invalid or finished.
+ghostblock.commands.resume.error.already_running=Error: Task #%1$d is already running.
+ghostblock.commands.resume.invalid_type=Error: Task type (%1$s) cannot be resumed.
 
-# undo command
-ghost.commands.undo.usage=Usage: /cgb undo [index]
-ghost.commands.undo.usage.extended=Usage: /cgb undo [history_index]
-ghost.commands.undo.empty=Error: There are no operations to undo.
-ghost.commands.undo.record_created_clear=Created an undo record for the file deletion operation.
-ghost.commands.undo.restoring_user_files=Restoring user files to their previous state...
-ghost.commands.undo.user_file_restored=Restored user file '%1$s'.
-ghost.commands.undo.error.data_file_empty=Warning: Undo data file is empty or not found, cannot restore blocks.
-ghost.commands.undo.error.data_file_empty_ghost=§eWarning: Undo data file is empty or not found, cannot restore ghost blocks.
-ghost.commands.undo.restoring_ghost_blocks=§7Restoring ghost blocks...
-ghost.commands.undo.error.restore_ghost_failed=§cError: Failed to restore ghost block at (%1$d, %2$d, %3$d): %4$s
-ghost.commands.undo.auto_file_restored=§aRestored %1$d ghost block records to the auto-clear file.
-ghost.commands.undo.success_clear=§aSuccessfully undid the clear operation, restoring %1$d ghost blocks.
-ghost.commands.undo.restoring_blocks=Restoring original blocks...
-ghost.commands.undo.error.restore_failed=Error: Failed to restore block at (%1$d, %2$d, %3$d): %4$s
-ghost.commands.undo.error_block_lookup=Error: Could not find block ID '%1$s' to restore at position (%2$d, %3$d, %4$d).
-ghost.commands.undo.success_set=Successfully undid the operation, restoring %1$d original blocks.
-ghost.commands.undo.success_clear_file=Successfully undid the file deletion operation.
-ghost.commands.undo.warning.no_files_to_restore=Undo record is valid, but there are no files to restore.
-ghost.commands.undo.invalid_index=Error: Invalid index. Please enter a number between 1 and %d.
+ghostblock.commands.undo.usage=Usage: /cgb undo [index]
+ghostblock.commands.undo.usage.extended=Usage: /cgb undo [history_index]
+ghostblock.commands.undo.empty=Error: No operations to undo.
+ghostblock.commands.undo.record_created_clear=Undo record created for file deletion.
+ghostblock.commands.undo.restoring_user_files=Restoring user files...
+ghostblock.commands.undo.user_file_restored=Restored file '%1$s'.
+ghostblock.commands.undo.error.data_file_empty=Warning: Undo data empty or missing.
+ghostblock.commands.undo.error.data_file_empty_ghost=§eWarning: Undo data missing, cannot restore ghost blocks.
+ghostblock.commands.undo.restoring_ghost_blocks=§7Restoring ghost blocks...
+ghostblock.commands.undo.error.restore_ghost_failed=§cError: Failed to restore ghost block (%1$d, %2$d, %3$d): %4$s
+ghostblock.commands.undo.auto_file_restored=§aRestored %1$d records to auto-clear file.
+ghostblock.commands.undo.success_clear=§aUndid clear operation, restored %1$d blocks.
+ghostblock.commands.undo.restoring_blocks=Restoring original blocks...
+ghostblock.commands.undo.error.restore_failed=Error: Failed to restore block (%1$d, %2$d, %3$d): %4$s
+ghostblock.commands.undo.error_block_lookup=Error: Block ID '%1$s' not found for (%2$d, %3$d, %4$d).
+ghostblock.commands.undo.success_set=Undid operation, restored %1$d original blocks.
+ghostblock.commands.undo.success_clear_file=Undid file deletion.
+ghostblock.commands.undo.warning.no_files_to_restore=Undo valid, but no files to restore.
+ghostblock.commands.undo.invalid_index=Error: Invalid index (1 to %d).
 
-# history command
-ghost.commands.history.usage=Usage: /cgb history
-ghost.commands.history.header=--- Recent Operation History (Hover for details) ---
-ghost.commands.history.usage_hint=Use /cgb undo [index] to undo a specific operation.
-ghost.commands.history.entry.format=§e[%d] §f%s
-ghost.commands.history.entry.desc.set=Set block §b%s §fat §a%s
-ghost.commands.history.entry.desc.fill=Filled §e%s §b%s §fblocks
-ghost.commands.history.entry.desc.load=Loaded §e%s §fblocks from file §a%s
-ghost.commands.history.entry.desc.clear_block=Cleared §e%s §fghost blocks
-ghost.commands.history.entry.desc.clear_file=Cleared file: §a%s
-ghost.displayname.default_file_simple=Default File
+ghostblock.commands.history.usage=Usage: /cgb history
+ghostblock.commands.history.header=--- Recent History (Hover for details) ---
+ghostblock.commands.history.usage_hint=Use /cgb undo [index] to undo.
+ghostblock.commands.history.entry.format=§e[%d] §f%s
+ghostblock.commands.history.entry.desc.set=Set §b%s §fat §a%s
+ghostblock.commands.history.entry.desc.fill=Filled §e%s §b%s §fblocks
+ghostblock.commands.history.entry.desc.load=Loaded §e%s §fblocks from §a%s
+ghostblock.commands.history.entry.desc.clear_block=Cleared §e%s §fghost blocks
+ghostblock.commands.history.entry.desc.clear_file=Cleared file: §a%s
+ghostblock.displayname.default_file_simple=Default File
 
 # /cgb help
-ghostblock.commands.cghostblock.help.header=--- GhostBlock Command Help (/cgb) ---
+ghostblock.commands.cghostblock.help.header=--- GhostBlock Help (/cgb) ---
 ghostblock.commands.cghostblock.help.description=Manage client-side ghost blocks.
-ghostblock.commands.cghostblock.help.usage.main=Main Usage: /cgb <set|fill|load|clear|...|help> [args...]
+ghostblock.commands.cghostblock.help.usage.main=Main Usage: /cgb <subcommand> [args]
 ghostblock.commands.cghostblock.help.subcommands.header=Available subcommands:
-ghostblock.commands.cghostblock.help.subcommand.help=Show this help message.
-ghostblock.commands.cghostblock.help.subcommand.set=Set a ghost block at a specified position.
+ghostblock.commands.cghostblock.help.subcommand.help=Show this message.
+ghostblock.commands.cghostblock.help.subcommand.set=Set a ghost block at a position.
 ghostblock.commands.cghostblock.help.subcommand.fill=Fill an area with ghost blocks.
-ghostblock.commands.cghostblock.help.subcommand.load=Load ghost blocks from a file.
-ghostblock.commands.cghostblock.help.subcommand.clear=Clear ghost blocks (from a file or the current world).
-ghostblock.commands.cghostblock.help.subcommand.cancel=Cancel a running background task (fill/load/clear).
+ghostblock.commands.cghostblock.help.subcommand.load=Load ghost blocks from file.
+ghostblock.commands.cghostblock.help.subcommand.clear=Clear ghost blocks.
+ghostblock.commands.cghostblock.help.subcommand.cancel=Cancel background tasks.
 ghostblock.commands.cghostblock.help.subcommand.resume=Resume a paused task.
-ghost.commands.cghostblock.help.subcommand.undo=Undo the last or a specified set/fill/load/clear operation.
-ghostblock.commands.cghostblock.help.subcommand.history=Show the history of operations that can be undone.
+ghost.commands.cghostblock.help.subcommand.undo=Undo last operation.
+ghostblock.commands.cghostblock.help.subcommand.history=Show undo history.
 ghostblock.commands.cghostblock.help.aliases=Aliases
 
 # ==================================
-# ===     Mod Config File Text     ===
+# ===     Mod Config Tooltips    ===
 # ==================================
+ghostblock.config.alwaysBatchFill.tooltip=Forces /cgb fill to always use batch mode (-b).
+ghostblock.config.forcedBatchSize.tooltip=Batch size used when alwaysBatchFill is true and no size is specified.
+ghostblock.config.enableAutoSave.tooltip=Auto-save ghost block data even without -s parameter.
+ghostblock.config.defaultSaveFileName.tooltip=Default filename for auto-save. Empty uses world identifier.
+ghostblock.config.enableChatSuggestions.tooltip=Enables suggestion buttons in chat for commands.
+ghostblock.config.enableCommandHistoryScroll.tooltip=Use Shift + Wheel/Arrows to cycle command history.
+ghostblock.config.enableAutoPlaceOnJoin.tooltip=Re-places ghost blocks underfoot on join to prevent falling.
+ghostblock.config.enableAutoSneakAtEdge.tooltip=Automatically sneaks at block edges to prevent falling.
+ghostblock.config.autoSneakForwardOffset.tooltip=Forward detection offset for auto-sneak (0.05-1.0).
+ghostblock.config.autoSneakVerticalCheckDepth.tooltip=Downward detection depth for auto-sneak (0.1-3.0).
+ghostblock.config.enablePlayerESP.tooltip=See other players through walls.
+ghostblock.config.fastPistonBreaking.tooltip=Mining pistons with pickaxes is much faster (1.16+ style).
+ghostblock.config.enableBedrockMiner.tooltip=Right-click whitelisted blocks with empty hand to break.
+ghostblock.config.niuTransApiKey.tooltip=API Key for NiuTrans translation service.
+ghostblock.config.translationSourceLang.tooltip=Source language code (e.g., auto, en, zh).
+ghostblock.config.translationTargetLang.tooltip=Target language code.
+ghost.config.comment.enableChatTranslation=Show [Translate] button after chat messages.
+ghost.config.comment.enableSignTranslation=Right-click signs to translate content.
+ghost.config.comment.enableItemTranslation=Translate item names in tooltips.
+ghost.config.comment.enableAutomaticTranslation=Auto-translate supported content without manual action.
+ghost.config.comment.autoShowCachedTranslation=Automatically show cached translations.
+ghost.config.comment.showTranslationOnly=Item tooltip only shows translated text.
+ghost.config.comment.hideTranslationKeybindTooltip=Hide "Press Key to translate" hint.
+ghost.config.comment.pingSpike=Extra ticks to wait for high latency compensation. [Default: 2]
+ghost.config.comment.headlessPiston=Enable headless piston mode (more efficient).
+ghost.config.comment.blink=Enable Blink (packet buffer) during tasks. Recommended.
+ghost.config.comment.blockWhitelist=Blocks allowed as targets.
+ghost.config.comment.dependWhitelist=Blocks allowed as support.
+ghost.config.comment.hideArrowsOnPlayers=Hide arrows stuck in other players.
+ghost.config.comment.enableNoteFeature=Enables in-game notes.
+ghost.config.comment.enableAdvancedEditing=Enables mouse selection and Ctrl+A/C/X in notes.
+ghost.config.comment.enableMarkdownRendering=Enables **bold**, *italic*, etc. in notes.
+ghost.config.comment.enableColorRendering=Enables § color codes in notes.
+ghost.config.comment.enableAmpersandColorCodes=Enables & color codes in notes.
+ghost.config.comment.fixGuiStateLossOnResize=Fix text loss on window resize.
+ghost.config.comment.disableTwitchAtKey=Disable Twitch popup on '@' key.
+ghost.config.comment.autoMineRotationSpeed=Base smooth rotation speed (deg/tick).
+ghost.config.comment.autoMineMaxReach=Max mining reach distance.
+ghost.config.comment.autoMineSearchRadius=Search radius in block type mode.
+ghost.config.comment.autoMineTimeout=Mining timeout (sec) before blacklisting.
+ghost.config.comment.autoMineServerRotation=Use server-side packets for rotation.
+ghost.config.comment.autoMineInstantRotation=Rotate instantly to target.
+ghost.config.comment.autoMineSneak=Sneak while mining.
+ghost.config.comment.autoMineEnableRandomMove=Small random movements while mining.
+ghost.config.comment.autoMineEnableRandomSpeed=Randomize rotation speed.
+ghost.config.comment.autoMineSpeedVariability=Rotation speed fluctuation range.
+ghost.config.comment.autoMinePreventDiggingDown=Do not mine blocks under feet.
+ghost.config.comment.autoMineEnableVeinMining=Prioritize adjacent same-type blocks.
+ghost.config.comment.autoMineRandomMoveInterval=Avg interval for random moves (ticks).
+ghost.config.comment.autoMineRandomMoveDuration=Duration of random moves (ticks).
+ghost.config.comment.autoMineRandomMoveIntervalVariability=Random move interval variability.
+ghost.config.comment.autoMineMiningMode=Set mining mode (SIMULATE, PACKET_NORMAL, PACKET_INSTANT).
+ghost.config.comment.autoMineVoidSafetyCheck=Prevent mining blocks leading into the void.
+ghost.config.comment.autoMineVoidSafetyYLimit=Y limit for void safety.
+ghost.config.comment.autoMineAntiCheatCheck=Detect rollbacks in packet modes.
+ghost.config.comment.autoCraftPlacementDelay=Delay between item placements (ticks).
+ghost.config.comment.autoCraftCycleDelay=Delay between crafting cycles (ticks).
+ghost.config.comment.autoCraftMenuOpenDelay=Delay waiting for SB menu (ticks).
+ghost.config.comment.autoCraftTableOpenDelay=Delay waiting for crafting table (ticks).
+ghost.config.comment.autoCraftPickupStashWait=Delay after /pickupstash (ticks).
+ghost.config.comment.showProviderSwitchButtons=Show buttons to switch translation source.
+ghost.config.comment.translationProvider=Default translation provider (GOOGLE/BING/etc).
 
-# --- Tooltips ---
-ghostblock.config.alwaysBatchFill.tooltip=Forces the /cgb fill command to always use batch mode (-b). If true, batch mode is used even if -b is not specified.
-ghostblock.config.forcedBatchSize.tooltip=The batch size to use when alwaysBatchFill is true and the user does not specify a size with /cgb fill.
-ghostblock.config.enableAutoSave.tooltip=Whether to automatically save ghost block data when using /cgb set or /cgb fill, even without the -s parameter.
-ghostblock.config.defaultSaveFileName.tooltip=The default filename to use when auto-save (enableAutoSave=true) is enabled and -s is not used. Leave empty or enter 'default' to use the current world/server identifier as the filename.
-ghostblock.config.enableChatSuggestions.tooltip=Enables suggestion buttons in chat for commands (e.g., after command success or failure).
-ghostblock.config.enableCommandHistoryScroll.tooltip=Enables scrolling through sent command history with Shift + Mouse Wheel/Arrow Keys.
-ghostblock.config.enableAutoPlaceOnJoin.tooltip=Automatically re-places previously recorded ghost blocks under the player's feet upon joining a world (if the block below is currently air). This can prevent falling when re-joining in mid-air.
-ghostblock.config.enableAutoSneakAtEdge.tooltip=Automatically sneaks when the player is about to fall off the edge of a block.
-ghostblock.config.autoSneakForwardOffset.tooltip=The forward detection offset for auto-sneak (decimal between 0.05-1.0). A smaller value means the player will get closer to the edge before auto-sneak triggers.
-ghostblock.config.autoSneakVerticalCheckDepth.tooltip=The downward detection depth for auto-sneak (decimal between 0.1-3.0). This represents how many blocks down from the player's predicted foot position to check for a supporting block.
-ghostblock.config.enablePlayerESP.tooltip=Enables Player ESP, allowing you to see other players through walls.
-ghostblock.config.fastPistonBreaking.tooltip=Enables "pickaxe insta-mines pistons" feature (simulating 1.16+). When enabled, breaking pistons with a pickaxe is significantly faster.
-ghostblock.config.enableBedrockMiner.tooltip=Enables the Bedrock Miner feature. When enabled, right-click a whitelisted block with an empty hand to activate/deactivate.
-ghostblock.config.niuTransApiKey.tooltip=Your NiuTrans API Key. Get one from their official website.
-ghostblock.config.translationSourceLang.tooltip=Source language code for translation (e.g., auto, en, zh, ja). 'auto' means auto-detect.
-ghostblock.config.translationTargetLang.tooltip=Target language code for translation (e.g., zh, en).
-ghost.config.comment.enableChatTranslation=If enabled, a [Translate] button will appear after other players' chat messages.
-ghost.config.comment.enableSignTranslation=If enabled, right-clicking a sign will attempt to translate its content.
-ghost.config.comment.enableItemTranslation=If enabled, hovering over an item will attempt to translate its name.
-ghost.config.comment.enableAutomaticTranslation=If enabled, automatically translates all supported content (chat, items) without manual action.
-ghost.config.comment.autoShowCachedTranslation=If enabled, cached translations will be shown automatically without pressing the translate key.
-ghost.config.comment.showTranslationOnly=If enabled, the item tooltip will only show the translated text, replacing the original.
-ghost.config.comment.hideTranslationKeybindTooltip=Hides the translation keybind hint in item tooltips (e.g., "Press T to translate").
-ghost.config.comment.pingSpike=Extra ticks to wait to compensate for high latency. [Default: 2]
-ghost.config.comment.headlessPiston=Enable headless piston mode (more efficient). [Default: true]
-ghost.config.comment.blink=Enable Blink (packet buffering) while performing tasks. Highly recommended. [Default: true]
-ghost.config.comment.blockWhitelist=List of blocks that can be targeted (e.g., 'minecraft:bedrock').
-ghost.config.comment.dependWhitelist=List of blocks that can be used as support/dependencies (e.g., 'minecraft:slime_block').
-ghost.config.comment.hideArrowsOnPlayers=If enabled, hides arrows stuck in other players, but keeps those on yourself.
-ghost.config.comment.enableNoteFeature=Enables the in-game note feature. When enabled, a keybind can be used to open an interface for taking notes at any time.
-ghost.config.comment.enableAdvancedEditing=Enables advanced editing features in the note interface (like mouse selection, Ctrl+A/C/X).
-ghost.config.comment.enableMarkdownRendering=Enables Markdown rendering in the note interface (e.g., **bold**, *italic*, and ~~strikethrough~~).
-ghost.config.comment.enableColorRendering=Enables color code rendering in the note interface (e.g., §bBlue).
-ghost.config.comment.enableAmpersandColorCodes=Enables '&' color codes in the note interface. If enabled, '&c' can be used instead of '§c' to set colors.
-ghost.config.comment.fixGuiStateLossOnResize=Fixes the issue of input field text being lost on fullscreen toggle or window resize. [Default: true]
-ghost.config.comment.disableTwitchAtKey=Disables the Twitch stream window from popping up when the '@' key is pressed in chat.
-ghost.config.comment.autoMineRotationSpeed=Base smooth rotation speed for AutoMine (degrees/tick). Higher values mean faster turning. (Only effective when 'instantRotation' is false)
-ghost.config.comment.autoMineMaxReach=The maximum distance (in blocks) at which AutoMine can identify and mine blocks.
-ghost.config.comment.autoMineSearchRadius=The search radius for AutoMine in 'block type' mode.
-ghost.config.comment.autoMineTimeout=AutoMine timeout in seconds. If mining a block takes longer than this, it will be temporarily blacklisted.
-ghost.config.comment.autoMineServerRotation=Whether to use server-side packets for view rotation (may bypass some anti-cheats).
-ghost.config.comment.autoMineInstantRotation=Whether to rotate to the target instantly instead of smoothly. Disable this for more player-like smooth rotations.
-ghost.config.comment.autoMineSneak=Whether to stay in sneak mode while mining.
-ghost.config.comment.autoMineEnableRandomMove=Whether to make slight random movements while mining to simulate player behavior.
-ghost.config.comment.autoMineEnableRandomSpeed=Enables random rotation speed to make view movements more human-like.
-ghost.config.comment.autoMineSpeedVariability=The fluctuation range for random rotation speed (degrees/tick). The actual speed will vary between [speed - variability, speed + variability].
-ghost.config.comment.autoMinePreventDiggingDown=Prevents AutoMine from digging the block under the player's feet and below, avoiding getting stuck in a hole.
-ghost.config.comment.autoMineEnableVeinMining=Enables vein mining. After mining a target block, prioritizes mining adjacent blocks of the same type.
-ghost.config.comment.autoMineRandomMoveInterval=Average interval for random movements (in ticks, 20 ticks = 1 second).
-ghost.config.comment.autoMineRandomMoveDuration=Duration of each random movement (in ticks).
-ghost.config.comment.autoMineRandomMoveIntervalVariability=Fluctuation range for the random move interval (in ticks). The final interval will be between [interval - variability, interval + variability].
-ghost.config.comment.autoMineMiningMode=Sets the AutoMine mode. SIMULATE: Simulates player key presses; PACKET_NORMAL: Sends mining packets and waits for the block to disappear; PACKET_INSTANT: Sends packets and immediately switches to the next target.
-ghost.config.comment.autoMineVoidSafetyCheck=Enables the void safety check for AutoMine to prevent falling into the void.
-ghost.config.comment.autoMineVoidSafetyYLimit=The Y-level limit for the void safety check. AutoMine will not mine blocks below this Y-level.
-ghost.config.comment.autoMineAntiCheatCheck=Enables anti-cheat rollback detection in AutoMine packet modes. Enabled by default for increased safety.
-ghost.config.comment.autoCraftPlacementDelay=The delay (in game ticks, 20 ticks=1s) after placing a single item and confirming its success during auto-crafting. Used to prevent server rate-limiting.
-ghost.config.comment.autoCraftCycleDelay=The delay (in game ticks, 20 ticks=1s) after completing one full crafting cycle (taking the result) before starting the next.
-ghost.config.comment.autoCraftMenuOpenDelay=The delay (in game ticks) to wait for the SkyBlock menu to load after clicking the Nether Star.
-ghost.config.comment.autoCraftTableOpenDelay=The delay (in game ticks) to wait for the crafting table GUI to load after clicking its icon.
-ghost.config.comment.autoCraftPickupStashWait=The delay (in game ticks) to wait for items to enter the inventory after executing the /pickupstash command.
-
 # ==================================
-# ===     /gconfig Command Text   ===
+# ===     /gconfig Commands      ===
 # ==================================
-ghostblock.commands.gconfig.usage.extended=Usage: /gconfig [option_name] [value] or /gconfig or /gconfig help
-ghostblock.commands.gconfig.error.invalid_setting.all_options=Error: Unknown config option '%1$s'.
-ghostblock.commands.gconfig.error.invalid_value.boolean=Error: Invalid boolean value '%1$s'. Please enter 'true' or 'false'.
-ghostblock.commands.gconfig.error.invalid_value.integer=Error: Invalid integer value '%1$s'.
-ghost.commands.gconfig.error.invalid_value.integer.positive=Error: Invalid integer value '%1$s'. Please enter an integer greater than 0.
-ghostblock.commands.gconfig.error.invalid_value.double=Error: Invalid float value '%1$s'.
-ghostblock.commands.gconfig.error.invalid_value.double.range=Error: Invalid float value '%1$s'. Please enter a decimal between %2$.2f and %3$.2f.
-ghostblock.commands.gconfig.error.generic_set_failed=Error: Failed to set config option '%1$s'.
-ghostblock.commands.gconfig.success=Successfully set config option '%1$s' to '%2$s'.
-ghostblock.commands.gconfig.success.key_set=API Key has been set. It will not be fully displayed for security reasons.
-ghostblock.commands.gconfig.success.key_cleared=API Key has been cleared.
+ghostblock.commands.gconfig.usage.extended=Usage: /gconfig [option] [value] or /gconfig help
+ghostblock.commands.gconfig.error.invalid_setting.all_options=Error: Unknown option '%1$s'.
+ghostblock.commands.gconfig.error.invalid_value.boolean=Error: Invalid boolean '%1$s' (true/false).
+ghostblock.commands.gconfig.error.invalid_value.integer=Error: Invalid integer '%1$s'.
+ghost.commands.gconfig.error.invalid_value.integer.positive=Error: Must be a positive integer.
+ghostblock.commands.gconfig.error.invalid_value.double=Error: Invalid decimal '%1$s'.
+ghostblock.commands.gconfig.error.invalid_value.double.range=Error: Value '%1$s' out of range (%2$.2f - %3$.2f).
+ghostblock.commands.gconfig.error.generic_set_failed=Error: Failed to set '%1$s'.
+ghostblock.commands.gconfig.success=Set '%1$s' to '%2$s'.
+ghostblock.commands.gconfig.success.key_set=API Key set (hidden for security).
+ghostblock.commands.gconfig.success.key_cleared=API Key cleared.
 ghostblock.commands.gconfig.current_settings.header=--- Current Ghost Mod Config ---
-ghostblock.commands.gconfig.current_settings.default_filename_placeholder=(Uses world identifier)
+ghostblock.commands.gconfig.current_settings.default_filename_placeholder=(Uses world ID)
 ghostblock.commands.gconfig.not_set=(Not Set)
-ghostblock.commands.gconfig.togglesuggest.enabled=Chat command suggestion feature is enabled.
-ghostblock.commands.gconfig.togglesuggest.disabled=Chat command suggestion feature is disabled.
-ghostblock.commands.gconfig.hint_toggle_suggest=Hint: Use '/gconfig toggleSuggest' to quickly toggle the suggestion feature.
-ghostblock.commands.gconfig.extra_usage_toggle=(or use '/gconfig toggleSuggest' to quickly toggle the suggestion feature)
-ghostblock.commands.gconfig.fastpiston_autogen=Hint: "Pickaxe insta-mines pistons" has been auto-enabled as a dependency.
+ghostblock.commands.gconfig.togglesuggest.enabled=Suggestions enabled.
+ghostblock.commands.gconfig.togglesuggest.disabled=Suggestions disabled.
+ghostblock.commands.gconfig.hint_toggle_suggest=Hint: Use '/gconfig toggleSuggest' to toggle.
+ghostblock.commands.gconfig.extra_usage_toggle=(or use '/gconfig toggleSuggest')
+ghostblock.commands.gconfig.fastpiston_autogen=Hint: "Fast Piston Breaking" enabled as dependency.
 
 # /gconfig help
-ghostblock.commands.gconfig.help.menu=--- Ghost Config Command Help (/gconfig) ---
-ghostblock.commands.gconfig.help.description=Manage Ghost Mod configuration.
+ghostblock.commands.gconfig.help.menu=--- Ghost Config Help ---
+ghostblock.commands.gconfig.help.description=Manage mod configuration.
 ghostblock.commands.gconfig.help.usage.main=Usage:
-ghostblock.commands.gconfig.help.usage.display=Display all current configuration settings.
-ghostblock.commands.gconfig.help.usage.set=Set the value of a specified config option.
-ghostblock.commands.gconfig.help.usage.help=Show this help message.
-ghostblock.commands.gconfig.help.usage.toggle=Quickly toggle the chat suggestion feature on/off.
+ghostblock.commands.gconfig.help.usage.display=Show all settings.
+ghostblock.commands.gconfig.help.usage.set=Set a specific setting.
+ghostblock.commands.gconfig.help.usage.help=Show this help.
+ghostblock.commands.gconfig.help.usage.toggle=Toggle chat suggestions.
 ghostblock.commands.gconfig.help.available_settings=Available Settings:
+ghostblock.commands.gconfig.help.tab_hint=(Type /gconfig and press Tab for all options)
+ghostblock.commands.gconfig.help.type.numeric_or_mode=Value or Mode
+ghostblock.commands.gconfig.help.type.lang_code=Lang Code
 ghost.commands.gconfig.help.type.boolean=(true/false)
-ghost.commands.gconfig.help.type.positive_integer=(positive integer)
+ghost.commands.gconfig.help.type.positive_integer=(pos int)
 ghost.commands.gconfig.help.type.text=(text)
 ghost.commands.gconfig.help.type.double_range=(decimal %1$s)
 ghost.commands.gconfig.help.type.integer_range=(integer %1$s)
-ghostblock.commands.gconfig.help.setting.enableChatSuggestions=Enable chat command suggestion buttons.
-ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll=Enable Shift+Scroll/Arrow keys to cycle command history.
-ghost.commands.gconfig.help.setting.disableTwitchAtKey=Disable Twitch stream popup when @ is pressed in chat.
-ghost.commands.gconfig.help.setting.enableChatTranslation=Enable chat message translation buttons.
-ghost.commands.gconfig.help.setting.enableSignTranslation=Enable right-click sign translation.
-ghost.commands.gconfig.help.setting.enableItemTranslation=Enable item name translation in tooltips.
-ghost.commands.gconfig.help.setting.enableAutomaticTranslation=Enable/disable automatic translation for all content.
-ghost.commands.gconfig.help.setting.autoShowCachedTranslation=Automatically show cached item translations.
-ghost.commands.gconfig.help.setting.showTranslationOnly=Only display item translations (overwrites original text).
-ghost.commands.gconfig.help.setting.hideTranslationKeybindTooltip=Hide translation keybind hint in item tooltips.
-ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=Automatically place ghost blocks underfoot when joining a world.
-ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge=Enable automatic sneaking at block edges.
-ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset=Forward offset for auto-sneak (trigger sensitivity).
-ghostblock.commands.gconfig.help.setting.autoSneakVerticalCheckDepth=Vertical check depth for auto-sneak (support detection distance).
-ghostblock.commands.gconfig.help.setting.enablePlayerESP=Enable player ESP feature.
-ghostblock.commands.gconfig.help.setting.enableBedrockMiner=Enable the Bedrock Miner feature.
-ghostblock.commands.gconfig.help.setting.fastPistonBreaking=Enable pickaxe insta-mining pistons.
-ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers=Hide arrows stuck in other players.
-ghost.commands.gconfig.help.setting.enableNoteFeature=Enable the in-game note feature.
-ghost.commands.gconfig.help.setting.enableAdvancedEditing=Enable advanced editing features in the note interface.
-ghost.commands.gconfig.help.setting.enableMarkdownRendering=Enable Markdown rendering in the note interface.
-ghost.commands.gconfig.help.setting.enableColorRendering=Enable color code rendering in the note interface.
-ghost.commands.gconfig.help.setting.enableAmpersandColorCodes=Enable '&' color codes in the note interface.
-ghost.commands.gconfig.help.setting.fixGuiStateLossOnResize=Fix GUI state loss on window resize.
-ghostblock.commands.gconfig.help.setting.niuTransApiKey=Set the NiuTrans API Key.
-ghostblock.commands.gconfig.help.setting.translationSourceLang=Set the source language for translation.
-ghostblock.commands.gconfig.help.setting.translationTargetLang=Set the target language for translation.
-ghost.commands.gconfig.help.setting.autoMineRotationSpeed=Smooth rotation speed for AutoMine (degrees/tick).
-ghost.commands.gconfig.help.setting.autoMineSpeedVariability=Fluctuation range for random rotation speed.
-ghost.commands.gconfig.help.setting.autoMineEnableRandomSpeed=Enable random rotation speed.
-ghost.commands.gconfig.help.setting.autoMineMaxReach=Maximum effective distance for AutoMine.
-ghost.commands.gconfig.help.setting.autoMineSearchRadius=Search radius for AutoMine in 'block type' mode.
-ghost.commands.gconfig.help.setting.autoMineTimeout=Set the mining timeout (seconds).
-ghost.commands.gconfig.help.setting.autoMinePreventDiggingDown=Prevent AutoMine from digging under the player's feet.
-ghost.commands.gconfig.help.setting.autoMineEnableVeinMining=Enable vein mining.
-ghost.commands.gconfig.help.setting.autoMineServerRotation=Whether to use server-side view rotations.
-ghost.commands.gconfig.help.setting.autoMineInstantRotation=Enable instant view rotation for faster targeting.
-ghost.commands.gconfig.help.setting.autoMineSneak=Automatically sneak while mining.
-ghost.commands.gconfig.help.setting.autoMineEnableRandomMove=Enable random movements while mining.
-ghost.commands.gconfig.help.setting.autoMineRandomMoveInterval=Average interval for random movements (ticks).
-ghost.commands.gconfig.help.setting.autoMineRandomMoveDuration=Duration of each random movement (ticks).
-ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability=Fluctuation range for random move interval (ticks).
-ghost.commands.gconfig.help.setting.autoMineMiningMode=Set the AutoMine mode.
-ghost.commands.gconfig.help.setting.autoMineAntiCheatCheck=Enable anti-cheat rollback detection for AutoMine.
-ghost.commands.gconfig.help.setting.autoCraftPlacementDelay=Set the delay between item placements in auto-crafting.
-ghost.commands.gconfig.help.setting.autoCraftCycleDelay=Set the delay between full cycles in auto-crafting.
-ghost.commands.gconfig.help.setting.autoCraftMenuOpenDelay=Set the wait delay after opening the SkyBlock menu.
-ghost.commands.gconfig.help.setting.autoCraftTableOpenDelay=Set the wait delay after opening the crafting table.
-ghost.commands.gconfig.help.setting.autoCraftPickupStashWait=Set the wait delay after the /pickupstash command.
+
+# (Individual settings help - mapping English draft text)
+ghostblock.commands.gconfig.help.setting.enableChatSuggestions=Toggle chat command suggestion buttons.
+ghostblock.commands.gconfig.help.setting.enableCommandHistoryScroll=Toggle Shift+Scroll history cycling.
+ghost.commands.gconfig.help.setting.disableTwitchAtKey=Disable Twitch popup on @ key.
+ghost.commands.gconfig.help.setting.enableChatTranslation=Toggle chat translation buttons.
+ghost.commands.gconfig.help.setting.enableSignTranslation=Toggle sign translation.
+ghost.commands.gconfig.help.setting.enableItemTranslation=Toggle item tooltip translation.
+ghost.commands.gconfig.help.setting.enableAutomaticTranslation=Toggle global auto-translation.
+ghost.commands.gconfig.help.setting.autoShowCachedTranslation=Toggle auto-display of cached translations.
+ghost.commands.gconfig.help.setting.showTranslationOnly=Toggle "Translation only" mode.
+ghost.commands.gconfig.help.setting.hideTranslationKeybindTooltip=Hide "Press Key" tooltip hint.
+ghostblock.commands.gconfig.help.setting.enableAutoPlaceOnJoin=Toggle auto-place on join.
+ghostblock.commands.gconfig.help.setting.enableAutoSneakAtEdge=Toggle auto-sneak at edges.
+ghostblock.commands.gconfig.help.setting.autoSneakForwardOffset=Set auto-sneak sensitivity.
+ghostblock.commands.gconfig.help.setting.autoSneakVerticalCheckDepth=Set auto-sneak detection depth.
+ghostblock.commands.gconfig.help.setting.enablePlayerESP=Toggle player ESP.
+ghostblock.commands.gconfig.help.setting.enableBedrockMiner=Toggle bedrock miner.
+ghostblock.commands.gconfig.help.setting.fastPistonBreaking=Toggle fast piston breaking.
+ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers=Toggle hiding arrows on others.
+ghostblock.commands.gconfig.help.setting.enableNoteFeature=Toggle in-game notes.
+ghostblock.commands.gconfig.help.setting.enableAdvancedEditing=Toggle note advanced editing.
+ghostblock.commands.gconfig.help.setting.enableMarkdownRendering=Toggle note Markdown.
+ghostblock.commands.gconfig.help.setting.enableColorRendering=Toggle note color codes.
+ghostblock.commands.gconfig.help.setting.enableAmpersandColorCodes=Toggle note & color codes.
+ghostblock.commands.gconfig.help.setting.fixGuiStateLossOnResize=Toggle GUI resize fix.
+ghostblock.commands.gconfig.help.setting.niuTransApiKey=Set NiuTrans API Key.
+ghostblock.commands.gconfig.help.setting.translationSourceLang=Set source language.
+ghostblock.commands.gconfig.help.setting.translationTargetLang=Set target language.
+ghostblock.commands.gconfig.help.setting.autoMineRotationSpeed=Set smooth rotation speed.
+ghostblock.commands.gconfig.help.setting.autoMineSpeedVariability=Set rotation variability.
+ghostblock.commands.gconfig.help.setting.autoMineEnableRandomSpeed=Toggle random rotation speed.
+ghostblock.commands.gconfig.help.setting.autoMineMaxReach=Set max mining reach.
+ghostblock.commands.gconfig.help.setting.autoMineSearchRadius=Set search radius.
+ghostblock.commands.gconfig.help.setting.autoMineTimeout=Set mining timeout.
+ghostblock.commands.gconfig.help.setting.autoMinePreventDiggingDown=Toggle digging down prevention.
+ghostblock.commands.gconfig.help.setting.autoMineEnableVeinMining=Toggle vein mining.
+ghostblock.commands.gconfig.help.setting.autoMineServerRotation=Toggle server-side rotation.
+ghostblock.commands.gconfig.help.setting.autoMineInstantRotation=Toggle instant rotation.
+ghostblock.commands.gconfig.help.setting.autoMineSneak=Toggle sneak while mining.
+ghostblock.commands.gconfig.help.setting.autoMineEnableRandomMove=Toggle random moves while mining.
+ghostblock.commands.gconfig.help.setting.autoMineRandomMoveInterval=Set move interval.
+ghostblock.commands.gconfig.help.setting.autoMineRandomMoveDuration=Set move duration.
+ghostblock.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability=Set move variability.
+ghostblock.commands.gconfig.help.setting.autoMineMiningMode=Set mining mode.
+ghostblock.commands.gconfig.help.setting.autoMineAntiCheatCheck=Toggle rollback detection.
+ghostblock.commands.gconfig.help.setting.autoCraftPlacementDelay=Set item placement delay.
+ghostblock.commands.gconfig.help.setting.autoCraftCycleDelay=Set crafting cycle delay.
+ghostblock.commands.gconfig.help.setting.autoCraftMenuOpenDelay=Set menu open delay.
+ghostblock.commands.gconfig.help.setting.autoCraftTableOpenDelay=Set table open delay.
+ghostblock.commands.gconfig.help.setting.autoCraftPickupStashWait=Set stash wait delay.
+ghostblock.commands.gconfig.help.setting.showProviderSwitchButtons=Toggle switch provider buttons.
+ghostblock.commands.gconfig.help.setting.translationProvider=Set default provider.
+
 ghostblock.commands.gconfig.help.examples.header=Examples:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
-ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
-ghostblock.commands.ggconfig.help.example.enableAutoPlaceOnJoin=/gconfig enableAutoPlaceOnJoin true
-ghostblock.commands.gconfig.help.example.showTranslationOnly=/gconfig showTranslationOnly true
-ghostblock.commands.gconfig.help.example.hideTranslationKeybindTooltip=/gconfig hideTranslationKeybindTooltip true
-ghostblock.commands.gconfig.help.example.enableAutoSneakAtEdge=/gconfig enableAutoSneakAtEdge true
-ghostblock.commands.gconfig.help.example.autoSneakForwardOffset=/gconfig autoSneakForwardOffset 0.3
-ghostblock.commands.gconfig.help.example.autoSneakVerticalCheckDepth=/gconfig autoSneakVerticalCheckDepth 0.8
-ghostblock.commands.gconfig.help.example.enablePlayerESP=/gconfig enablePlayerESP true
-ghostblock.commands.gconfig.help.example.enableBedrockMiner=/gconfig enableBedrockMiner true
-ghostblock.commands.gconfig.help.example.fastPistonBreaking=/gconfig fastPistonBreaking true
-ghostblock.commands.gconfig.help.example.hideArrowsOnPlayers=/gconfig hideArrowsOnPlayers true
-ghostblock.commands.gconfig.help.example.niuTransApiKey=/gconfig niuTransApiKey your_api_key_here
-ghostblock.commands.gconfig.help.example.translationTargetLang=/gconfig translationTargetLang en
-ghostblock.commands.gconfig.help.example.autoMineRotationSpeed=/gconfig autoMineRotationSpeed 10.0
-ghostblock.commands.gconfig.help.example.autoMineTimeout=/gconfig autoMineTimeout 10
-ghostblock.commands.gconfig.help.example.autoMineSpeedVariability=/gconfig autoMineSpeedVariability 5.0
-ghostblock.commands.gconfig.help.example.autoMinePreventDiggingDown=/gconfig autoMinePreventDiggingDown false
-ghostblock.commands.gconfig.help.example.autoMineRandomMoveInterval=/gconfig autoMineRandomMoveInterval 200
 ghostblock.commands.gconfig.help.example.autoMineMiningMode=/gconfig autoMineMiningMode PACKET_NORMAL
 ghostblock.commands.gconfig.help.aliases=Aliases
 
@@ -542,16 +541,14 @@ ghostblock.commands.gconfig.help.aliases=Aliases
 # ===         Other Text         ===
 # ==================================
 ghostblock.displayname.default_file=Default File (%1$s)
-ghostblock.commands.save.success=Data successfully saved to file: %1$s
-ghostblock.commands.save.warn.no_data=Warning: No data to save to file: %1$s
-ghostblock.commands.autoplace.platform_success=A ghost platform has been automatically placed near (%1$d, %2$d, %3$d) to catch you.
+ghostblock.commands.save.success=Data saved to: %1$s
+ghostblock.commands.save.warn.no_data=Warning: No data to save to: %1$s
+ghostblock.commands.autoplace.platform_success=Ghost platform placed near (%1$d, %2$d, %3$d).
 ghostblock.commands.autosave.activated=Hint: Auto-save activated.
-ghostblock.commands.task.chunk_aware_notice=Hint: The task will run in the background. Blocks in unloaded chunks will be placed automatically as you get closer.
-# Note: The two spaces after the enter key symbol below are intentional for better button clicking. Do not remove them!
+ghostblock.commands.task.chunk_aware_notice=Hint: Task running in background. Blocks will place as you approach.
 ghostblock.commands.suggest.text= ↩  
 ghostblock.commands.suggest.hovertext=Click to re-enter: %s
 
-# Keybind toggle feature names
 ghost.keybind.toggle.autosneak=Auto Edge Sneak
 ghost.keybind.toggle.playeresp=Player ESP
 ghost.keybind.toggle.bedrockminer=Bedrock Miner
@@ -563,22 +560,20 @@ ghost.gui.note.help.back=Back
 ghost.gui.note.help.title=Note Help
 ghost.gui.note.help.markdown_header=Markdown Syntax
 ghost.gui.note.help.headings.title=# Headings
-ghost.gui.note.help.headings.desc=Use #, ##, ### at the start of a line to create headings of different sizes.
+ghost.gui.note.help.headings.desc=Use # at start of line for headings.
 ghost.gui.note.help.bold.title=**Bold**
-ghost.gui.note.help.bold.desc=Use two asterisks to wrap text to make it bold.
+ghost.gui.note.help.bold.desc=Wrap with **.
 ghost.gui.note.help.italic.title=*Italic*
-ghost.gui.note.help.italic.desc=Use one asterisk to wrap text to make it italic.
+ghost.gui.note.help.italic.desc=Wrap with *.
 ghost.gui.note.help.strike.title=~~Strikethrough~~
-ghost.gui.note.help.strike.desc=Use two tildes to wrap text to add a strikethrough.
+ghost.gui.note.help.strike.desc=Wrap with ~~.
 ghost.gui.note.help.list.title=- Lists
-ghost.gui.note.help.list.desc=Use - or * at the start of a line to create an unordered list.
+ghost.gui.note.help.list.desc=Use - or * at start of line.
 ghost.gui.note.help.color_header=Color Codes
-ghost.gui.note.help.color_desc=Use '§' followed by a number (0-9) or a letter (a-f) to set colors.
-ghost.gui.note.help.color_example=Color Example:
-ghost.gui.note.help.ampersand_desc=Additionally, when the '& Color Codes' feature is enabled, all '§' symbols can be replaced with '&' for easier input.
-ghost.gui.note.help.ampersand_example=For example: '&cRed' has the same effect as '§cRed'.
-ghost.gui.note.help.format_header=Formatting Codes
-ghost.gui.note.help.format_desc=Use '§' or '&' followed by these letters to apply special formatting:
+ghost.gui.note.help.color_desc=Use '§' or '&' + (0-9, a-f).
+ghost.gui.note.help.color_example=Example:
+ghost.gui.note.help.ampersand_desc=If '& Color Codes' enabled, '&' works like '§'.
+ghost.gui.note.help.format_header=Format Codes
 ghost.gui.note.help.format.bold=Bold
 ghost.gui.note.help.format.italic=Italic
 ghost.gui.note.help.format.underline=Underline
@@ -588,286 +583,299 @@ ghost.gui.note.help.format.reset=Reset
 # ==================================
 # ===          Logging           ===
 # ==================================
-# --- Lifecycle ---
 log.lifecycle.preinit=%s Pre-initialization phase
 log.lifecycle.init=%s Initialization phase
 log.lifecycle.postinit=%s Post-initialization phase
 
-# --- Handler Registration ---
-log.handler.registered.chatSuggest=Chat Suggest Event Handler registered in PreInit.
-log.handler.registered.autoSneak=AutoSneak Event Handler (AutoSneakHandler) registered in PreInit.
-log.handler.registered.playerEsp=Player ESP Event Handler (PlayerESPHandler) registered in PreInit.
-log.handler.registered.fastPiston=Fast Piston Breaking Event Handler (FastPistonBreakingHandler) registered in PreInit.
-log.handler.registered.playerArrow=Player Arrow Renderer Event Handler (PlayerArrowRendererHandler) registered in PreInit.
-log.handler.registered.keybind=Keybind Event Handler (KeybindHandler) registered in PreInit.
-log.handler.registered.signTranslation=Sign Translation Event Handler (SignTranslationHandler) registered in PreInit.
-log.handler.registered.guiStateSave=GUI State Save Event Handler (GuiStateSaveHandler) registered in PreInit.
-log.handler.registered.itemTooltip=Item Tooltip Translation Event Handler (ItemTooltipTranslationHandler) registered in PreInit.
-log.handler.registered.ghostBlockCommand=GhostBlockCommand Event Handler registered.
-log.handler.registered.autoMine=AutoMine Event Handler (AutoMineHandler) registered.
+log.handler.registered.chatSuggest=Chat Suggest handler registered.
+log.handler.registered.autoSneak=AutoSneak handler registered.
+log.handler.registered.playerEsp=PlayerESP handler registered.
+log.handler.registered.fastPiston=FastPiston handler registered.
+log.handler.registered.playerArrow=PlayerArrow handler registered.
+log.handler.registered.keybind=Keybind handler registered.
+log.handler.registered.signTranslation=SignTranslation handler registered.
+log.handler.registered.guiStateSave=GuiStateSave handler registered.
+log.handler.registered.itemTooltip=ItemTooltip handler registered.
+log.handler.registered.ghostBlockCommand=GhostBlockCommand handler registered.
+log.handler.registered.autoMine=AutoMine handler registered.
+log.handler.registered.pathfinding=Pathfinding handler registered.
+log.handler.registered.dungeonProfit=DungeonProfit handler registered.
+log.handler.registered.autoCraft=AutoCraft handler registered.
 
-# --- Command Registration ---
-log.command.registering.eventListener=Registering GhostBlockCommand event listener...
+log.command.registering.eventListener=Registering GhostBlockCommand listener...
 log.command.registering.client=Registering client commands...
 log.command.registered.ghostConfig=GhostConfigCommand (/gconfig) registered.
-log.command.registered.cgb=/cgb command instance registered.
+log.command.registered.cgb=/cgb registered.
 log.command.registered.gtranslate=TranslateCommand (/gtranslate) registered.
 log.command.registered.autoMine=AutoMineCommand (/automine) registered.
-log.command.skipping.server=Skipping client command registration on the server side.
-log.command.handler.initialized=CommandEventHandler initialized (handling Tick events).
-log.info.command.parse.success=Block parsed successfully: %s (ID=%d), meta=%d
-log.warn.command.set.meta.invalid=Invalid metadata '%s' for block '%s', using 0.
-log.error.command.parse.failed=Unexpected error while parsing block state: %s
+log.command.registered.autoCraft=AutoCraftCommand (/autocraft) registered.
+log.command.registered.gpath=PathfindingCommand (/gpath) registered.
+log.command.skipping.server=Skipping client commands on server.
+log.command.handler.initialized=CommandEventHandler initialized.
+log.info.command.parse.success=Parsed block: %s (ID=%d, meta=%d).
+log.warn.command.set.meta.invalid=Invalid meta '%s' for block '%s', using 0.
+log.error.command.parse.failed=Error parsing block state: %s
 
-# --- Config ---
-log.config.notInitialized=Config not yet initialized!
-log.config.loaded=Config loaded or created and changes saved.
-log.config.invalid.automineMode=Invalid 'autoMineMiningMode' value ('%s') in config file, using default SIMULATE.
+log.config.notInitialized=Config not initialized!
+log.config.loaded=Config loaded/saved.
+log.config.invalid.automineMode=Invalid mode '%s' in config, using SIMULATE.
 
-# --- Cache ---
-log.feature.cache.init=Translation cache loaded, and save event handler registered.
-log.info.cache.loaded=Loaded %d translation cache entries.
-log.info.cache.saving=World unloading, triggering translation cache save...
-log.info.cache.saving.count=Saving %d translation cache entries...
-log.info.cache.saved=Translation cache and hidden settings saved.
-log.info.cache.file.notFound=Translation cache file not found, a new one will be created.
-log.error.cache.loadFailed=Error loading translation cache: %s
-log.info.cache.save.skipped=No translation cache in memory, skipping save.
-log.error.cache.saveFailed=Error saving translation cache: %s
-log.info.hidden.loaded=Loaded %d hidden translation records.
-log.info.hidden.file.notFound=Hidden translation records file not found, a new one will be created.
-log.error.hidden.loadFailed=Error loading hidden translation records: %s
-log.info.hidden.saved=Saved %d hidden translation records.
-log.error.hidden.saveFailed=Error saving hidden translation records: %s
+log.feature.cache.init=Translation cache initialized.
+log.info.cache.loaded=Loaded %d cache entries.
+log.info.cache.saving=Saving %d cache entries on world unload...
+log.info.cache.saved=Translation cache saved.
+log.info.cache.file.notFound=Cache file not found, creating new.
+log.error.cache.loadFailed=Load cache error: %s
+log.info.cache.save.skipped=No cache in memory, skipping save.
+log.error.cache.saveFailed=Save cache error: %s
+log.info.hidden.loaded=Loaded %d hidden records.
+log.info.hidden.file.notFound=Hidden record file missing.
+log.error.hidden.loadFailed=Load hidden records error: %s
+log.info.hidden.saved=Saved %d hidden records.
+log.error.hidden.saveFailed=Save hidden records error: %s
 
-# --- Tasks ---
-log.info.task.fill.init=FillTask #%d initialized (with distance check strategy): total=%d, batch=%d
-log.error.task.fill.invalidBlock=FillTask #%d Error: Invalid block ID %d or attempt to fill with air. Task cancelled.
-log.warn.task.fill.notClient=FillTask #%d Warning: Attempting to execute task in a non-client world! Position: %s
-log.warn.task.fill.placeError=FillTask #%d Warning: Error setting block at %s after position was ready: %s
-log.info.task.fill.playerInvalid=FillTask #%d: Command sender player is invalid or not in the current world, cancelling task.
-log.info.task.fill.posInvalidY=FillTask #%d: Invalid Y coordinate (%d), removing from task: %s
-log.info.task.fill.complete.log=FillTask #%d task complete. Successfully placed: %d / Initial total: %d
-log.info.task.fill.complete.waitingList=FillTask #%d Note: %d blocks were still in the waiting list upon task completion.
-log.info.task.fill.playerLeft.progress=FillTask #%d: Player has left or is invalid, stopping progress messages and cancelling task.
-log.error.task.fill.progress.sendFailed=FillTask #%d: Failed to send progress message: %s
-log.info.task.fill.save.userFile=FillTask #%d complete, attempting to save %d entries to user file: %s
-log.info.task.fill.playerLeft.save=FillTask #%d: Player has left or is invalid, skipping save success message.
-log.error.task.fill.save.sendFailed=FillTask #%d: Failed to send save success message: %s
-log.warn.task.fill.save.noEntries=FillTask #%d Warning: Task was marked for saving but no user file entries were provided or generated.
-log.info.task.fill.playerLeft.finish=FillTask #%d: Player has left or is invalid, skipping completion message.
-log.error.task.fill.finish.sendFailed=FillTask #%d: Failed to send completion message: %s
-log.info.task.fill.cancelled=FillTask #%d was cancelled, not sending completion or save messages.
-log.info.task.fill.markedCancelled=FillTask #%d marked as cancelled.
-log.info.task.load.init=LoadTask #%d initialized: total=%d, batch=%d
-log.warn.task.load.notClient=LoadTask #%d Warning: Attempting to execute task in a non-client world! Position: %s
-log.warn.task.load.placeError=LoadTask #%d Warning: Error setting block at %s (index: %d) after position was ready: %s
-log.warn.task.load.invalidBlock=LoadTask #%d Warning: Invalid block ID '%s' at %s (index: %d)
-log.info.task.load.playerInvalid=LoadTask #%d: Command sender player is invalid or not in the current world, cancelling task.
-log.info.task.load.posWaiting=LoadTask #%d: Waiting to load: %s (index: %d, reason: %s)
-log.info.task.load.posInvalidY=LoadTask #%d: Invalid Y coordinate (%d), skipping entry: %s (index: %d)
-log.info.task.load.complete.log=LoadTask #%d task complete.
-log.info.task.load.complete.loopEnd=LoadTask #%d loop ended, sending final progress.
-log.info.task.load.complete.logFinished=LoadTask #%d already completed and reported, logging.
-log.info.task.load.playerLeft.progress=LoadTask #%d: Player has left or is invalid, stopping progress messages and cancelling task.
-log.error.task.load.progress.sendFailed=LoadTask #%d: Failed to send progress message: %s
-log.info.task.load.playerLeft.finish=LoadTask #%d: Player has left or is invalid, skipping completion message.
-log.error.task.load.finish.sendFailed=LoadTask #%d: Failed to send completion message: %s
-log.info.task.load.complete.waitingList=LoadTask #%d Note: %d entries were still in the waiting list upon task completion.
-log.info.task.load.cancelled=LoadTask #%d was cancelled, not sending completion message.
-log.info.task.load.markedCancelled=LoadTask #%d marked as cancelled.
-log.info.task.cancel.fill=Fill task #%d has been cancelled and paused.
-log.info.task.cancel.load=Load task #%d has been cancelled and paused.
-log.info.task.cancel.clear=Clear task #%d has been cancelled.
-log.error.tick.fallback.failed=Tick Fallback logic execution failed:
-log.fatal.fill.exec.sync.error=FATAL error during synchronous fill! Pos: %s, Error: %s
-log.error.set.loadedChunk.failed=Failed to set block in a loaded chunk: %s
-log.error.undo.restore.set.failed=Failed to restore block %s during undo: %s
-log.error.undo.restore.clear.failed=Failed to restore ghost block %s during undo of clear operation: %s
-log.info.undo.created.clearBlock=Created undo record for clear block operation: %s
+log.info.task.fill.init=FillTask #%d init: total=%d, batch=%d.
+log.error.task.fill.invalidBlock=FillTask #%d Error: Invalid block ID %d or air. Cancelled.
+log.warn.task.fill.notClient=FillTask #%d Warning: Non-client world. Pos: %s.
+log.warn.task.fill.placeError=FillTask #%d Warning: Place error at %s: %s.
+log.info.task.fill.playerInvalid=FillTask #%d: Player invalid, cancelled.
+log.info.task.fill.posInvalidY=FillTask #%d: Invalid Y (%d) at %s.
+log.info.task.fill.complete.log=FillTask #%d complete. Placed: %d / %d.
+log.info.task.fill.complete.waitingList=FillTask #%d Note: %d blocks still in waiting list.
+log.info.task.fill.playerLeft.progress=FillTask #%d: Player left, task stopped.
+log.error.task.fill.progress.sendFailed=FillTask #%d: Progress msg failed: %s.
+log.info.task.fill.save.userFile=FillTask #%d complete, saving %d entries to: %s.
+log.info.task.fill.playerLeft.save=FillTask #%d: Player left, skip success msg.
+log.error.task.fill.save.sendFailed=FillTask #%d: Save msg failed: %s.
+log.warn.task.fill.save.noEntries=FillTask #%d: Mark for save but no entries.
+log.info.task.fill.playerLeft.finish=FillTask #%d: Player left, skip finish msg.
+log.error.task.fill.finish.sendFailed=FillTask #%d: Finish msg failed: %s.
+log.info.task.fill.cancelled=FillTask #%d cancelled.
+log.info.task.fill.markedCancelled=FillTask #%d marked cancelled.
+
+log.info.task.load.init=LoadTask #%d init: total=%d, batch=%d.
+log.warn.task.load.notClient=LoadTask #%d Warning: Non-client world. Pos: %s.
+log.warn.task.load.placeError=LoadTask #%d Warning: Place error at %s (idx: %d): %s.
+log.warn.task.load.invalidBlock=LoadTask #%d Warning: Invalid ID '%s' at %s (idx: %d).
+log.info.task.load.playerInvalid=LoadTask #%d: Player invalid, cancelled.
+log.info.task.load.posWaiting=LoadTask #%d: Waiting: %s (idx: %d, reason: %s).
+log.info.task.load.posInvalidY=LoadTask #%d: Invalid Y (%d) at %s.
+log.info.task.load.complete.log=LoadTask #%d complete.
+log.info.task.load.complete.loopEnd=LoadTask #%d loop ended.
+log.info.task.load.complete.logFinished=LoadTask #%d reported.
+log.info.task.load.playerLeft.progress=LoadTask #%d: Player left, stopped.
+log.error.task.load.progress.sendFailed=LoadTask #%d: Msg failed: %s.
+log.info.task.load.playerLeft.finish=LoadTask #%d: Player left, skip msg.
+log.error.task.load.finish.sendFailed=LoadTask #%d: Msg failed: %s.
+log.info.task.load.complete.waitingList=LoadTask #%d Note: %d entries in waiting list.
+log.info.task.load.cancelled=LoadTask #%d cancelled.
+log.info.task.load.markedCancelled=LoadTask #%d marked cancelled.
+
+log.info.task.cancel.fill=FillTask #%d cancelled/paused.
+log.info.task.cancel.load=LoadTask #%d cancelled/paused.
+log.info.task.cancel.clear=ClearTask #%d cancelled.
+
+log.error.tick.fallback.failed=Tick Fallback failed:
+log.fatal.fill.exec.sync.error=FATAL Error Sync Fill! Pos: %s, Error: %s
+log.error.set.loadedChunk.failed=Failed to set block in loaded chunk: %s
+log.error.undo.restore.set.failed=Undo failed for %s: %s
+log.error.undo.restore.clear.failed=Undo clear failed for %s: %s
+log.info.undo.created.clearBlock=Undo record created for clear: %s
 log.error.undo.deleteFile.failed=Failed to delete undo file: %s
-log.info.undo.deleteFile.success=Successfully deleted undo file: %s
-log.info.undo.deleteFile.notFound=Undo file %s not found for deletion (possibly already processed).
-log.error.clear.task.restore.failed=Failed to restore block %s during clear task: %s
-log.error.clear.task.originalBlock.notFound=Clear task error: Original block ID '%s' not found for restoring position %s
-log.info.clear.task.file.deleted=Clear task finished, deleting auto file %s result: %b
-log.info.clear.task.file.notFound=Clear task finished, auto file %s not found.
-log.info.clear.file.alreadyDeleted=Attempted to clear file %s which was already deleted.
-log.warn.fill.largeVolume=Warning: Attempting to fill a very large area (over %d blocks).
-log.info.undo.taskCancelled=Associated task #%d was automatically cancelled during undo operation.
-log.info.task.fill.posReady=FillTask #%d: Position is now ready: %s. Attempting to place...
-log.info.task.fill.posWaiting=FillTask #%d: Waiting to place: %s (reason: %s)
+log.info.undo.deleteFile.success=Deleted undo file: %s
+log.info.undo.deleteFile.notFound=Undo file %s not found.
+log.error.clear.task.restore.failed=Clear task failed restore %s: %s
+log.error.clear.task.originalBlock.notFound=Clear task error: ID '%s' not found for %s.
+log.info.clear.task.file.deleted=Clear task finish, delete %s: %b.
+log.info.clear.task.file.notFound=Clear task finish, %s missing.
+log.info.clear.file.alreadyDeleted=File %s already deleted.
+log.warn.fill.largeVolume=Warning: Fill area very large (> %d blocks).
+log.info.undo.taskCancelled=Undo: Task #%d cancelled.
+log.info.task.fill.posReady=FillTask #%d: Pos ready: %s.
+log.info.task.fill.posWaiting=FillTask #%d: Wait: %s (reason: %s).
 
-# --- Auto Place ---
-log.debug.autoplace.tick.dataMissing=AutoPlaceTick Tick %d: Player/World/Target data is incomplete, cancelling.
-log.debug.autoplace.tick.dimensionMismatch=AutoPlaceTick Tick %d: Dimension check failed or mismatch (player:%d, file:%d), cancelling.
-log.debug.autoplace.tick.attempt=AutoPlaceTick Tick %d/%d: Attempting to place a ghost block on a 3x3 platform centered at %s (original record center: %s).
-log.debug.autoplace.tick.playerInRangeCheck=Player's current entity block: %s, Expected standing block (center): %s, Horizontally in range: %b, Vertically reasonable: %b
-log.debug.autoplace.tick.inRangePlacing=Player is within the expected range. Starting 3x3 platform placement attempt...
-log.debug.autoplace.tick.invalidBlock=Ghost block type from file record is invalid or air. Cannot form a platform.
-log.debug.autoplace.tick.firstSuccess=Platform section at %s succeeded on first attempt.
-log.debug.autoplace.tick.notAir=Platform section %s is not air (%s), skipping.
-log.debug.autoplace.tick.platformPlaced=3x3 ghost platform partially or fully placed (tick: %d)
-log.error.autoplace.tick.exception=AutoPlaceTick Tick %d: Exception occurred during continuous 3x3 platform placement:
-log.debug.autoplace.tick.playerOutOfRange=AutoPlaceTick Tick %d: Player is not within the expected recovery range.
-log.debug.autoplace.tick.outOfRangeTimeout=Player has been consistently out of range and has timed out, aborting and cleaning up.
-log.debug.autoplace.tick.timeout=AutoPlaceTick Tick %d: Exceeded max attempt ticks (%d), forcing termination.
-log.debug.autoplace.cleanup.file.deleted=Successfully deleted auto-place file: %s
-log.error.autoplace.cleanup.file.deleteFailed=Failed to delete auto-place file: %s
-log.debug.autoplace.cleanup.cleaned=Cleaned up pending auto-place state. autoPlaceInProgress set to false.
-log.debug.autoplace.cleanup.handlingFirstJoin=Auto-place handling finished and is still isFirstJoin. Handling first join logic...
-log.debug.autoplace.cleanup.dimensionChanged=Auto-place handling finished, but player dimension has changed, not executing cleanupAndRestoreOnLoad for isFirstJoin.
-log.debug.autoplace.cleanup.dimCheck.fallback=Filename for dimension check is unknown, will use current player dimension.
-log.debug.autoplace.cleanup.dimCheck.mismatch=Auto-place handling finished, but player dimension (%d) does not match file's previous dimension (%d), not executing cleanupAndRestoreOnLoad for isFirstJoin.
-log.debug.set.autosave.defaultFile=Default file
-log.debug.set.autosave.activated=Auto-save activated, using filename: %s
-log.debug.set.checking.coords=Checking coords %s, is Section ready: %b
-log.debug.set.directSet=Chunk is loaded, setting block directly.
-log.debug.set.saving.userFile=Saving to user file: %s
-log.debug.set.creating.task=Chunk is not loaded, creating deferred set task.
-log.debug.set.task.entryCreated=Created user save entry for deferred task.
-log.debug.set.task.added=Deferred set task #%d added.
-log.debug.set.autosaved.count=Auto-saved %d original block infos.
-log.debug.set.autosave.skipped=No new original blocks to auto-save.
-log.debug.set.undo.created=Created undo file for set operation: %s
-log.debug.set.backup.created=Backed up user file for set operation: %s
-log.debug.set.undo.pushed=Undo record for set operation pushed to stack.
-log.debug.fill.batch.config=Batch mode: Using config-forced size %d
-log.debug.fill.batch.default=Batch mode: Using default size %d
-log.debug.fill.batch.user=Batch mode: Using user-specified size %d
-log.debug.fill.autosave.activated=Fill: Auto-save activated, using filename: %s
-log.debug.fill.config.info=Fill: Config - forceBatch=%b, forcedSize=%d
-log.debug.fill.params.info=Fill: User params - providedBatchFlag=%b, providedBatchSize=%b
-log.debug.fill.decision.info=Fill: Decision - useBatch=%b, batchSize=%s
-log.debug.fill.volume.calculated=Calculated fill volume: %d
-log.debug.fill.totalBlocks=A total of %d blocks will be filled.
-log.debug.fill.autosave.collected=Collected %d original block infos for auto-save.
-log.debug.fill.autosave.skipped=Fill: No new original blocks to auto-save.
-log.debug.fill.undo.saved=Created undo file for fill operation: %s
-log.debug.fill.backup.created=Backed up user file for fill operation: %s
-log.debug.fill.undo.pushed=Undo record for fill operation pushed to stack.
-log.debug.fill.check.ebs.start=Checking ExtendedBlockStorage (sync mode: %b)
-log.debug.fill.check.ebs.limitReached=EBS check reached limit of %d, will force batch processing.
-log.debug.fill.check.ebs.progress=EBS check: %s, Section ready: %b
-log.debug.fill.check.ebs.foundNotReady=Found not-ready Section on check #%d: %s
-log.debug.fill.check.ebs.complete=EBS check complete (checked %d), found not-ready: %b
-log.debug.fill.check.ebs.allReady=All checked chunk Sections are ready.
-log.debug.fill.check.ebs.skipped=Skipped EBS check (batch mode: %b).
-log.debug.fill.decision.final=Final decision: useBatch=%b, implicitBatchRequired=%b
+log.debug.autoplace.tick.dataMissing=AutoPlaceTick: Data missing.
+log.debug.autoplace.tick.dimensionMismatch=AutoPlaceTick: Dim mismatch (P:%d, F:%d).
+log.debug.autoplace.tick.attempt=AutoPlaceTick: Attempt 3x3 platform at %s.
+log.debug.autoplace.tick.playerInRangeCheck=Range Check: P %s, Target %s. In range: H:%b, V:%b.
+log.debug.autoplace.tick.inRangePlacing=Player in range, placing platform...
+log.debug.autoplace.tick.invalidBlock=Invalid block for platform.
+log.debug.autoplace.tick.firstSuccess=Success at %s.
+log.debug.autoplace.tick.notAir=Pos %s not air (%s), skip.
+log.debug.autoplace.tick.platformPlaced=Platform placed at tick %d.
+log.error.autoplace.tick.exception=AutoPlace exception:
+log.debug.autoplace.tick.playerOutOfRange=Player out of range.
+log.debug.autoplace.tick.outOfRangeTimeout=Timeout out of range, cleaning up.
+log.debug.autoplace.tick.timeout=Max ticks reached (%d).
+log.debug.autoplace.cleanup.file.deleted=Deleted auto-place file: %s.
+log.error.autoplace.cleanup.file.deleteFailed=Delete auto-place file failed: %s.
+log.debug.autoplace.cleanup.cleaned=Cleaned pending state.
+log.debug.autoplace.cleanup.handlingFirstJoin=Handling first join.
+log.debug.autoplace.cleanup.dimensionChanged=Dim changed, skip join cleanup.
+log.debug.autoplace.cleanup.dimCheck.fallback=Using current dim for check.
+log.debug.autoplace.cleanup.dimCheck.mismatch=Dim mismatch (%d vs %d), skip cleanup.
+
+log.debug.set.autosave.defaultFile=Default File
+log.debug.set.autosave.activated=Auto-save active: %s.
+log.debug.set.checking.coords=Check %s, Ready: %b.
+log.debug.set.directSet=Chunk loaded, direct set.
+log.debug.set.saving.userFile=Saving to: %s.
+log.debug.set.creating.task=Chunk not loaded, creating task.
+log.debug.set.task.entryCreated=Save entry created.
+log.debug.set.task.added=Task #%d added.
+log.debug.set.autosaved.count=Saved %d original block infos.
+log.debug.set.autosave.skipped=Nothing to auto-save.
+log.debug.set.undo.created=Undo file created: %s.
+log.debug.set.backup.created=User file backup: %s.
+log.debug.set.undo.pushed=Set undo pushed to stack.
+
+log.debug.fill.batch.config=Batch: Force size %d.
+log.debug.fill.batch.default=Batch: Default size %d.
+log.debug.fill.batch.user=Batch: User size %d.
+log.debug.fill.autosave.activated=Fill auto-save active: %s.
+log.debug.fill.config.info=Fill: forceBatch=%b, forcedSize=%d.
+log.debug.fill.params.info=Fill: batchFlag=%b, batchSize=%b.
+log.debug.fill.decision.info=Fill: useBatch=%b, batchSize=%s.
+log.debug.fill.volume.calculated=Fill Volume: %d.
+log.debug.fill.totalBlocks=Blocks to fill: %d.
+log.debug.fill.autosave.collected=Collected %d original infos.
+log.debug.fill.autosave.skipped=No blocks to save.
+log.debug.fill.undo.saved=Fill undo created: %s.
+log.debug.fill.backup.created=Fill user backup: %s.
+log.debug.fill.undo.pushed=Fill undo pushed.
+log.debug.fill.check.ebs.start=Checking EBS (sync: %b).
+log.debug.fill.check.ebs.limitReached=EBS limit %d reached, force batch.
+log.debug.fill.check.ebs.progress=EBS Progress: %s, Ready: %b.
+log.debug.fill.check.ebs.foundNotReady=Not Ready at #%d: %s.
+log.debug.fill.check.ebs.complete=EBS check complete, found not ready: %b.
+log.debug.fill.check.ebs.allReady=All Sections ready.
+log.debug.fill.check.ebs.skipped=Skip EBS check.
+log.debug.fill.decision.final=Final: useBatch=%b, implicit=%b.
 log.debug.fill.exec.batch=Executing batch fill.
-log.debug.fill.exec.batch.implicit.configSize=Implicit batch triggered, using config-forced size: %d
-log.debug.fill.exec.batch.implicit.defaultSize=Implicit batch triggered, using default size 100.
-log.debug.fill.exec.batch.task.started=Started fill task #%d with batch size: %d
-log.debug.fill.exec.sync=Executing synchronous fill.
-log.debug.fill.exec.sync.complete=Synchronous fill took %d ms, processed %d blocks.
-log.debug.fill.exec.sync.saving=Synchronous fill complete, saving to user file: %s
-log.warn.fill.exec.sync.saveFailed=Failed to save user file after synchronous fill because no original block info was collected.
-log.debug.load.autosave.newEntries=Load operation: Auto-saved original block info for %d new positions.
-log.debug.load.undo.created=Created undo record for load operation: %s
-log.debug.load.check.implicit.start=Load: Checking if implicit batch is needed...
-log.debug.load.check.implicit.limitReached=Load: Implicit check reached limit of %d.
-log.debug.load.check.implicit.foundNotReady=Load: Found not-ready Section on check #%d: %s
-log.debug.load.check.implicit.complete=Load: Implicit check complete (checked %d), found not-ready: %b
-log.debug.load.exec.batch=Load: Executing batch load.
-log.debug.load.exec.sync=Load: Executing synchronous load.
-log.debug.load.exec.sync.complete=Synchronous load took %d ms.
-log.warn.load.exec.sync.failedSet=Synchronous load failed: %s - %s
-log.fatal.load.exec.sync.error=FATAL error during synchronous load! EntryPos: %s, Error: %s
-log.warn.load.exec.sync.invalidBlock=Found invalid block ID '%s' at %s during synchronous load, skipped.
-log.warn.load.exec.sync.notLoaded=Found unloaded chunk at %s during synchronous load (should not happen), skipped.
+log.debug.fill.exec.batch.implicit.configSize=Implicit batch: config size %d.
+log.gdebug.fill.exec.batch.implicit.defaultSize=Implicit batch: default size 100.
+log.debug.fill.exec.batch.task.started=FillTask #%d started: %d per batch.
+log.debug.fill.exec.sync=Executing sync fill.
+log.debug.fill.exec.sync.complete=Sync fill: %d ms, %d blocks.
+log.debug.fill.exec.sync.saving=Sync fill complete, saving: %s.
+log.warn.fill.exec.sync.saveFailed=Sync fill save failed: no info collected.
 
-# --- Join/Leave World ---
-log.debug.joinWorld.worldNull=onEntityJoinWorld: world is null, cannot proceed.
-log.debug.joinWorld.entry=Player joined world/switched dimension - Current dim: %d, Last tracked dim: %d
-log.debug.joinWorld.autoplaceInProgress=Detected autoPlaceInProgress is true, waiting for Tick handling to complete.
-log.warn.joinWorld.pendingEntry=Found a lingering pendingAutoPlaceEntry on join, forcing cleanup.
-log.debug.joinWorld.autoplaceEnabled=Auto-place feature is enabled.
-log.debug.joinWorld.loadingFile=Attempting to load auto-place file: %s.json
-log.debug.joinWorld.loadedEntries=Loaded %d entries from auto-place file.
-log.debug.joinWorld.pendingSet=Set pending auto-place entry at %s. Will be handled continuously by Tick event. onEntityJoinWorld returning.
-log.debug.joinWorld.noFile=Auto-place file not found or empty. Will not start deferred/continuous placement.
-log.debug.joinWorld.autoplaceDisabled=Auto-place feature is disabled.
-log.debug.joinWorld.standardFlow.start=Auto-place flow not started (autoPlaceInProgress=%b). Continuing with standard join world logic...
-log.debug.joinWorld.standardFlow.firstJoin=(Standard Flow) First time entering a world. Initializing dimension to %d
-log.debug.joinWorld.standardFlow.executingCleanupFirstJoin=(Standard Flow) Executing cleanupAndRestoreOnLoad (first join).
-log.debug.joinWorld.standardFlow.dimensionChange=(Standard Flow) Detected dimension change: %d -> %d
-log.debug.joinWorld.standardFlow.executingCleanupDimChange=(Standard Flow) Executing cleanupAndRestoreOnLoad (dimension switch).
-log.debug.joinWorld.standardFlow.rejoinSameDim=(Standard Flow) Re-joining the same dimension (%d).
-log.debug.joinWorld.standardFlow.executingCleanupRejoin=(Standard Flow) Executing cleanupAndRestoreOnLoad (same dim rejoin).
-log.info.worldLoad.skipCleanup=Auto-place feature is enabled, skipping cleanup and restore logic in onWorldLoad.
-log.worldLoad.checking=World load event: Checking for auto-clear file for dimension %d...
-log.worldLoad.foundClearFile=Found auto-clear file %s, restoring...
-log.error.worldLoad.restoreFailed=Failed to restore block %s on world load: %s
-log.warn.worldLoad.originalBlock.notFound=Could not find original block ID '%s' for restoring %s on world load
-log.worldLoad.restoreComplete=Restore complete, %d successful, %d failed.
-log.worldLoad.clearFile.empty=Auto-clear file is empty.
-log.error.worldLoad.clearFile.deleteFailed=Failed to delete auto-clear file: %s
-log.info.worldLoad.clearFile.deleted=Deleted auto-clear file: %s
-log.info.worldLoad.clearFile.notFound=Auto-clear file %s not found.
-log.info.worldUnload.entry=World unload event triggered. Current autoPlaceInProgress: %b
-log.info.worldUnload.pendingAutoplace=Detected a pending auto-place task while world is unloading, will perform cleanup.
-log.info.worldUnload.autoplaceCleanupCalled=Static method to clean up pending auto-place has been called.
-log.info.worldUnload.autoplace.playerCoords=Player's exact coordinates: (%f, %f, %f)
-log.info.worldUnload.autoplace.logicalFeetPos=Calculated 'logical feet' position for lookup: %s
+log.debug.load.autosave.newEntries=Load: Saved %d original infos.
+log.debug.load.undo.created=Load undo created: %s.
+log.debug.load.check.implicit.start=Load: Check implicit batch...
+log.debug.load.check.implicit.limitReached=Load: Limit %d reached.
+log.debug.load.check.implicit.foundNotReady=Load: Not Ready at #%d: %s.
+log.debug.load.check.implicit.complete=Load: Implicit complete, found not ready: %b.
+log.debug.load.exec.batch=Load: Batch load.
+log.debug.load.exec.sync=Load: Sync load.
+log.debug.load.exec.sync.complete=Sync load: %d ms.
+log.warn.load.exec.sync.failedSet=Sync load failed: %s - %s.
+log.fatal.load.exec.sync.error=FATAL Error Sync Load! Entry: %s, Error: %s.
+log.warn.load.exec.sync.invalidBlock=Invalid ID '%s' at %s, skipped.
+log.warn.load.exec.sync.notLoaded=Chunk not loaded at %s, skipped.
+
+log.debug.joinWorld.worldNull=onEntityJoinWorld: world is null.
+log.debug.joinWorld.entry=Join World/Switch Dim: Cur %d, Prev %d.
+log.debug.joinWorld.autoplaceInProgress=Auto-place in progress, waiting.
+log.warn.joinWorld.pendingEntry=Residual pendingAutoPlaceEntry found, cleaning.
+log.debug.joinWorld.autoplaceEnabled=Auto-place enabled.
+log.debug.joinWorld.loadingFile=Loading auto-place file: %s.json.
+log.debug.joinWorld.loadedEntries=Loaded %d entries.
+log.debug.joinWorld.pendingSet=Pending auto-place set at %s.
+log.debug.joinWorld.noFile=Auto-place file missing/empty.
+log.debug.joinWorld.autoplaceDisabled=Auto-place disabled.
+log.debug.joinWorld.standardFlow.start=Auto-place flow not active. Normal join logic...
+log.debug.joinWorld.standardFlow.firstJoin=First join: Dim %d.
+log.debug.joinWorld.standardFlow.executingCleanupFirstJoin=Join Cleanup: first join.
+log.debug.joinWorld.standardFlow.dimensionChange=Dim change: %d -> %d.
+log.debug.joinWorld.standardFlow.executingCleanupDimChange=Join Cleanup: dim change.
+log.debug.joinWorld.standardFlow.rejoinSameDim=Rejoin: same dim %d.
+log.debug.joinWorld.standardFlow.executingCleanupRejoin=Join Cleanup: same dim.
+
+log.info.worldLoad.skipCleanup=Auto-place active, skipping onWorldLoad cleanup.
+log.worldLoad.checking=WorldLoad: Check dim %d clear file...
+log.worldLoad.foundClearFile=Found clear file %s, restoring...
+log.error.worldLoad.restoreFailed=WorldLoad restore failed at %s: %s.
+log.warn.worldLoad.originalBlock.notFound=ID '%s' not found for %s.
+log.worldLoad.restoreComplete=Restore finished: %d success, %d fail.
+log.worldLoad.clearFile.empty=Clear file empty.
+log.error.worldLoad.clearFile.deleteFailed=Failed delete clear file: %s.
+log.info.worldLoad.clearFile.deleted=Deleted clear file: %s.
+log.info.worldLoad.clearFile.notFound=Clear file %s not found.
+
+log.info.worldUnload.entry=WorldUnload triggered. autoPlaceInProgress: %b.
+log.info.worldUnload.pendingAutoplace=Pending task detected during unload, cleaning.
+log.info.worldUnload.autoplaceCleanupCalled=Static cleanup called.
+log.info.worldUnload.autoplace.playerCoords=Player coords: (%f, %f, %f).
+log.info.worldUnload.autoplace.logicalFeetPos=Logical feet pos: %s.
 log.info.worldUnload.autoplace.loadingClearFile=Loaded %d entries from %s.json.
-log.info.worldUnload.autoplace.saved=Player's logical feet position (%s) is a recorded ghost block (block: %s). Info saved to %s.json.
-log.info.worldUnload.autoplace.notGhostBlock=Player's logical feet position (%s) is not a recorded ghost block (or not in clear file). Deleting old %s.json (if it exists).
-log.error.worldUnload.autoplace.deleteFailed=Failed to delete old auto-place file: %s
-log.info.worldUnload.autoplace.deleteSuccess=Successfully deleted old auto-place file: %s
-log.info.worldUnload.autoplace.playerNull=Player is null or not in the unloading world. Attempting to clean up possible auto-place file.
-log.info.worldUnload.autoplace.residualDeleted=Deleted a possibly residual auto-place file: %s
-log.error.worldUnload.autoplace.residualDeleteFailed=Failed to delete residual auto-place file: %s
-log.debug.worldUnload.standardCleanup.entry=Unloading world: %s Dim: %d
-log.debug.worldUnload.standardCleanup.clearFileDeleted=Deleting clear file (%s) result: %b
-log.error.worldUnload.standardCleanup.clearFileFailed=Failed to delete clear file (%s)!
-log.debug.worldUnload.standardCleanup.undoFileDeleted=Attempting to delete undo file: %s result: %b
-log.info.worldUnload.standardCleanup.cancellingTasks=World unloading, cancelling all active tasks...
-log.info.worldUnload.standardCleanup.resettingState=Resetting isFirstJoin and autoPlaceInProgress.
+log.info.worldUnload.autoplace.saved=Feet pos (%s) is ghost block (%s). Saved to %s.json.
+log.info.worldUnload.autoplace.notGhostBlock=Feet pos (%s) not a ghost block. Deleting %s.json.
+log.error.worldUnload.autoplace.deleteFailed=Delete old auto-place failed: %s.
+log.info.worldUnload.autoplace.deleteSuccess=Deleted old auto-place file.
+log.info.worldUnload.autoplace.playerNull=Player null/not in world.
+log.info.worldUnload.autoplace.residualDeleted=Deleted residual auto-place: %s.
+log.error.worldUnload.autoplace.residualDeleteFailed=Failed delete residual auto-place: %s.
 
-# --- Other ---
-log.debug.fastpiston.recalculating=--- FastPistonBreakingHandler: Recalculating speed ---
-log.debug.fastpiston.originalSpeed=Original event speed (newSpeed from game): %f
-log.debug.fastpiston.calculatedSM=Calculated sm (speed * multiplier) = %f
-log.debug.fastpiston.correctionFactor=Correction Factor (incorrect_h / correct_h) = %f
-log.debug.fastpiston.finalSpeed=Final Corrected Speed to set = %f
-log.debug.autosneak.press=AutoSneak: Mod pressed sneak key.
-log.debug.autosneak.release=AutoSneak: Mod released sneak key.
-log.debug.handler.chatSuggest.created=ChatSuggestEventHandler instance created.
-log.error.reflection.drawnChatLines=Could not find drawnChatLines field!
-log.error.reflection.chatComponent=Could not find chatComponent field!
-log.warn.reflection.updateCounter=Could not find updateCounter field, will use Fallback logic.
-log.error.reflection.inputField=Could not find inputField field!
-log.error.reflection.defaultInputFieldText=Could not find defaultInputFieldText field!
-log.error.chat.attachButton.failed=Error attaching translation button: %s
-log.error.chat.attachSuggestButton.failed=Exception occurred while attaching suggestion button:
-log.error.gui.keyboard.failed=Error processing GUI keyboard input:
-log.error.gui.twitchkey.failed=Error intercepting Twitch keybind and manually inputting @:
-log.error.gui.getTextOnOpen.failed=Error getting initial text on GUI open:
-log.error.gui.mouse.failed=Error processing GUI mouse input:
-log.error.note.loadFailed=Error loading note: %s
-log.error.note.saveFailed=Error saving note: %s
-log.error.translation.exception=Exception occurred during translation: %s
-log.error.data.deleteEmpty.failed=Failed to delete empty data file: %s
-log.info.data.deleteEmpty.success=Deleted empty data file: %s
-log.error.data.save.failed=Error saving data to file: %s
-log.error.data.load.internal.failed=Internal load failed: %s
-log.info.data.load.notFound=File not found: %s
-log.error.data.load.failed=Failed to load file: %s
-log.error.data.getDim.nullFilename=getDimensionFromFileName: filename is null!
-log.error.data.getDim.parseFailed=Error parsing dimension from filename: '%s' -> parsed dimension string: '%s'
-log.warn.data.getDim.notFound=Could not find or parse dimension marker '_dim_' from filename: %s
-log.info.undo.autoClearFile.updated=Updated/removed %d entries from auto-clear file '%s'.
-log.error.restoreBlocks.failed=Failed to restore block %s: %s
-log.info.tasks.cancelled.count=Cancelled %d active/paused tasks.
-log.automine.targets.loaded=Loaded %d AutoMine coordinate targets.
-log.automine.blocks.loaded=Loaded %d AutoMine block targets.
-log.automine.block.id.invalid=Warning: Invalid block ID found in AutoMine block targets: %s. Skipped.
-log.automine.targets.load_failed=Error loading AutoMine targets: %s
-log.automine.targets.save_failed=Error saving AutoMine targets: %s
-log.automine.weights.loaded=Successfully loaded %d automine block weights.
-log.automine.weights.load_failed=Failed to load automine block weights: %s
-log.automine.weights.save_failed=Failed to save automine block weights: %s
-log.automine.groups.loaded=Loaded %d automine block groups.
-log.automine.groups.load_failed=Failed to load automine block groups: %s
-log.automine.groups.save_failed=Failed to save automine block groups: %s
-log.handler.registered.guiStateSave=GUI State Save Event Handler (GuiStateSaveHandler) registered in PreInit.
+log.debug.worldUnload.standardCleanup.entry=Unloading: %s Dim: %d.
+log.debug.worldUnload.standardCleanup.clearFileDeleted=Deleted clear file (%s): %b.
+log.error.worldUnload.standardCleanup.clearFileFailed=Failed delete clear file (%s)!
+log.debug.worldUnload.standardCleanup.undoFileDeleted=Delete undo file (%s): %b.
+log.info.worldUnload.standardCleanup.cancellingTasks=Unload: Cancelling all tasks...
+log.info.worldUnload.standardCleanup.resettingState=Resetting join state.
+
+log.debug.fastpiston.recalculating=--- FastPiston: Recalculating ---
+log.debug.fastpiston.originalSpeed=Original: %f.
+log.debug.fastpiston.calculatedSM=Calculated sm: %f.
+log.debug.fastpiston.correctionFactor=Correction: %f.
+log.debug.fastpiston.finalSpeed=Final speed: %f.
+log.debug.autosneak.press=AutoSneak: Pressing key.
+log.debug.autosneak.release=AutoSneak: Releasing key.
+log.debug.handler.chatSuggest.created=ChatSuggest handler created.
+
+log.error.reflection.drawnChatLines=Field 'drawnChatLines' not found!
+log.error.reflection.chatComponent=Field 'chatComponent' not found!
+log.warn.reflection.updateCounter=Field 'updateCounter' not found, using fallback.
+log.error.reflection.inputField=Field 'inputField' not found!
+log.error.reflection.defaultInputFieldText=Field 'defaultInputFieldText' not found!
+
+log.error.chat.attachButton.failed=Error attaching button: %s.
+log.error.chat.attachSuggestButton.failed=Exception attaching suggestion button:
+log.error.gui.keyboard.failed=GUI keyboard error:
+log.error.gui.twitchkey.failed=GUI twitch key error:
+log.error.gui.getTextOnOpen.failed=GUI get text error:
+log.error.gui.mouse.failed=GUI mouse error:
+log.error.note.loadFailed=Load note failed: %s.
+log.error.note.saveFailed=Save note failed: %s.
+log.error.translation.exception=Translation exception: %s.
+log.error.data.deleteEmpty.failed=Delete empty file failed: %s.
+log.info.data.deleteEmpty.success=Deleted empty file: %s.
+log.error.data.save.failed=Save data failed: %s.
+log.error.data.load.internal.failed=Internal load failed: %s.
+log.info.data.load.notFound=File not found: %s.
+log.error.data.load.failed=Load file failed: %s.
+log.error.data.getDim.nullFilename=Filename is null!
+log.error.data.getDim.parseFailed=Parse dim failed: '%s' -> '%s'.
+log.warn.data.getDim.notFound=Marker '_dim_' not found: %s.
+log.info.undo.autoClearFile.updated=Updated %d entries in %s.
+log.error.restoreBlocks.failed=Restore failed for %s: %s.
+log.info.tasks.cancelled.count=Cancelled %d tasks.
+
+log.automine.targets.loaded=Loaded %d AutoMine coords.
+log.automine.blocks.loaded=Loaded %d AutoMine blocks.
+log.automine.block.id.invalid=Warning: Invalid ID in targets: %s.
+log.automine.targets.load_failed=Load AutoMine targets failed: %s.
+log.automine.targets.save_failed=Save AutoMine targets failed: %s.
+log.automine.weights.loaded=Loaded %d block weights.
+log.automine.weights.load_failed=Load weights failed: %s.
+log.automine.weights.save_failed=Save weights failed: %s.
+log.automine.groups.loaded=Loaded %d groups.
+log.automine.groups.load_failed=Load groups failed: %s.
+log.automine.groups.save_failed=Save groups failed: %s.
+
+log.info.skyblock.lbin_updated=Skyblock LBIN prices updated.
+log.error.skyblock.lbin_failed=LBIN update failed: %s.
+log.info.skyblock.bazaar_updated=Skyblock Bazaar prices updated.
+log.error.skyblock.bazaar_failed=Bazaar update failed: %s.
+log.error.translation.bing.missing_params=Bing Token missing (IG/Key/Token empty).
+log.error.translation.bing.structure_changed=HTML structure changed, Bing parameters not found.

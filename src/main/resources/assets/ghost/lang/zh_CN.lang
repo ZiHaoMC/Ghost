@@ -112,6 +112,7 @@ ghost.automine.error.no_targets_set=§c错误: 未设置任何挖掘目标 (坐�
 ghost.automine.error.no_targets_left=§c错误: 没有剩余的挖掘目标了，自动挖掘已停止。
 ghost.automine.error.mining_timeout_blacklisted=§e警告: 挖掘方块 %s (%d, %d, %d) 超时，已临时加入黑名单。
 ghost.automine.status.waiting=§7当前没有可挖掘的目标，正在等待...
+ghost.automine.error.search_timeout=§c自动挖掘已停止: 在 %d 秒内未找到任何目标。
 
 # 警告信息
 ghost.automine.warning.packet_mode=您已切换到数据包(Packet)挖掘模式。此模式直接与服务器通信，比默认的模拟模式更容易被现代反作弊系统（如Watchdog）检测到，可能导致封禁。请谨慎使用！
@@ -161,9 +162,29 @@ ghost.autocraft.error.gui_timeout=§c错误: 打开界面超时，自动合成�
 ghost.autocraft.error.craft_timeout=§c错误: 等待合成结果超时！
 ghost.autocraft.error.pickup_timeout=§c错误: 等待成品槽清空超时！
 ghost.autocraft.error.stash_timeout=§c错误: 等待 /pickupstash 确认消息超时。自动合成已停止。
-log.handler.registered.autoCraft=自动合成事件处理器 (AutoCraftHandler) 已注册。
-log.command.registered.autoCraft=AutoCraftCommand (/autocraft) 已注册。
 
+# ==================================
+# ===         寻路系统           ===
+# ==================================
+ghost.pathfinding.command.usage=用法: /gpath <x> <y> <z> 或 /gpath stop
+ghost.pathfinding.stop.success=寻路已停止。
+ghost.pathfinding.target.set=寻路目标已设定: %d, %d, %d
+ghost.pathfinding.error.invalid_coord=坐标格式错误。
+ghost.pathfinding.arrival=§a已到达目的地！
+ghost.pathfinding.error.no_path=寻路失败: 无法到达目标 (过远或无路径)
+ghost.pathfinding.error.crash=计算线程崩溃: %s
+ghost.pathfinding.stuck.horizontal=检测到水平位移停滞，尝试重寻路...
+ghost.pathfinding.stuck.index=检测到路径进度长时间未更新，强制重寻路...
+ghost.pathfinding.log.start=>>> 全局目标设定: %s
+ghost.pathfinding.log.stop=<<< 寻路停止
+
+# ==================================
+# ===        地牢助手          ===
+# ==================================
+ghost.dungeon.helper.title=§6§lGhost 地牢助手
+ghost.dungeon.value=§7物品总值: §e%s
+ghost.dungeon.cost=§7开启花费: §c-%s
+ghost.dungeon.profit=§f预计利润: %s%s
 
 # ==================================
 # ===        翻译功能          ===
@@ -172,6 +193,7 @@ log.command.registered.autoCraft=AutoCraftCommand (/autocraft) 已注册。
 ghostblock.commands.gtranslate.usage=用法: /gtranslate <要翻译的文本...>
 ghostblock.commands.gtranslate.translating=正在翻译: %s
 ghostblock.commands.gtranslate.placeholder=<要翻译的文本...>
+ghost.tooltip.switch_provider=点击切换翻译源: %s
 
 # 聊天翻译
 # 注意 下面这个 [译] 后面的两个空格是为了更好地让玩家按到按钮 不要删除！
@@ -198,6 +220,10 @@ ghost.error.translation.unknown_format=翻译失败: 未知的API响应格式。
 ghost.error.translation.http_error=翻译失败: HTTP 错误码 %s
 ghost.error.translation.internal_error=翻译时发生内部错误: %s
 ghost.error.translation.network=翻译失败: 网络或未知错误
+ghost.error.translation.api_response=%s API 错误 (状态码: %d)
+ghost.error.translation.bing.failed_domains=Bing 翻译在所有域名上均连接失败
+ghost.error.translation.bing.tokens=无法获取 Bing 翻译 Token
+ghost.error.translation.bing.empty=Bing 返回了空结果
 
 # 缓存相关
 ghost.cache.cleared=[Ghost] 已清除 '%s' 的翻译缓存。
@@ -244,6 +270,7 @@ ghost.automine.warning.no_mithril_targets=Mithril优化已启用，但目标列�
 ghost.automine.status.cleanup_start=Titanium数量达到阈值，进入清理模式...
 ghost.automine.status.cleanup_complete=清理完成，恢复Mithril优先挖掘。
 ghost.automine.warning.tool_too_weak_for_cleanup=你当前的工具破坏等级不足以清理Titanium (需要 BP 5+)。在本轮挂机中将会忽略所有Titanium。
+ghost.automine.warning.tool_too_weak_detailed=§e跳过 %s, 工具等级不足 (BP %d < %d)
 
 # ==================================
 # ===       /cgb 命令族       ===
@@ -363,21 +390,6 @@ ghost.commands.cghostblock.help.subcommand.undo=撤销上一次或指定的 set/
 ghostblock.commands.cghostblock.help.subcommand.history=显示可供撤销的操作历史记录。
 ghostblock.commands.cghostblock.help.aliases=别名
 
-# 翻译
-
-ghost.tooltip.switch_provider=点击切换翻译源: %s
-ghost.config.comment.showProviderSwitchButtons=是否在翻译结果后显示切换翻译源的按钮
-ghost.config.comment.translationProvider=当前使用的翻译提供商 (GOOGLE/BING/MYMEMORY/NIUTRANS)
-ghostblock.commands.gconfig.help.setting.showProviderSwitchButtons=翻译后显示切换源按钮
-ghostblock.commands.gconfig.help.setting.translationProvider=默认翻译源
-
-# 翻译错误信息
-ghost.error.translation.api_response=%s API 错误 (状态码: %d)
-ghost.error.translation.bing.failed_domains=Bing 翻译在所有域名上均连接失败
-ghost.error.translation.bing.tokens=无法获取 Bing 翻译 Token
-ghost.error.translation.bing.empty=Bing 返回了空结果
-ghost.log.bing.switch_host=Bing 翻译域名已切换至: %s
-
 # ==================================
 # ===     Mod 配置文件文本     ===
 # ==================================
@@ -386,7 +398,7 @@ ghost.log.bing.switch_host=Bing 翻译域名已切换至: %s
 ghostblock.config.alwaysBatchFill.tooltip=是否强制 /cgb fill 命令总是使用批处理模式 (-b)。如果为 true，即使命令中不包含 -b 也会使用批处理。
 ghostblock.config.forcedBatchSize.tooltip=当 alwaysBatchFill 为 true 且用户执行 /cgb fill 时 *没有* 指定批次大小时，使用的批次大小。
 ghostblock.config.enableAutoSave.tooltip=是否在执行 /cgb set 或 /cgb fill 命令时，即使不加 -s 参数也自动保存幽灵方块数据。
-ghostblock.config.defaultSaveFileName.tooltip=当启用自动保存 (enableAutoSave=true) 且未使用 -s 时，默认使用的保存文件名。留空或输入 'default' 将使用当前世界/服务器标识符作为文件名。
+ghostblock.config.defaultSaveFileName.tooltip=当启用自动保存 (enableAutoSave=true)且未使用 -s 时，默认使用的保存文件名。留空或输入 'default' 将使用当前世界/服务器标识符作为文件名。
 ghostblock.config.enableChatSuggestions.tooltip=是否启用在聊天中为命令添加建议按钮的功能 (例如在命令成功或失败后)。
 ghostblock.config.enableCommandHistoryScroll.tooltip=是否启用 Shift + 鼠标滚轮/方向键 切换已发送命令历史的功能。
 ghostblock.config.enableAutoPlaceOnJoin.tooltip=是否在玩家加入世界时，自动在脚下重新放置之前记录的幽灵方块（如果脚下当前是空气）。这可以防止在空中退出后重新进入时掉落。
@@ -443,6 +455,8 @@ ghost.config.comment.autoCraftCycleDelay=自动合成时，完成一次完整合
 ghost.config.comment.autoCraftMenuOpenDelay=自动合成时，点击下界之星后，等待SkyBlock菜单加载的延迟时间（游戏刻）。
 ghost.config.comment.autoCraftTableOpenDelay=自动合成时，点击工作台图标后，等待合成界面加载的延迟时间（游戏刻）。
 ghost.config.comment.autoCraftPickupStashWait=自动合成时，执行/pickupstash命令后，等待物品进入背包的延迟时间（游戏刻）。
+ghost.config.comment.showProviderSwitchButtons=是否在翻译结果后显示切换翻译源的按钮
+ghost.config.comment.translationProvider=当前使用的翻译提供商 (GOOGLE/BING/MYMEMORY/NIUTRANS)
 
 # ==================================
 # ===     /gconfig 命令文本     ===
@@ -476,6 +490,9 @@ ghostblock.commands.gconfig.help.usage.set=设置指定的配置选项的值。
 ghostblock.commands.gconfig.help.usage.help=显示此帮助信息。
 ghostblock.commands.gconfig.help.usage.toggle=快速切换聊天建议功能的开关。
 ghostblock.commands.gconfig.help.available_settings=可用设置:
+ghostblock.commands.gconfig.help.tab_hint=(输入 /gconfig 并按 Tab 键查看所有可用选项)
+ghostblock.commands.gconfig.help.type.numeric_or_mode=数值或模式
+ghostblock.commands.gconfig.help.type.lang_code=文本代码
 ghost.commands.gconfig.help.type.boolean=(true/false)
 ghost.commands.gconfig.help.type.positive_integer=(正整数)
 ghost.commands.gconfig.help.type.text=(文本)
@@ -499,37 +516,39 @@ ghostblock.commands.gconfig.help.setting.enablePlayerESP=启用玩家透视功�
 ghostblock.commands.gconfig.help.setting.enableBedrockMiner=启用破基岩功能。
 ghostblock.commands.gconfig.help.setting.fastPistonBreaking=启用镐可快速破坏活塞的特性。
 ghostblock.commands.gconfig.help.setting.hideArrowsOnPlayers=隐藏射在其他玩家身上的箭。
-ghost.commands.gconfig.help.setting.enableNoteFeature=启用游戏内笔记功能。
-ghost.commands.gconfig.help.setting.enableAdvancedEditing=启用笔记界面的高级编辑功能。
-ghost.commands.gconfig.help.setting.enableMarkdownRendering=启用笔记界面的Markdown格式渲染。
-ghost.commands.gconfig.help.setting.enableColorRendering=启用笔记界面的颜色代码渲染。
-ghost.commands.gconfig.help.setting.enableAmpersandColorCodes=启用笔记界面的 '&' 颜色代码。
-ghost.commands.gconfig.help.setting.fixGuiStateLossOnResize=修复GUI因窗口大小调整导致的状态丢失问题。
+ghostblock.commands.gconfig.help.setting.enableNoteFeature=启用游戏内笔记功能。
+ghostblock.commands.gconfig.help.setting.enableAdvancedEditing=启用笔记界面的高级编辑功能。
+ghostblock.commands.gconfig.help.setting.enableMarkdownRendering=启用笔记界面的Markdown格式渲染。
+ghostblock.commands.gconfig.help.setting.enableColorRendering=启用笔记界面的颜色代码渲染。
+ghostblock.commands.gconfig.help.setting.enableAmpersandColorCodes=启用笔记界面的 '&' 颜色代码。
+ghostblock.commands.gconfig.help.setting.fixGuiStateLossOnResize=修复GUI因窗口大小调整导致的状态丢失问题。
 ghostblock.commands.gconfig.help.setting.niuTransApiKey=设置小牛翻译的API Key。
 ghostblock.commands.gconfig.help.setting.translationSourceLang=设置翻译的源语言。
 ghostblock.commands.gconfig.help.setting.translationTargetLang=设置翻译的目标语言。
-ghost.commands.gconfig.help.setting.autoMineRotationSpeed=自动挖掘时的平滑旋转速度 (度/tick)。
-ghost.commands.gconfig.help.setting.autoMineSpeedVariability=随机旋转速度的波动范围。
-ghost.commands.gconfig.help.setting.autoMineEnableRandomSpeed=启用随机旋转速度。
-ghost.commands.gconfig.help.setting.autoMineMaxReach=自动挖掘的最大有效距离。
-ghost.commands.gconfig.help.setting.autoMineSearchRadius=自动挖掘“方块类型”模式下的搜索半径。
-ghost.commands.gconfig.help.setting.autoMineTimeout=设置挖掘超时时间(秒)。
-ghost.commands.gconfig.help.setting.autoMinePreventDiggingDown=防止自动挖掘玩家脚下及更下方的方块。
-ghost.commands.gconfig.help.setting.autoMineEnableVeinMining=启用连锁挖矿。
-ghost.commands.gconfig.help.setting.autoMineServerRotation=是否使用服务端视角旋转。
-ghost.commands.gconfig.help.setting.autoMineInstantRotation=启用瞬间视角旋转以加快瞄准速度。
-ghost.commands.gconfig.help.setting.autoMineSneak=挖掘时自动潜行。
-ghost.commands.gconfig.help.setting.autoMineEnableRandomMove=启用挖掘时的随机移动。
-ghost.commands.gconfig.help.setting.autoMineRandomMoveInterval=随机移动的平均间隔时间 (tick)。
-ghost.commands.gconfig.help.setting.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
-ghost.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。
-ghost.commands.gconfig.help.setting.autoMineMiningMode=设置自动挖掘的模式。
-ghost.commands.gconfig.help.setting.autoMineAntiCheatCheck=启用自动挖掘的反作弊回弹检测。
-ghost.commands.gconfig.help.setting.autoCraftPlacementDelay=设置自动合成中每次放置物品间的延迟。
-ghost.commands.gconfig.help.setting.autoCraftCycleDelay=设置自动合成中每个完整循环间的延迟。
-ghost.commands.gconfig.help.setting.autoCraftMenuOpenDelay=设置打开SkyBlock菜单后的等待延迟。
-ghost.commands.gconfig.help.setting.autoCraftTableOpenDelay=设置打开合成界面后的等待延迟。
-ghost.commands.gconfig.help.setting.autoCraftPickupStashWait=设置/pickupstash命令后的等待延迟。
+ghostblock.commands.gconfig.help.setting.autoMineRotationSpeed=自动挖掘时的平滑旋转速度 (度/tick)。
+ghostblock.commands.gconfig.help.setting.autoMineSpeedVariability=随机旋转速度的波动范围。
+ghostblock.commands.gconfig.help.setting.autoMineEnableRandomSpeed=启用随机旋转速度。
+ghostblock.commands.gconfig.help.setting.autoMineMaxReach=自动挖掘的最大有效距离。
+ghostblock.commands.gconfig.help.setting.autoMineSearchRadius=自动挖掘“方块类型”模式下的搜索半径。
+ghostblock.commands.gconfig.help.setting.autoMineTimeout=设置挖掘超时时间(秒)。
+ghostblock.commands.gconfig.help.setting.autoMinePreventDiggingDown=防止自动挖掘玩家脚下及更下方的方块。
+ghostblock.commands.gconfig.help.setting.autoMineEnableVeinMining=启用连锁挖矿。
+ghostblock.commands.gconfig.help.setting.autoMineServerRotation=是否使用服务端视角旋转。
+ghostblock.commands.gconfig.help.setting.autoMineInstantRotation=启用瞬间视角旋转以加快瞄准速度。
+ghostblock.commands.gconfig.help.setting.autoMineSneak=挖掘时自动潜行。
+ghostblock.commands.gconfig.help.setting.autoMineEnableRandomMove=启用挖掘时的随机移动。
+ghostblock.commands.gconfig.help.setting.autoMineRandomMoveInterval=随机移动的平均间隔时间 (tick)。
+ghostblock.commands.gconfig.help.setting.autoMineRandomMoveDuration=每次随机移动的持续时间 (tick)。
+ghostblock.commands.gconfig.help.setting.autoMineRandomMoveIntervalVariability=随机移动间隔的波动范围 (tick)。
+ghostblock.commands.gconfig.help.setting.autoMineMiningMode=设置自动挖掘的模式。
+ghostblock.commands.gconfig.help.setting.autoMineAntiCheatCheck=启用自动挖掘的反作弊回弹检测。
+ghostblock.commands.gconfig.help.setting.autoCraftPlacementDelay=设置自动合成中每次放置物品间的延迟。
+ghostblock.commands.gconfig.help.setting.autoCraftCycleDelay=设置自动合成中每个完整循环间的延迟。
+ghostblock.commands.gconfig.help.setting.autoCraftMenuOpenDelay=设置打开SkyBlock菜单后的等待延迟。
+ghostblock.commands.gconfig.help.setting.autoCraftTableOpenDelay=设置打开合成界面后的等待延迟。
+ghostblock.commands.gconfig.help.setting.autoCraftPickupStashWait=设置/pickupstash命令后的等待延迟。
+ghostblock.commands.gconfig.help.setting.showProviderSwitchButtons=翻译后显示切换源按钮
+ghostblock.commands.gconfig.help.setting.translationProvider=默认翻译源
 ghostblock.commands.gconfig.help.examples.header=示例:
 ghostblock.commands.gconfig.help.example.enableChatSuggestions=/gconfig enableChatSuggestions false
 ghostblock.commands.gconfig.help.example.enableCommandHistoryScroll=/gconfig enableCommandHistoryScroll false
@@ -620,6 +639,9 @@ log.handler.registered.guiStateSave=GUI状态保存事件处理器 (GuiStateSave
 log.handler.registered.itemTooltip=物品提示框翻译事件处理器 (ItemTooltipTranslationHandler) 已在 PreInit 中注册。
 log.handler.registered.ghostBlockCommand=GhostBlockCommand 事件处理器已注册。
 log.handler.registered.autoMine=自动挖掘事件处理器 (AutoMineHandler) 已注册。
+log.handler.registered.pathfinding=寻路事件处理器 (Pathfinding) 已注册。
+log.handler.registered.dungeonProfit=地牢结算处理器 (DungeonProfit) 已注册。
+log.handler.registered.autoCraft=自动合成事件处理器 (AutoCraftHandler) 已注册。
 
 # --- 命令注册 ---
 log.command.registering.eventListener=注册 GhostBlockCommand 事件监听...
@@ -628,6 +650,8 @@ log.command.registered.ghostConfig=GhostConfigCommand (/gconfig) 已注册。
 log.command.registered.cgb=/cgb 命令实例已注册。
 log.command.registered.gtranslate=TranslateCommand (/gtranslate) 已注册。
 log.command.registered.autoMine=AutoMineCommand (/automine) 已注册。
+log.command.registered.autoCraft=AutoCraftCommand (/autocraft) 已注册。
+log.command.registered.gpath=PathfindingCommand (/gpath) 已注册。
 log.command.skipping.server=在服务端跳过客户端命令注册。
 log.command.handler.initialized=CommandEventHandler 已初始化 (处理Tick事件)。
 log.info.command.parse.success=方块解析成功: %s (ID=%d), meta=%d
@@ -839,7 +863,7 @@ log.debug.worldUnload.standardCleanup.undoFileDeleted=尝试删除 undo 文件: 
 log.info.worldUnload.standardCleanup.cancellingTasks=世界卸载，取消所有活动任务...
 log.info.worldUnload.standardCleanup.resettingState=重置 isFirstJoin 和 autoPlaceInProgress。
 
-# --- 其他 ---
+# --- 其他日志 ---
 log.debug.fastpiston.recalculating=--- FastPistonBreakingHandler: Recalculating speed ---
 log.debug.fastpiston.originalSpeed=Original event speed (newSpeed from game): %f
 log.debug.fastpiston.calculatedSM=Calculated sm (speed * multiplier) = %f
@@ -886,3 +910,9 @@ log.automine.groups.loaded=已加载 %d 个自动挖掘方块组。
 log.automine.groups.load_failed=加载自动挖掘方块组失败: %s
 log.automine.groups.save_failed=保存自动挖掘方块组失败: %s
 log.handler.registered.guiStateSave=GUI状态保存事件处理器 (GuiStateSaveHandler) 已在 PreInit 中注册。
+log.info.skyblock.lbin_updated=Skyblock LBIN 价格已更新。
+log.error.skyblock.lbin_failed=LBIN 更新失败: %s
+log.info.skyblock.bazaar_updated=Skyblock Bazaar 价格已更新。
+log.error.skyblock.bazaar_failed=Bazaar 更新失败: %s
+log.error.translation.bing.missing_params=Token 缺失 (IG/Key/Token 为空)，获取失败。
+log.error.translation.bing.structure_changed=HTML 中未找到 Key/Token 参数 (结构可能已改变)。

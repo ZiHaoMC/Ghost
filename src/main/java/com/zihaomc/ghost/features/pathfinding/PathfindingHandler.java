@@ -1,5 +1,7 @@
 package com.zihaomc.ghost.features.pathfinding;
 
+import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.features.ghostblock.GhostBlockHelper;
 import com.zihaomc.ghost.utils.RotationUtil;
 import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
@@ -59,12 +61,12 @@ public class PathfindingHandler {
         isCalculating = false;
         resetStuckTimers();
         cache.load(); 
-        debug(">>> 全局目标设定: " + target);
+        debug(LangUtil.translate("ghost.pathfinding.log.start", target));
         generateNextSegment(); 
     }
 
     public static void stop() {
-        if (isPathfinding && DEBUG) debug("<<< 寻路停止");
+        if (isPathfinding && DEBUG) debug(LangUtil.translate("ghost.pathfinding.log.stop"));
         isPathfinding = false;
         currentPath.clear();
         globalTarget = null;
@@ -84,7 +86,7 @@ public class PathfindingHandler {
 
         if (globalTarget != null && mc.thePlayer.getDistanceSq(globalTarget) < 1.5) {
             stop();
-            mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 已到达目的地！"));
+            mc.thePlayer.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghost.pathfinding.arrival"));
             return;
         }
 
@@ -134,7 +136,7 @@ public class PathfindingHandler {
                             currentPathIndex = 0;
                             resetStuckTimers(); // 成功获得新路径后重置计时器
                         } else {
-                            debugErr("寻路失败: 无法到达目标 (过远或无路径)");
+                            debugErr(LangUtil.translate("ghost.pathfinding.error.no_path"));
                         }
                     }
                     isCalculating = false;
@@ -143,7 +145,7 @@ public class PathfindingHandler {
             } catch (Exception e) {
                 e.printStackTrace();
                 mc.addScheduledTask(() -> {
-                    debugErr("计算线程崩溃: " + e.getMessage());
+                    debugErr(LangUtil.translate("ghost.pathfinding.error.crash", e.getMessage()));
                     isCalculating = false;
                 });
             }
@@ -299,7 +301,7 @@ public class PathfindingHandler {
                 double horizontalDist = Math.sqrt(dx * dx + dz * dz);
                 
                 if (horizontalDist < 0.25) { 
-                    debugErr("检测到水平位移停滞，尝试重寻路...");
+                    debugErr(LangUtil.translate("ghost.pathfinding.stuck.horizontal"));
                     return true;
                 }
             }
@@ -311,7 +313,7 @@ public class PathfindingHandler {
             indexStagnationTimer++;
             if (indexStagnationTimer > 60) {
                 indexStagnationTimer = 0;
-                debugErr("检测到路径进度长时间未更新，强制重寻路...");
+                debugErr(LangUtil.translate("ghost.pathfinding.stuck.index"));
                 return true;
             }
         } else {
