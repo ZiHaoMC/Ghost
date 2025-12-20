@@ -2,6 +2,7 @@ package com.zihaomc.ghost.features.automine;
 
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.config.GhostConfig;
+import com.zihaomc.ghost.features.pathfinding.PathfindingHandler;
 import com.zihaomc.ghost.utils.RotationUtil;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -14,6 +15,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.*;
+import net.minecraftforge.client.event.ClientChatReceivedEvent;
 import net.minecraftforge.common.util.Constants;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
@@ -29,7 +31,7 @@ import java.util.regex.Pattern;
 /**
  * "Auto Mine" 功能的核心处理器。
  * (重构后) 负责状态管理、目标搜寻，并将具体的挖掘行为委托给策略对象。
- * 同时处理反作弊回弹检测。
+ * 同时处理反作弊回弹检测，以及针对 Hypixel Skyblock 的自动重启恢复流程。
  */
 public class AutoMineHandler {
 
@@ -50,6 +52,16 @@ public class AutoMineHandler {
         POST_SWITCH_DELAY
     }
 
+    // --- 新增：自动恢复流程状态机 ---
+    private enum RecoveryState {
+        IDLE,
+        SEND_HUB,       // 发送 /hub
+        WAIT_FOR_HUB,   // 等待加载大厅
+        SEND_WARP,      // 发送 /warp forge
+        WAIT_FOR_FORGE, // 等待进入 Forge
+        PATHING         // 正在使用 gpath 寻路回位
+    }
+
     private static final Minecraft mc = Minecraft.getMinecraft();
     private static boolean isActive = false;
     private static BlockPos currentTarget = null;
@@ -58,9 +70,15 @@ public class AutoMineHandler {
     private int waitTicks = 0;
     private int delayTicks = 0;
 
-    private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
-    // [已移除] miningStartTime
+    // --- 恢复流程变量 ---
+    private static RecoveryState recoveryStatus = RecoveryState.IDLE;
+    private static int recoveryTicks = 0;
+    private static BlockPos activeRecoveryTarget = null;
+    // 固定坐标
+    private static final BlockPos FIXED_RECOVERY_POS = new BlockPos(-49, 142, -23);
 
+    private static final ConcurrentHashMap<BlockPos, Block> unmineableBlacklist = new ConcurrentHashMap<>();
+    
     // 用于跟踪空闲搜索的时间 (找不到目标的时间)
     private static Long searchStartTime = null;
 
@@ -99,7 +117,6 @@ public class AutoMineHandler {
 
     /**
      * 发送带统一格式 [Ghost] 前缀的聊天消息。
-     * 前缀颜色固定为深灰色，内容颜色由参数指定。
      */
     private static void sendMessage(String text, EnumChatFormatting color) {
         if (mc.thePlayer == null) return;
@@ -107,7 +124,6 @@ public class AutoMineHandler {
         ChatComponentText prefix = new ChatComponentText(LangUtil.translate("ghost.generic.prefix.default"));
         prefix.getChatStyle().setColor(EnumChatFormatting.DARK_GRAY);
         
-        // 这里的空格是为了防止前缀和内容粘在一起，如果语言文件里的前缀自带空格则可以去掉
         ChatComponentText body = new ChatComponentText(text); 
         body.getChatStyle().setColor(color);
         
@@ -242,9 +258,110 @@ public class AutoMineHandler {
         }
     }
 
+    // --- 处理自动恢复流程的核心状态机 ---
+    private void handleAutoRecovery() {
+        if (recoveryStatus == RecoveryState.IDLE) return;
+
+        recoveryTicks++;
+
+        switch (recoveryStatus) {
+            case SEND_HUB:
+                // 在收到消息并停止挖掘后，稍微等待几秒模拟人类反应再回主城
+                if (recoveryTicks > 40) { 
+                    mc.thePlayer.sendChatMessage("/hub");
+                    recoveryStatus = RecoveryState.WAIT_FOR_HUB;
+                    recoveryTicks = 0;
+                    sendMessage("检测到重启，正在尝试返回 Hub...", EnumChatFormatting.YELLOW);
+                }
+                break;
+
+            case WAIT_FOR_HUB:
+                // 等待 3-4 秒确保进入 Hub 并且客户端稳定
+                if (recoveryTicks > 80) {
+                    mc.thePlayer.sendChatMessage("/warp forge");
+                    recoveryStatus = RecoveryState.WAIT_FOR_FORGE;
+                    recoveryTicks = 0;
+                    sendMessage("正在尝试前往 Forge...", EnumChatFormatting.YELLOW);
+                }
+                break;
+
+            case WAIT_FOR_FORGE:
+                // 等待 5 秒左右确保进入 Forge 地图且地形已加载
+                if (recoveryTicks > 100) {
+                    // 确定目标坐标点：优先使用用户设置的，否则使用固定坐标
+                    if (!AutoMineTargetManager.recoveryPoints.isEmpty()) {
+                        activeRecoveryTarget = AutoMineTargetManager.recoveryPoints.get(0);
+                    } else {
+                        activeRecoveryTarget = FIXED_RECOVERY_POS;
+                    }
+                    
+                    sendMessage("已到达 Forge，开始寻路回挖掘位置...", EnumChatFormatting.AQUA);
+                    // 调用现有的寻路处理器开始寻路
+                    PathfindingHandler.setGlobalTarget(activeRecoveryTarget);
+                    recoveryStatus = RecoveryState.PATHING;
+                    recoveryTicks = 0;
+                }
+                break;
+
+            case PATHING:
+                // 每一秒检测一次是否到达
+                if (recoveryTicks % 20 == 0) {
+                    double distSq = mc.thePlayer.getDistanceSq(activeRecoveryTarget);
+                    // 距离目标点小于 2 格（4 的平方），或者寻路已经由于某些原因停止（到达）
+                    if (distSq < 4.0 || PathfindingHandler.getGlobalTarget() == null) {
+                        sendMessage("已到达挖掘点，自动重新开启挖掘。", EnumChatFormatting.GREEN);
+                        recoveryStatus = RecoveryState.IDLE;
+                        activeRecoveryTarget = null;
+                        
+                        // 如果之前因为重启关闭了挖掘，现在重新开启
+                        if (!isActive) {
+                            toggle();
+                        }
+                    }
+                }
+                // 如果寻路时间超过 10 分钟（防止极端卡死），强制重置状态机
+                if (recoveryTicks > 12000) {
+                    recoveryStatus = RecoveryState.IDLE;
+                    sendMessage("寻路回位超时，流程终止。", EnumChatFormatting.RED);
+                }
+                break;
+        }
+    }
+
+    /**
+     * 监听聊天消息，捕捉 Hypixel 的重启提示词
+     */
+    @SubscribeEvent
+    public void onChatReceived(ClientChatReceivedEvent event) {
+        // 关键：只有在正在挖掘 且 启用了 Mithril 优化时，才监听重启消息
+        if (!isActive || !GhostConfig.AutoMine.enableMithrilOptimization) return;
+
+        // 获取不带颜色代码的文本
+        String msg = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
+        
+        // 匹配提示词逻辑
+        boolean isRestartNotice = msg.contains("[Important] This server will restart soon:") || 
+                                  (msg.contains("[Important]") && msg.contains("60seconds") && msg.contains("warp out")) ||
+                                  msg.contains("Evacuating to Hub...") || 
+                                  msg.contains("Evauating to Hub..."); // 兼容拼写错误
+
+        if (isRestartNotice && recoveryStatus == RecoveryState.IDLE) {
+            // 立即标记为非活动，并进入恢复流程
+            toggle(); // 调用 toggle 会执行 reset() 并把 isActive 设为 false
+            recoveryStatus = RecoveryState.SEND_HUB;
+            recoveryTicks = 0;
+        }
+    }
+
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END || mc.thePlayer == null || mc.theWorld == null) return;
+
+        // 插入自动恢复逻辑的处理
+        handleAutoRecovery();
+
+        // 如果状态机正在运作，阻止常规挖掘逻辑的运行
+        if (recoveryStatus != RecoveryState.IDLE) return;
 
         if (currentMiningMode == MiningMode.SIMULATE) {
             if (mc.currentScreen != null) {
@@ -486,7 +603,7 @@ public class AutoMineHandler {
     }
 
     private boolean checkTimeout(Block blockAtTarget) {
-        // [已移除] 挖掘超时的逻辑
+        // [已移除旧逻辑]
         return false;
     }
 

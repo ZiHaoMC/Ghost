@@ -26,12 +26,17 @@ public class AutoMineTargetManager {
     private static final String TARGET_BLOCKS_FILE_NAME = "automine_blocks.json";
     private static final String TARGET_WEIGHTS_FILE_NAME = "automine_weights.json";
     private static final String TARGET_GROUPS_FILE_NAME = "automine_groups.json";
+    // 恢复点坐标文件
+    private static final String RECOVERY_POINTS_FILE_NAME = "automine_recovery_points.json";
+    
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static final Map<String, List<BlockPos>> worldTargetBlocks = new ConcurrentHashMap<>();
     public static final Set<BlockData> targetBlockTypes = new HashSet<>();
     public static final Map<Block, Integer> targetBlockWeights = new ConcurrentHashMap<>();
     public static final Map<String, List<String>> customBlockGroups = new ConcurrentHashMap<>();
+    // 存储恢复点坐标
+    public static final List<BlockPos> recoveryPoints = new ArrayList<>();
 
     public static class BlockData {
         public final Block block;
@@ -95,11 +100,18 @@ public class AutoMineTargetManager {
         return new File(configDir, TARGET_GROUPS_FILE_NAME);
     }
 
+    private static File getRecoveryFile() {
+        File configDir = new File(CONFIG_DIR);
+        if (!configDir.exists()) configDir.mkdirs();
+        return new File(configDir, RECOVERY_POINTS_FILE_NAME);
+    }
+
     public static void loadTargets() {
         loadCoordinates();
         loadBlockTypes();
         loadBlockWeights();
         loadBlockGroups();
+        loadRecoveryPoints(); // 加载恢复点
     }
 
     private static String getCurrentWorldId() {
@@ -218,6 +230,27 @@ public class AutoMineTargetManager {
         }
     }
 
+    /**
+     * 从文件加载恢复点坐标。
+     */
+    private static void loadRecoveryPoints() {
+        File file = getRecoveryFile();
+        if (!file.exists()) return;
+        try (Reader reader = new FileReader(file)) {
+            Type type = new TypeToken<List<AutoMineTargetEntry>>(){}.getType();
+            List<AutoMineTargetEntry> loaded = GSON.fromJson(reader, type);
+            if (loaded != null) {
+                recoveryPoints.clear();
+                for (AutoMineTargetEntry entry : loaded) {
+                    recoveryPoints.add(new BlockPos(entry.x, entry.y, entry.z));
+                }
+                LogUtil.info("已加载 " + recoveryPoints.size() + " 个挖掘恢复点坐标");
+            }
+        } catch (Exception e) {
+            LogUtil.error("加载恢复点失败: " + e.getMessage());
+        }
+    }
+
     public static void saveCoordinates() {
         File targetsFile = getCoordsFile();
         worldTargetBlocks.entrySet().removeIf(entry -> entry.getValue() == null || entry.getValue().isEmpty());
@@ -280,6 +313,21 @@ public class AutoMineTargetManager {
             GSON.toJson(customBlockGroups, writer);
         } catch (IOException e) {
             LogUtil.error("log.automine.groups.save_failed", e.getMessage());
+        }
+    }
+
+    /**
+     * 将恢复点坐标保存到文件。
+     */
+    public static void saveRecoveryPoints() {
+        File file = getRecoveryFile();
+        try (Writer writer = new FileWriter(file)) {
+            List<AutoMineTargetEntry> toSave = recoveryPoints.stream()
+                .map(AutoMineTargetEntry::new)
+                .collect(Collectors.toList());
+            GSON.toJson(toSave, writer);
+        } catch (IOException e) {
+            LogUtil.error("保存恢复点失败: " + e.getMessage());
         }
     }
 }

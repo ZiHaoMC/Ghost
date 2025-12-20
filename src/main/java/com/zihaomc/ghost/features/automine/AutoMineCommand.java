@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 
 /**
  * /automine 命令的实现类 (重构优化版)。
- * 修正了包名以匹配文件路径。
  */
 public class AutoMineCommand extends CommandBase {
 
@@ -74,12 +73,14 @@ public class AutoMineCommand extends CommandBase {
             case "mode":
                 handleMode(sender, args);
                 break;
+            case "setrecovery":
+                handleSetRecovery(sender, args);
+                break;
             case "toggle":
             case "start":
             case "stop":
                 AutoMineHandler.toggle();
                 break;
-            // 新增一个隐藏的内部命令，用于处理回弹确认
             case "automine_internal_feedback":
                 if (args.length > 1) {
                     AutoMineHandler.onRollbackFeedback(args[1]);
@@ -191,7 +192,6 @@ public class AutoMineCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.mode.current", currentModeName)));
             return;
         }
-
         String modeName = args[1].toUpperCase();
         try {
             AutoMineHandler.MiningMode newMode = AutoMineHandler.MiningMode.valueOf(modeName);
@@ -203,7 +203,6 @@ public class AutoMineCommand extends CommandBase {
 
     private void handleClear(ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 2) throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.clear"));
-        
         String clearType = args[1].toLowerCase();
         switch (clearType) {
             case "coords":
@@ -228,7 +227,6 @@ public class AutoMineCommand extends CommandBase {
             default:
                 throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.clear"));
         }
-
         if (AutoMineTargetManager.getCurrentTargetBlocks().isEmpty() && AutoMineTargetManager.targetBlockTypes.isEmpty() && AutoMineHandler.isActive()) {
             AutoMineHandler.toggle();
         }
@@ -236,7 +234,6 @@ public class AutoMineCommand extends CommandBase {
 
     private void handleWeight(ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 2) throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.weight"));
-        
         String action = args[1].toLowerCase();
         switch (action) {
             case "set":
@@ -265,7 +262,6 @@ public class AutoMineCommand extends CommandBase {
     
     private void handleGroup(ICommandSender sender, String[] args) throws CommandException {
         if (args.length < 2) throw new WrongUsageException(LangUtil.translate("ghost.automine.command.usage.group"));
-        
         String action = args[1].toLowerCase();
         switch (action) {
             case "create":
@@ -292,19 +288,50 @@ public class AutoMineCommand extends CommandBase {
         }
     }
 
+    /**
+     * 处理恢复点坐标设置。
+     */
+    private void handleSetRecovery(ICommandSender sender, String[] args) throws CommandException {
+        BlockPos pos;
+        if (args.length >= 4) {
+            pos = parseBlockPos(sender, args, 1, false);
+        } else {
+            // 如果不带参数，则设置当前站立位置
+            pos = ((net.minecraft.entity.player.EntityPlayer)sender).getPosition();
+        }
+        
+        // 我们只保留一个主恢复点，或者你可以修改为 add()
+        AutoMineTargetManager.recoveryPoints.clear();
+        AutoMineTargetManager.recoveryPoints.add(pos);
+        AutoMineTargetManager.saveRecoveryPoints();
+        
+        ChatComponentText msg = new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] " + 
+            EnumChatFormatting.GRAY + "已设置挖掘恢复点: " + 
+            EnumChatFormatting.YELLOW + String.format("%d, %d, %d", pos.getX(), pos.getY(), pos.getZ()));
+        sender.addChatMessage(msg);
+    }
+
     private void handleList(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.header_main")));
-        
         List<BlockPos> currentTargets = AutoMineTargetManager.getCurrentTargetBlocks();
-
         boolean hasCoords = !currentTargets.isEmpty();
         boolean hasBlocks = !AutoMineTargetManager.targetBlockTypes.isEmpty();
         boolean hasWeights = !AutoMineTargetManager.targetBlockWeights.isEmpty();
         boolean hasGroups = !AutoMineTargetManager.customBlockGroups.isEmpty();
+        boolean hasRecovery = !AutoMineTargetManager.recoveryPoints.isEmpty();
 
-        if (!hasCoords && !hasBlocks && !hasGroups) {
+        if (!hasCoords && !hasBlocks && !hasGroups && !hasRecovery) {
             sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.none")));
             return;
+        }
+
+        // 列表最后增加恢复点展示
+        if (hasRecovery) {
+            sender.addChatMessage(new ChatComponentText("§6--- 挖掘恢复点 (重启后自动寻路至此) ---"));
+            for (BlockPos p : AutoMineTargetManager.recoveryPoints) {
+                sender.addChatMessage(new ChatComponentText(String.format("§a坐标: §f(%d, %d, %d)", p.getX(), p.getY(), p.getZ())));
+            }
+            sender.addChatMessage(new ChatComponentText(" "));
         }
 
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.header_coords")));
@@ -317,7 +344,6 @@ public class AutoMineCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.empty_coords")));
         }
         sender.addChatMessage(new ChatComponentText(" "));
-
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.header_blocks")));
         if (hasBlocks) {
             for (AutoMineTargetManager.BlockData blockData : AutoMineTargetManager.targetBlockTypes) {
@@ -327,7 +353,6 @@ public class AutoMineCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.empty_blocks")));
         }
         sender.addChatMessage(new ChatComponentText(" "));
-
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.header_groups")));
         if (hasGroups) {
             for (String groupName : AutoMineTargetManager.customBlockGroups.keySet()) {
@@ -339,7 +364,6 @@ public class AutoMineCommand extends CommandBase {
             sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.empty_groups")));
         }
         sender.addChatMessage(new ChatComponentText(" "));
-
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.header_weights")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.list.weights_default_hint")));
         if(hasWeights) {
@@ -353,8 +377,8 @@ public class AutoMineCommand extends CommandBase {
 
     private void handleHelp(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.header")));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.description")));
-        sender.addChatMessage(new ChatComponentText(" "));
+        sender.addChatMessage(new ChatComponentText("§b/automine setrecovery§f - 设置当前位置为重启后的恢复点"));
+        sender.addChatMessage(new ChatComponentText("§b/automine setrecovery <x> <y> <z>§f - 手动设置恢复点坐标"));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommands.header")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.toggle")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.mode")));
@@ -364,15 +388,6 @@ public class AutoMineCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.clear")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.weight")));
         sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.subcommand.group")));
-        sender.addChatMessage(new ChatComponentText(" "));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.header")));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.add_coord")));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.add_block")));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.add_group")));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.set_mode")));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.remove_coord")));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.create_group")));
-        sender.addChatMessage(new ChatComponentText(LangUtil.translate("ghost.automine.command.help.examples.set_weight")));
     }
 
     @Override
@@ -380,9 +395,8 @@ public class AutoMineCommand extends CommandBase {
         if (args.length > 0 && "automine_internal_feedback".equalsIgnoreCase(args[0])) {
             return Collections.emptyList();
         }
-        
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, "add", "remove", "list", "clear", "toggle", "weight", "group", "mode", "help");
+            return getListOfStringsMatchingLastWord(args, "add", "remove", "list", "clear", "toggle", "weight", "group", "mode", "setrecovery", "help");
         }
         if (args.length == 2) {
             String subCmd = args[0].toLowerCase();
@@ -398,6 +412,8 @@ public class AutoMineCommand extends CommandBase {
                     return getListOfStringsMatchingLastWord(args, "create", "delete");
                 case "mode":
                     return getListOfStringsMatchingLastWord(args, Arrays.stream(AutoMineHandler.MiningMode.values()).map(Enum::name).collect(Collectors.toList()));
+                case "setrecovery":
+                    return func_175771_a(args, 1, pos); // 提供 X 坐标补全
             }
         }
         if (args.length > 2) {
@@ -429,6 +445,9 @@ public class AutoMineCommand extends CommandBase {
                     if ("delete".equals(type) && args.length == 3) return getListOfStringsMatchingLastWord(args, AutoMineTargetManager.customBlockGroups.keySet());
                     if ("create".equals(type) && args.length >= 4) return getListOfStringsMatchingLastWord(args, Block.blockRegistry.getKeys());
                     break;
+                case "setrecovery":
+                    if (args.length <= 4) return func_175771_a(args, 1, pos); // 提供 Y, Z 坐标补全
+                    break;
             }
         }
         return Collections.emptyList();
@@ -446,7 +465,6 @@ public class AutoMineCommand extends CommandBase {
             } catch (NumberFormatException e) {
             }
         }
-        
         try {
             Block block = getBlockByText(sender, blockIdString);
             return new AutoMineTargetManager.BlockData(block, meta);
@@ -475,9 +493,7 @@ public class AutoMineCommand extends CommandBase {
     private ChatComponentText createGroupComponent(String groupName, List<AutoMineTargetManager.BlockData> components, boolean isEnabled) {
         String hoverText = LangUtil.translate("ghost.automine.command.list.group_hover_tooltip", 
             components.stream().map(this::getBlockDisplayName).collect(Collectors.joining(", ")));
-        
         String status = isEnabled ? LangUtil.translate("ghost.generic.enabled") : LangUtil.translate("ghost.generic.disabled");
-        
         ChatComponentText textComponent = new ChatComponentText("§f- " + groupName + " [" + status + "§f]");
         textComponent.getChatStyle().setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText(hoverText)));
         return textComponent;
