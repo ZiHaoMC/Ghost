@@ -2,6 +2,7 @@ package com.zihaomc.ghost.config;
 
 import com.zihaomc.ghost.LangUtil;
 import com.zihaomc.ghost.utils.LogUtil;
+import com.zihaomc.ghost.features.gameplay.BuildGuessWords;
 import net.minecraft.block.Block;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -321,6 +322,8 @@ public class GhostConfig {
 
     private static void loadBuildGuessSettings() {
         BuildGuess.enableBuildGuess = loadBoolean(CATEGORY_BUILD_GUESS, "enableBuildGuess", false, "ghost.config.comment.buildGuess");
+        // 初始化题库
+        BuildGuessWords.init();
     }
 
     // --- 加载辅助方法 ---
@@ -639,6 +642,7 @@ public class GhostConfig {
 
     public static void setEnableBuildGuess(boolean value) {
         updateAndSave(CATEGORY_BUILD_GUESS, "enableBuildGuess", value, () -> BuildGuess.enableBuildGuess = value);
+        BuildGuessWords.init();
     }
 
     public static Configuration getConfig() {
