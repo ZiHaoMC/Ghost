@@ -14,12 +14,6 @@ import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.EnumChatFormatting;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagString;
-import net.minecraft.client.Minecraft;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,44 +68,6 @@ public class GhostConfigCommand extends CommandBase {
             toggleChatSuggestions(sender);
             return;
         }
-        
-        if ("testchest".equalsIgnoreCase(command)) {
-    // 获取 Minecraft 实例
-    Minecraft mc = Minecraft.getMinecraft();
-    
-    // 创建一个箱子物品栈
-    ItemStack dummyChest = new ItemStack(net.minecraft.init.Blocks.chest);
-    
-    // 创建 NBT 数据
-    NBTTagCompound tag = new NBTTagCompound();
-    NBTTagCompound display = new NBTTagCompound();
-    NBTTagList lore = new NBTTagList();
-    // 替换 testchest 里的 lore 部分
-lore.appendTag(new NBTTagString("§fContents"));
-lore.appendTag(new NBTTagString("§fEnchanted Book (Ultimate Jerry III)"));
-lore.appendTag(new NBTTagString("§fUndead Essence x63"));
-lore.appendTag(new NBTTagString("§fWither Essence x41"));
-lore.appendTag(new NBTTagString(""));
-lore.appendTag(new NBTTagString("§fCost"));
-lore.appendTag(new NBTTagString("§62,000,000 Coins"));
-    
-    display.setTag("Lore", lore);
-    tag.setTag("display", display);
-    
-    // 加上识别码，确保触发 DungeonChestHandler 的判断
-    NBTTagCompound extra = new NBTTagCompound();
-    extra.setString("id", "DUNGEON_REWARD_CHEST");
-    tag.setTag("ExtraAttributes", extra);
-    
-    dummyChest.setTagCompound(tag);
-    
-    // 放入玩家背包
-    if (mc.thePlayer != null) {
-        mc.thePlayer.inventory.addItemStackToInventory(dummyChest);
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 已生成测试箱子，请在背包中查看。"));
-    }
-    return;
-}
 
         String settingName = args[0];
         String settingKey = settingName.toLowerCase();
@@ -190,6 +146,7 @@ lore.appendTag(new NBTTagString("§62,000,000 Coins"));
         sender.addChatMessage(formatSettingLine("autoMineRotationSpeed", String.format("%.1f", GhostConfig.AutoMine.rotationSpeed)));
         sender.addChatMessage(formatSettingLine("autoMineMithrilOptimization", GhostConfig.AutoMine.enableMithrilOptimization));
         sender.addChatMessage(formatSettingLine("autoMineStopOnTimeout", GhostConfig.AutoMine.stopOnTimeout));
+        sender.addChatMessage(formatSettingLine("enableDungeonProfit", GhostConfig.Skyblock.enableDungeonProfit));
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
@@ -302,6 +259,7 @@ lore.appendTag(new NBTTagString("§62,000,000 Coins"));
                key.equals("autominevoidsafetycheck") ||
                key.equals("autominemithriloptimization") ||
                key.equals("automineenabletoolswitching") ||
-               key.equals("autominestopontimeout"); // Added new command here
+               key.equals("autominestopontimeout") ||
+               key.equals("enabledungeonprofit");
     }
 }

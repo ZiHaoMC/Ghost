@@ -102,22 +102,10 @@ public class GhostConfig {
         public static boolean autoShowCachedTranslation;
         public static boolean showTranslationOnly;
         public static boolean hideTranslationKeybindTooltip;
-        
-        // *** 关键修复点：必须包含这个变量 ***
         public static boolean showProviderSwitchButtons;
-        
         public static String niuTransApiKey;
-        
         public static String translationSourceLang;
         public static String translationTargetLang;
-        
-        /** 
-         * 翻译提供商选择:
-         * NIUTRANS (需要Key)
-         * GOOGLE (免费, GTX接口)
-         * BING (免费, 模拟网页)
-         * MYMEMORY (免费)
-         */
         public static String translationProvider; 
     }
 
@@ -153,11 +141,7 @@ public class GhostConfig {
         public static boolean antiCheatCheck;
         public static boolean enableVoidSafetyCheck;
         public static int voidSafetyYLimit;
-        
-        // --- 新增功能：超时自动停止 ---
         public static boolean stopOnTimeout;
-
-        // --- Hypixel Skyblock Mithril 挖掘优化 ---
         public static boolean enableMithrilOptimization;
         public static String[] titaniumBlockIds;
         public static int mithrilCleanupThreshold;
@@ -171,9 +155,9 @@ public class GhostConfig {
         public static int autoCraftTableOpenDelayTicks;
         public static int autoCraftPickupStashWaitTicks;
     }
-    
+
     public static class Skyblock {
-        public static boolean enableDungeonProfitCalc;
+        public static boolean enableDungeonProfit;
     }
 
     // --- 核心方法 ---
@@ -204,6 +188,7 @@ public class GhostConfig {
         loadGuiTweaksSettings();
         loadAutoMineSettings();
         loadAutoCraftSettings();
+        loadSkyblockSettings();
 
         if (config.hasChanged()) {
             config.save();
@@ -270,9 +255,7 @@ public class GhostConfig {
         Translation.autoShowCachedTranslation = loadBoolean(CATEGORY_TRANSLATION, "autoShowCachedTranslation", true, "ghost.config.comment.autoShowCachedTranslation");
         Translation.showTranslationOnly = loadBoolean(CATEGORY_TRANSLATION, "showTranslationOnly", false, "ghost.config.comment.showTranslationOnly");
         Translation.hideTranslationKeybindTooltip = loadBoolean(CATEGORY_TRANSLATION, "hideTranslationKeybindTooltip", false, "ghost.config.comment.hideTranslationKeybindTooltip");
-        
         Translation.showProviderSwitchButtons = loadBoolean(CATEGORY_TRANSLATION, "showProviderSwitchButtons", true, "ghost.config.comment.showProviderSwitchButtons");
-        
         Translation.niuTransApiKey = loadString(CATEGORY_TRANSLATION, "niuTransApiKey", "", "ghostblock.config.niuTransApiKey.tooltip");
         Translation.translationSourceLang = loadString(CATEGORY_TRANSLATION, "translationSourceLang", "auto", "ghostblock.config.translationSourceLang.tooltip");
         Translation.translationTargetLang = loadString(CATEGORY_TRANSLATION, "translationTargetLang", "zh", "ghostblock.config.translationTargetLang.tooltip");
@@ -311,11 +294,7 @@ public class GhostConfig {
         AutoMine.antiCheatCheck = loadBoolean(CATEGORY_AUTO_MINE, "antiCheatCheck", true, "ghost.config.comment.autoMineAntiCheatCheck");
         AutoMine.enableVoidSafetyCheck = loadBoolean(CATEGORY_AUTO_MINE, "enableVoidSafetyCheck", true, "ghost.config.comment.autoMineVoidSafetyCheck");
         AutoMine.voidSafetyYLimit = loadInt(CATEGORY_AUTO_MINE, "voidSafetyYLimit", 1, 0, 255, "ghost.config.comment.autoMineVoidSafetyYLimit");
-        
-        // 加载超时停止功能
         AutoMine.stopOnTimeout = loadBoolean(CATEGORY_AUTO_MINE, "stopOnTimeout", true, "ghost.config.comment.autoMineStopOnTimeout");
-
-        // --- 加载 Mithril 优化设置 ---
         AutoMine.enableMithrilOptimization = loadBoolean(CATEGORY_AUTO_MINE, "enableMithrilOptimization", false, "ghost.config.comment.autoMineMithrilOptimization");
         AutoMine.titaniumBlockIds = loadStringList(CATEGORY_AUTO_MINE, "titaniumBlockIds", new String[]{"minecraft:stone:4"}, "ghost.config.comment.autoMineTitaniumBlockIds");
         AutoMine.mithrilCleanupThreshold = loadInt(CATEGORY_AUTO_MINE, "mithrilCleanupThreshold", 5, 1, 50, "ghost.config.comment.autoMineMithrilCleanupThreshold");
@@ -329,9 +308,9 @@ public class GhostConfig {
         AutoCraft.autoCraftTableOpenDelayTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftTableOpenDelayTicks", 8, 1, 100, "ghost.config.comment.autoCraftTableOpenDelay");
         AutoCraft.autoCraftPickupStashWaitTicks = loadInt(CATEGORY_AUTO_CRAFT, "autoCraftPickupStashWaitTicks", 5, 1, 200, "ghost.config.comment.autoCraftPickupStashWait");
     }
-    
+
     private static void loadSkyblockSettings() {
-        Skyblock.enableDungeonProfitCalc = loadBoolean(CATEGORY_SKYBLOCK, "enableDungeonProfitCalc", true, "ghost.config.comment.dungeonProfit");
+        Skyblock.enableDungeonProfit = loadBoolean(CATEGORY_SKYBLOCK, "enableDungeonProfit", false, "ghost.config.comment.dungeonProfit");
     }
 
     // --- 加载辅助方法 ---
@@ -487,7 +466,6 @@ public class GhostConfig {
         updateAndSave(CATEGORY_TRANSLATION, "translationProvider", value, () -> Translation.translationProvider = value);
     }
     
-    // *** 关键修复点：包含这个 Setter ***
     public static void setShowProviderSwitchButtons(boolean value) {
         updateAndSave(CATEGORY_TRANSLATION, "showProviderSwitchButtons", value, () -> Translation.showProviderSwitchButtons = value);
     }
@@ -603,12 +581,10 @@ public class GhostConfig {
         updateAndSave(CATEGORY_AUTO_MINE, "voidSafetyYLimit", value, () -> AutoMine.voidSafetyYLimit = value);
     }
     
-    // 设置超时停止
     public static void setAutoMineStopOnTimeout(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "stopOnTimeout", value, () -> AutoMine.stopOnTimeout = value);
     }
 
-    // --- Mithril 优化设置的 Setter ---
     public static void setAutoMineEnableMithrilOptimization(boolean value) {
         updateAndSave(CATEGORY_AUTO_MINE, "enableMithrilOptimization", value, () -> AutoMine.enableMithrilOptimization = value);
     }
@@ -647,6 +623,10 @@ public class GhostConfig {
         updateAndSave(CATEGORY_AUTO_CRAFT, "autoCraftPickupStashWaitTicks", value, () -> AutoCraft.autoCraftPickupStashWaitTicks = value);
     }
 
+    public static void setEnableDungeonProfit(boolean value) {
+        updateAndSave(CATEGORY_SKYBLOCK, "enableDungeonProfit", value, () -> Skyblock.enableDungeonProfit = value);
+    }
+
     public static Configuration getConfig() {
         return config;
     }
@@ -681,16 +661,13 @@ public class GhostConfig {
         settingUpdaters.put("translationsourcelang", (k, v) -> setTranslationSourceLang(v));
         settingUpdaters.put("translationtargetlang", (k, v) -> setTranslationTargetLang(v));
         settingUpdaters.put("translationprovider", (k, v) -> setTranslationProvider(v));
-        
         settingUpdaters.put("showproviderswitchbuttons", (k, v) -> setShowProviderSwitchButtons(parseBoolean(v)));
-        
         settingUpdaters.put("enablenotefeature", (k, v) -> setEnableNoteFeature(parseBoolean(v)));
         settingUpdaters.put("enableadvancedediting", (k, v) -> setEnableAdvancedEditing(parseBoolean(v)));
         settingUpdaters.put("enablemarkdownrendering", (k, v) -> setEnableMarkdownRendering(parseBoolean(v)));
         settingUpdaters.put("enablecolorrendering", (k, v) -> setEnableColorRendering(parseBoolean(v)));
         settingUpdaters.put("enableampersandcolorcodes", (k, v) -> setEnableAmpersandColorCodes(parseBoolean(v)));
         settingUpdaters.put("fixguistatelossonresize", (k, v) -> setFixGuiStateLossOnResize(parseBoolean(v)));
-
         settingUpdaters.put("autominerotationspeed", (k, v) -> setAutoMineRotationSpeed(parseDouble(v)));
         settingUpdaters.put("automaxreachdistance", (k, v) -> setAutoMineMaxReachDistance(parseDouble(v)));
         settingUpdaters.put("autominerearchradius", (k, v) -> setAutoMineSearchRadius(parseInt(v)));
@@ -711,22 +688,15 @@ public class GhostConfig {
         settingUpdaters.put("autominevoidsafetycheck", (k, v) -> setAutoMineEnableVoidSafetyCheck(parseBoolean(v)));
         settingUpdaters.put("autominevoidsafetylimit", (k, v) -> setAutoMineVoidSafetyYLimit(parseInt(v)));
         settingUpdaters.put("autominestopontimeout", (k, v) -> setAutoMineStopOnTimeout(parseBoolean(v)));
-        
-        // --- 注册 Mithril 优化命令更新器 ---
         settingUpdaters.put("autominemithriloptimization", (k, v) -> setAutoMineEnableMithrilOptimization(parseBoolean(v)));
         settingUpdaters.put("autominemithrilcleanupthreshold", (k, v) -> setAutoMineMithrilCleanupThreshold(parseInt(v)));
         settingUpdaters.put("automineenabletoolswitching", (k,v) -> setAutoMineEnableAutomaticToolSwitching(parseBoolean(v)));
-
         settingUpdaters.put("autocraftplacementdelay", (k, v) -> setAutoCraftPlacementDelayTicks(parseInt(v)));
         settingUpdaters.put("autocraftcycledelay", (k, v) -> setAutoCraftCycleDelayTicks(parseInt(v)));
         settingUpdaters.put("autocraftmenuopendelay", (k, v) -> setAutoCraftMenuOpenDelayTicks(parseInt(v)));
         settingUpdaters.put("autocrafttableopendelay", (k, v) -> setAutoCraftTableOpenDelayTicks(parseInt(v)));
         settingUpdaters.put("autocraftpickupstashwait", (k, v) -> setAutoCraftPickupStashWaitTicks(parseInt(v)));
-        
-        settingUpdaters.put("enabledungeonprofitcalc", (k, v) -> {
-             boolean val = parseBoolean(v);
-             updateAndSave(CATEGORY_SKYBLOCK, "enableDungeonProfitCalc", val, () -> Skyblock.enableDungeonProfitCalc = val);
-        });
+        settingUpdaters.put("enabledungeonprofit", (k, v) -> setEnableDungeonProfit(parseBoolean(v)));
     }
     
     // --- 解析辅助方法 ---
