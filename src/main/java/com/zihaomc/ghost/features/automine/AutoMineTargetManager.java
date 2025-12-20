@@ -1,3 +1,9 @@
+
+/*
+ * This module is a derivative work of Baritone (https://github.com/cabaletta/baritone).
+ * This module is licensed under the GNU LGPL v3.0.
+ */
+
 package com.zihaomc.ghost.features.automine;
 
 import com.google.gson.Gson;

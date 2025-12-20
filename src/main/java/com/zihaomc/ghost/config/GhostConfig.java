@@ -39,6 +39,7 @@ public class GhostConfig {
     public static final String CATEGORY_AUTO_MINE = "auto_mine_feature";
     public static final String CATEGORY_AUTO_CRAFT = "auto_craft_feature";
     public static final String CATEGORY_SKYBLOCK = "skyblock_features";
+    public static final String CATEGORY_BUILD_GUESS = "build_guess_feature";
 
     // --- 用于命令的统一配置更新器 ---
     public static final Map<String, BiConsumer<String, String>> settingUpdaters = new HashMap<>();
@@ -160,6 +161,10 @@ public class GhostConfig {
         public static boolean enableDungeonProfit;
     }
 
+    public static class BuildGuess {
+        public static boolean enableBuildGuess;
+    }
+
     // --- 核心方法 ---
     public static void init(File configFile) {
         if (config == null) {
@@ -189,6 +194,7 @@ public class GhostConfig {
         loadAutoMineSettings();
         loadAutoCraftSettings();
         loadSkyblockSettings();
+        loadBuildGuessSettings();
 
         if (config.hasChanged()) {
             config.save();
@@ -311,6 +317,10 @@ public class GhostConfig {
 
     private static void loadSkyblockSettings() {
         Skyblock.enableDungeonProfit = loadBoolean(CATEGORY_SKYBLOCK, "enableDungeonProfit", false, "ghost.config.comment.dungeonProfit");
+    }
+
+    private static void loadBuildGuessSettings() {
+        BuildGuess.enableBuildGuess = loadBoolean(CATEGORY_BUILD_GUESS, "enableBuildGuess", false, "ghost.config.comment.buildGuess");
     }
 
     // --- 加载辅助方法 ---
@@ -627,6 +637,10 @@ public class GhostConfig {
         updateAndSave(CATEGORY_SKYBLOCK, "enableDungeonProfit", value, () -> Skyblock.enableDungeonProfit = value);
     }
 
+    public static void setEnableBuildGuess(boolean value) {
+        updateAndSave(CATEGORY_BUILD_GUESS, "enableBuildGuess", value, () -> BuildGuess.enableBuildGuess = value);
+    }
+
     public static Configuration getConfig() {
         return config;
     }
@@ -697,6 +711,7 @@ public class GhostConfig {
         settingUpdaters.put("autocrafttableopendelay", (k, v) -> setAutoCraftTableOpenDelayTicks(parseInt(v)));
         settingUpdaters.put("autocraftpickupstashwait", (k, v) -> setAutoCraftPickupStashWaitTicks(parseInt(v)));
         settingUpdaters.put("enabledungeonprofit", (k, v) -> setEnableDungeonProfit(parseBoolean(v)));
+        settingUpdaters.put("enablebuildguess", (k, v) -> setEnableBuildGuess(parseBoolean(v)));
     }
     
     // --- 解析辅助方法 ---

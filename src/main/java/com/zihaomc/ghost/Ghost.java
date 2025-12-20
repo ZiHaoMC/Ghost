@@ -24,6 +24,7 @@ import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
 import com.zihaomc.ghost.features.automine.AutoMineTargetManager;
 import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
 import com.zihaomc.ghost.features.gameplay.FastPistonBreakingHandler;
+import com.zihaomc.ghost.features.gameplay.BuildGuessHandler;
 import com.zihaomc.ghost.features.visual.PlayerArrowRendererHandler;
 import com.zihaomc.ghost.proxy.CommonProxy;
 import com.zihaomc.ghost.utils.LogUtil;
@@ -122,6 +123,9 @@ public class Ghost {
             // 注册地牢结算处理器
             MinecraftForge.EVENT_BUS.register(new com.zihaomc.ghost.features.skyblock.DungeonChestHandler());
             LogUtil.debug("log.handler.registered.dungeonProfit");
+
+            // 注册 你建我猜 辅助
+            MinecraftForge.EVENT_BUS.register(new BuildGuessHandler());
         }
     }
 
