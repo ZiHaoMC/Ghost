@@ -15,13 +15,12 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * 路径导航管理器 (修复增强版)
+ * 路径导航管理器 (卡死重寻增强版)
  * 
- * 修复日志：
- * 1. [严重] 修复 FastBinaryHeap 在移除节点时的空指针崩溃问题。
- * 2. [功能] 恢复对角线移动，解决远距离路径规划失败的问题。
- * 3. [性能] 搜索节点上限提升至 15000，支持更远距离。
- * 4. [逻辑] 恢复 20 格下落检测，优化空气墙判断逻辑。
+ * 修改说明：
+ * 1. 优化 checkStuck 逻辑，改用水平距离判断，解决原地跳跃欺骗检测的问题。
+ * 2. 增加路径点停滞检测，若长时间未到达下一个目标点则强制重寻路。
+ * 3. 增强密度图反馈，卡死位置将被标记为高代价区域。
  */
 public class PathfindingHandler {
 
@@ -41,12 +40,14 @@ public class PathfindingHandler {
 
     // 配置参数
     private static final boolean DEBUG = true;
-    private static final int MAX_CALC_NODES = 15000; // 提升搜索上限
+    private static final int MAX_CALC_NODES = 15000; 
     
-    // 卡死检测
+    // 卡死检测相关变量
     private static int stuckTimer = 0;
     private static int collisionTimer = 0;
     private static Vec3 lastCheckPos = null;
+    private static int lastPathIndex = -1;
+    private static int indexStagnationTimer = 0;
 
     // --- 公共 API ---
 
@@ -94,11 +95,14 @@ public class PathfindingHandler {
             }
         }
 
-        // 卡死处理
+        // 核心卡死处理逻辑
         if (checkStuck()) {
+            // 获取玩家面前的方块并增加密度，防止再次撞墙
             BlockPos head = new BlockPos(mc.thePlayer).offset(mc.thePlayer.getHorizontalFacing());
             cache.incrementDensity(head); 
             cache.incrementDensity(new BlockPos(mc.thePlayer));
+            
+            // 立即清除当前路径并触发重新计算
             currentPath.clear();
             generateNextSegment();
             return;
@@ -120,22 +124,17 @@ public class PathfindingHandler {
 
         pathPool.execute(() -> {
             try {
-                // 核心计算入口
                 List<BlockPos> path = PathCalculator.compute(startPos, finalTarget, MAX_CALC_NODES, cache);
 
                 mc.addScheduledTask(() -> {
                     if (isPathfinding) {
                         if (path != null && !path.isEmpty()) {
-                            // 使用更高级的射线平滑
                             List<BlockPos> smoothed = smoothPathRaytrace(path);
                             currentPath = new CopyOnWriteArrayList<>(smoothed);
                             currentPathIndex = 0;
-                            resetStuckTimers();
+                            resetStuckTimers(); // 成功获得新路径后重置计时器
                         } else {
-                            // 如果算不出路径，不要停止，可能是暂时未加载或者地形复杂
-                            // 只有连续多次失败才停止，这里仅提示
                             debugErr("寻路失败: 无法到达目标 (过远或无路径)");
-                            // 可选：stop();
                         }
                     }
                     isCalculating = false;
@@ -284,24 +283,52 @@ public class PathfindingHandler {
         }
     }
 
+    /**
+     * 增强版卡死检测
+     */
     private static boolean checkStuck() {
+        // 1. 坐标位移检测 (每2秒检查一次)
         stuckTimer++;
         if (stuckTimer > 40) {
             stuckTimer = 0;
             Vec3 currentPos = mc.thePlayer.getPositionVector();
             if (lastCheckPos != null) {
-                double moved = currentPos.distanceTo(lastCheckPos);
-                if (moved < 0.2) { 
-                    debugErr("卡顿检测，尝试重新规划...");
+                // 计算水平距离 (忽略Y轴的变化，解决原地跳跃欺骗检测的问题)
+                double dx = currentPos.xCoord - lastCheckPos.xCoord;
+                double dz = currentPos.zCoord - lastCheckPos.zCoord;
+                double horizontalDist = Math.sqrt(dx * dx + dz * dz);
+                
+                if (horizontalDist < 0.25) { 
+                    debugErr("检测到水平位移停滞，尝试重寻路...");
                     return true;
                 }
             }
             lastCheckPos = currentPos;
         }
+
+        // 2. 路径索引停滞检测 (如果玩家3秒内没有推进路径进度)
+        if (currentPathIndex == lastPathIndex && !currentPath.isEmpty()) {
+            indexStagnationTimer++;
+            if (indexStagnationTimer > 60) {
+                indexStagnationTimer = 0;
+                debugErr("检测到路径进度长时间未更新，强制重寻路...");
+                return true;
+            }
+        } else {
+            lastPathIndex = currentPathIndex;
+            indexStagnationTimer = 0;
+        }
+
         return false;
     }
 
-    private static void resetStuckTimers() { stuckTimer = 0; collisionTimer = 0; lastCheckPos = null; }
+    private static void resetStuckTimers() { 
+        stuckTimer = 0; 
+        collisionTimer = 0; 
+        lastCheckPos = null; 
+        lastPathIndex = -1;
+        indexStagnationTimer = 0;
+    }
 
     private static boolean isOnLadder() {
         if(mc.thePlayer == null) return false;
@@ -353,7 +380,6 @@ public class PathfindingHandler {
         private static final double COST_FALL = 1.0; 
         private static final double COST_LADDER = 1.5;
         private static final double COST_SWIM = 2.0;
-        // 设置为 4.0 意味着算法认为走 1 格粘液块的负担等于走 4 格普通方块，从而强迫它绕路
         private static final double COST_SLIME_BLOCK = 4.0;
         private static final double COST_SOUL_SAND = 4.0;
 
@@ -361,7 +387,6 @@ public class PathfindingHandler {
             FastBinaryHeap openSet = new FastBinaryHeap(limit + 100);
             Map<Long, Node> allNodes = new HashMap<>(4096);
 
-            // 使用 Euclidean 距离以获得更精确的远距离导向
             Node startNode = new Node(start, null, 0, getHeuristic(start, end));
             openSet.add(startNode);
             allNodes.put(PathCache.toLong(start), startNode);
@@ -431,14 +456,12 @@ public class PathfindingHandler {
         }
 
         private static double getHeuristic(BlockPos pos, BlockPos target) {
-            // 恢复 Euclidean 距离，虽然计算稍慢，但在远距离和有对角线移动时更准确
             return Math.sqrt(pos.distanceSq(target));
         }
 
         private static double getCost(BlockPos current, BlockPos next) {
             double baseCost = COST_WALK;
 
-            // 1. 基础动作判定
             if (next.getY() > current.getY()) {
                 baseCost = COST_JUMP;
             } else if (next.getY() < current.getY()) {
@@ -449,8 +472,6 @@ public class PathfindingHandler {
                 baseCost = COST_SWIM;
             }
 
-            // 2. 地面材质判定 (避让逻辑)
-            // 我们检查 next 位置下方的方块（即玩家落脚的方块）
             Block groundBlock = mc.theWorld.getBlockState(next.down()).getBlock();
             
             if (groundBlock == Blocks.slime_block) {
@@ -460,11 +481,6 @@ public class PathfindingHandler {
             }
 
             return baseCost;
-            
-        // --- 优化建议：平滑算法可能会无视代价强行“拉直”路径 ---
-        // 为了防止 smoothPathRaytrace 把绕开的路径又强行连回去，
-        // 建议在平滑检查中也加入对减速块的判断，或者略微调低平滑距离（已在主类中）。
-        
         }
 
 
@@ -483,7 +499,6 @@ public class PathfindingHandler {
                 return moves;
             }
 
-            // 直线移动
             for (EnumFacing dir : EnumFacing.HORIZONTALS) {
                 BlockPos offset = pos.offset(dir);
                 if (isWalkable(offset)) {
@@ -493,10 +508,8 @@ public class PathfindingHandler {
                     moves.add(offset.up()); 
                 }
                 else {
-                    // 下落检测 (恢复到20格，处理空气墙)
                     for (int i = 1; i <= 20; i++) {
                         BlockPos target = offset.down(i);
-                        // 优化：只需检查该格是否阻挡
                         if (!canGoThrough(offset.down(i-1))) break; 
 
                         if (isWalkable(target)) {
@@ -509,12 +522,10 @@ public class PathfindingHandler {
                 }
             }
             
-            // 对角线移动 (恢复，提升远距离效率)
             for (int x = -1; x <= 1; x += 2) {
                 for (int z = -1; z <= 1; z += 2) {
                     BlockPos diag = pos.add(x, 0, z);
                     if (isWalkable(diag)) {
-                        // 检查是否会被卡住 (对角线的两边不能都是实心)
                         boolean b1 = canGoThrough(pos.add(x, 0, 0));
                         boolean b2 = canGoThrough(pos.add(0, 0, z));
                         if (b1 && b2) {
@@ -604,7 +615,6 @@ public class PathfindingHandler {
             }
         }
 
-        // --- 修复后的 FastBinaryHeap ---
         private static class FastBinaryHeap {
             private final Node[] items;
             private int currentItemCount;
@@ -615,7 +625,7 @@ public class PathfindingHandler {
             }
 
             public void add(Node item) {
-                if (currentItemCount >= items.length - 1) return; // 防止溢出
+                if (currentItemCount >= items.length - 1) return; 
                 currentItemCount++;
                 item.heapIndex = currentItemCount;
                 items[currentItemCount] = item;
@@ -623,7 +633,7 @@ public class PathfindingHandler {
             }
 
             public Node removeFirst() {
-                if (currentItemCount == 0) return null; // 安全性检查
+                if (currentItemCount == 0) return null; 
                 
                 Node firstItem = items[1];
                 currentItemCount--;
