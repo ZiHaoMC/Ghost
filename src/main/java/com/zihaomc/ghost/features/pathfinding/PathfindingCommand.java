@@ -7,6 +7,7 @@ import net.minecraft.command.WrongUsageException;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.Vec3;
 
 import java.util.List;
 
@@ -28,6 +29,7 @@ public class PathfindingCommand extends CommandBase {
     public void processCommand(ICommandSender sender, String[] args) throws CommandException {
         if (args.length == 0) throw new WrongUsageException(getCommandUsage(sender));
 
+        // 停止寻路逻辑
         if (args[0].equalsIgnoreCase("stop")) {
             PathfindingHandler.stop();
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "[Ghost] 寻路已停止。"));
@@ -36,23 +38,40 @@ public class PathfindingCommand extends CommandBase {
 
         if (args.length < 3) throw new WrongUsageException(getCommandUsage(sender));
 
+        // 获取发送者的位置向量，用于解析相对坐标 (~)
+        Vec3 senderVec = sender.getPositionVector();
+        
         try {
-            int x = Integer.parseInt(args[0]);
-            int y = Integer.parseInt(args[1]);
-            int z = Integer.parseInt(args[2]);
+            // parseDouble 是 CommandBase 的方法，支持 ~ 相对坐标计算
+            // 参数1: 基准坐标, 参数2: 输入字符串, 参数3: 是否对整数坐标进行 .5 偏移
+            double x = parseDouble(senderVec.xCoord, args[0], true);
+            double y = parseDouble(senderVec.yCoord, args[1], 0, 256, false); // 限制高度在 0-256 之间
+            double z = parseDouble(senderVec.zCoord, args[2], true);
             
+            // 将解析后的双精度坐标转换为 BlockPos
             BlockPos target = new BlockPos(x, y, z);
             PathfindingHandler.setGlobalTarget(target);
             
-            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 寻路目标已设定: " + x + ", " + y + ", " + z));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GREEN + "[Ghost] 寻路目标已设定: " + target.getX() + ", " + target.getY() + ", " + target.getZ()));
         } catch (NumberFormatException e) {
-            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "坐标必须是整数。"));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "坐标格式错误。"));
         }
     }
     
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args, BlockPos pos) {
-        if (args.length == 1) return getListOfStringsMatchingLastWord(args, "stop");
+        if (args.length == 1) {
+            List<String> options = getListOfStringsMatchingLastWord(args, "stop");
+            // 如果输入不是 stop，尝试提供 X 坐标补全
+            if (options.isEmpty() && pos != null) {
+                return func_175771_a(args, 0, pos);
+            }
+            return options;
+        }
+        // 提供 Y 和 Z 轴的坐标补全
+        if (args.length > 1 && args.length <= 3 && pos != null) {
+            return func_175771_a(args, 0, pos);
+        }
         return null;
     }
 }
