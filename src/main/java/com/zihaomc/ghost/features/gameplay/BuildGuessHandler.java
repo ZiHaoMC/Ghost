@@ -27,26 +27,24 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Hypixel 你建我猜辅助工具 - 完整版
- * 功能：
- * 1. 根据 Action Bar 线索自动匹配词汇并发送。
- * 2. 游戏结束自动记录新词汇到文件并热更新内存。
- * 3. AFK 挂机模式：自动排队、防掉线、跳过建筑者环节。
+ * Hypixel 你建我猜辅助工具 - 精准匹配版
+ * 
+ * 修正内容：
+ * - 恢复了对空格的严格匹配：线索中的空格必须与词库中的空格位置一致。
+ * - 包含 AFK 挂机、自动排队、建筑者跳过、热更新等所有功能。
  */
 public class BuildGuessHandler {
 
     private static final Minecraft mc = Minecraft.getMinecraft();
     
-    // 关键词与正则
     private static final String CLUE_KEYWORD = "the theme is";
     private static final Pattern REVEAL_PATTERN = Pattern.compile("the theme was: (.+)", Pattern.CASE_INSENSITIVE);
     private static final String GAME_COMMAND = "/play build_battle_guess_the_build";
     
-    // 状态缓存
     private static String lastNormalizedClue = "";
     private static String lastSentWord = ""; 
     
-    // AFK 状态管理
+    // AFK 状态
     private int delayTicks = 0;
     private boolean isQueuing = false;
     private final Random random = new Random();
@@ -56,7 +54,6 @@ public class BuildGuessHandler {
     // ==================================================================================
     @SubscribeEvent
     public void onGuiOpen(GuiOpenEvent event) {
-        // 仅在 AFK 模式开启时生效
         if (!GhostConfig.BuildGuess.enableBuildGuess || !GhostConfig.BuildGuess.enableAfkMode) return;
         
         if (event.gui instanceof GuiChest) {
@@ -65,20 +62,12 @@ public class BuildGuessHandler {
                 ContainerChest container = (ContainerChest) chest.inventorySlots;
                 IInventory lowerChestInventory = container.getLowerChestInventory();
                 
-                // 获取界面标题
                 String title = lowerChestInventory.getDisplayName().getUnformattedText();
                 
-                // 【核心检测】如果标题包含 "Select a theme to build!"
                 if (title != null && (title.contains("Select a theme to build") || title.contains("Select a Theme"))) {
                     LogUtil.info("检测到 [建筑者选词界面]，正在自动跳过...");
-                    
-                    // 1. 阻止界面打开 (不让玩家看到)
                     event.setCanceled(true);
-                    
-                    // 2. 发送 /lobby 退出当前游戏
                     mc.thePlayer.sendChatMessage("/lobby");
-                    
-                    // 3. 3秒后重新排队 (给服务器一点反应时间)
                     scheduleRejoin(60);
                 }
             }
@@ -93,30 +82,25 @@ public class BuildGuessHandler {
         if (event.phase != TickEvent.Phase.END || mc.thePlayer == null) return;
         if (!GhostConfig.BuildGuess.enableBuildGuess || !GhostConfig.BuildGuess.enableAfkMode) return;
 
-        // 倒计时处理
         if (delayTicks > 0) {
             delayTicks--;
             return;
         }
 
-        // 如果在排队状态，且倒计时结束 -> 加入游戏
         if (isQueuing) {
             isQueuing = false;
             LogUtil.info("正在加入新游戏...");
             mc.thePlayer.sendChatMessage(GAME_COMMAND);
-            // 给较长的冷却防止刷屏 (5秒)
             delayTicks = 100;
         }
 
-        // 简单的防踢逻辑：每 5 秒轻微转动视角
-        // 仅在没有打开 GUI 时执行，防止干扰正常操作
         if (mc.currentScreen == null && mc.thePlayer.ticksExisted % 100 == 0) {
             mc.thePlayer.rotationYaw += (random.nextFloat() - 0.5f) * 4;
         }
     }
 
     // ==================================================================================
-    // 3. 聊天处理：线索匹配、新词学习、游戏结束检测
+    // 3. 聊天处理：线索匹配、新词学习
     // ==================================================================================
     @SubscribeEvent
     public void onChatReceived(ClientChatReceivedEvent event) {
@@ -125,11 +109,10 @@ public class BuildGuessHandler {
         String rawText = EnumChatFormatting.getTextWithoutFormattingCodes(event.message.getUnformattedText());
         String lowerText = rawText.toLowerCase();
 
-        // --- A. 游戏进行中：获取线索 (Action Bar) ---
+        // --- 获取线索 ---
         if (event.type == 2 && lowerText.contains(CLUE_KEYWORD)) {
             int isIdx = lowerText.indexOf("is");
             if (isIdx != -1) {
-                // 提取线索
                 String cluePart = rawText.substring(isIdx + 2);
                 if (cluePart.trim().startsWith(":")) {
                     cluePart = cluePart.replaceFirst(":", "");
@@ -137,42 +120,36 @@ public class BuildGuessHandler {
                 
                 String normalizedClue = normalizeHypixelClue(cluePart);
                 
-                // 防重复
                 if (normalizedClue.equals(lastNormalizedClue)) return;
                 lastNormalizedClue = normalizedClue;
                 
                 processClue(normalizedClue);
             }
         } 
-        // --- B. 聊天栏消息：结果揭晓、回合结束、游戏结束 ---
+        // --- 结果揭晓与收集 ---
         else if (event.type == 0) {
-            // 1. 收集答案 (The theme was: Word)
             if (lowerText.contains("the theme was")) {
                 Matcher matcher = REVEAL_PATTERN.matcher(rawText);
                 if (matcher.find()) {
                     String revealedWord = matcher.group(1).trim();
-                    // 清洗并保存 (保留空格、连字符、撇号)
+                    // 记录时保留原始格式（包括空格、连字符、撇号）
                     revealedWord = revealedWord.replaceAll("[^a-zA-Z0-9\\s\\-']", "").trim();
                     checkAndRecordMissingWord(revealedWord);
-                    
                     resetState();
                 }
             } 
-            // 2. 回合结束 (Round has ended / Correctly guessed)
             else if (lowerText.contains("round has ended") || lowerText.contains("correctly guessed")) {
                 resetState();
             }
             
-            // 3. AFK 模式：检测游戏结束，自动下一局
+            // AFK 自动重排
             if (GhostConfig.BuildGuess.enableAfkMode) {
-                // 匹配胜利信息或奖励汇总
                 if (lowerText.contains("winner") || lowerText.contains("reward summary") || lowerText.contains("play again")) {
                     LogUtil.info("本局结束，5秒后寻找下一局...");
-                    scheduleRejoin(100); // 5秒
+                    scheduleRejoin(100);
                 }
-                // 意外回到大厅
                 else if (lowerText.contains("sent you to") && lowerText.contains("lobby")) {
-                    scheduleRejoin(60); // 3秒
+                    scheduleRejoin(60);
                 }
             }
         }
@@ -188,26 +165,31 @@ public class BuildGuessHandler {
         lastSentWord = "";
     }
 
-    /**
-     * 正则匹配逻辑
-     * 支持空格匹配 (如 "Hot Dog")
+/**
+     * 【精准版】匹配逻辑
+     * 1. ^ 和 $ 锁定长度。
+     * 2. 空格 (" ") 必须严格匹配空格。
+     * 3. 下划线 ("_") 替换为 \\S (非空白字符)。
+     * 
+     * 效果：
+     * 线索 "____" (无空格) -> 正则 "^\\S\\S\\S\\S$" -> 绝不会匹配 "A B" (含空格)
+     * 线索 "_ _" (有空格) -> 正则 "^\\S \\S$" -> 绝不会匹配 "AB" (无空格)
      */
     private void processClue(String normalizedClue) {
         if (!normalizedClue.contains("_")) return;
 
-        // 将下划线转为正则任意字符 (.)，空格保留
-        String regexPattern = "^" + normalizedClue.replace("_", ".") + "$";
+        // 【关键修改】：将 "_" 替换为 "\\S" (代表任何不是空格的字符)
+        String regexPattern = "^" + normalizedClue.replace("_", "\\S") + "$";
         Pattern pattern = Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
 
         List<String> matches = new ArrayList<>();
-        // 遍历内存中的词库
+        
         for (String word : BuildGuessWords.WORDS) {
             if (pattern.matcher(word).matches()) {
                 matches.add(word);
             }
         }
 
-        // 唯一匹配直接发送
         if (matches.size() == 1) {
             String answer = matches.get(0);
             if (!answer.equalsIgnoreCase(lastSentWord)) {
@@ -215,7 +197,6 @@ public class BuildGuessHandler {
                 lastSentWord = answer;
             }
         } 
-        // 少量匹配显示提示
         else if (matches.size() > 1 && matches.size() < 10) {
             IChatComponent message = new ChatComponentText("§8[Ghost] §b潜在匹配: ");
             for (int i = 0; i < matches.size(); i++) {
@@ -233,30 +214,24 @@ public class BuildGuessHandler {
     }
 
     /**
-     * 规范化线索
-     * 1. 去除首尾空格
-     * 2. 将连续的多个空格合并为一个 (确保正则匹配稳定)
+     * 【修正】最简线索处理
+     * 只去掉首尾空格，完全保留中间的空格结构。
+     * 假设 Hypixel 给的是 "____ ___" (Cute Hat)，我们就用 "____ ___" 去匹配。
      */
     private String normalizeHypixelClue(String clue) {
-        return clue.trim().toLowerCase().replaceAll("\\s+", " ");
+        return clue.trim().toLowerCase();
     }
 
-    /**
-     * 检查并记录新词 (热更新)
-     */
     private void checkAndRecordMissingWord(String word) {
         if (word == null || word.isEmpty()) return;
         
-        // 1. 检查内存
         for (String w : BuildGuessWords.WORDS) {
             if (w.equalsIgnoreCase(word)) return;
         }
         
-        // 2. 热更新内存
         BuildGuessWords.WORDS.add(word);
         LogUtil.info("已热更新词库，新增: " + word);
 
-        // 3. 写入文件
         File configDir = new File("config/Ghost/");
         if (!configDir.exists()) configDir.mkdirs();
         File missingFile = new File(configDir, "missing_words.txt");
