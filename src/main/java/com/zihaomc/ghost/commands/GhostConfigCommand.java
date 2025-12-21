@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 /**
  * 处理 /gconfig 命令，用于在游戏中动态修改 Mod 的配置。
+ * 已适配新版 GhostConfig 结构及 BuildGuess 功能。
  */
 public class GhostConfigCommand extends CommandBase {
 
@@ -73,7 +74,9 @@ public class GhostConfigCommand extends CommandBase {
         String settingName = args[0];
         String settingKey = settingName.toLowerCase();
 
+        // 核心修改逻辑：使用 settingUpdaters 映射表
         if (GhostConfig.settingUpdaters.containsKey(settingKey)) {
+            // 特殊处理：清除 API Key
             if (settingKey.equals("niutransapikey") && args.length == 1) {
                 GhostConfig.setNiuTransApiKey("");
                 sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.YELLOW, "ghostblock.commands.gconfig.success.key_cleared"));
@@ -87,8 +90,10 @@ public class GhostConfigCommand extends CommandBase {
             String valueStr = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
 
             try {
+                // 调用 GhostConfig 中注册的更新器
                 GhostConfig.settingUpdaters.get(settingKey).accept(settingName, valueStr);
 
+                // 特殊反馈逻辑
                 if (settingKey.equals("niutransapikey")) {
                     sender.addChatMessage(GhostBlockHelper.formatMessage(EnumChatFormatting.GREEN, "ghostblock.commands.gconfig.success.key_set"));
                 } else if (settingKey.equals("enablebedrockminer") && "true".equalsIgnoreCase(valueStr)) {
@@ -148,6 +153,10 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(formatSettingLine("autoMineMithrilOptimization", GhostConfig.AutoMine.enableMithrilOptimization));
         sender.addChatMessage(formatSettingLine("autoMineStopOnTimeout", GhostConfig.AutoMine.stopOnTimeout));
         sender.addChatMessage(formatSettingLine("enableDungeonProfit", GhostConfig.Skyblock.enableDungeonProfit));
+        
+        // 显示 BuildGuess 状态
+        sender.addChatMessage(formatSettingLine("enableBuildGuess", GhostConfig.BuildGuess.enableBuildGuess));
+        sender.addChatMessage(formatSettingLine("enableAfkMode", GhostConfig.BuildGuess.enableAfkMode));
 
         sender.addChatMessage(new ChatComponentText(" "));
         sender.addChatMessage(new ChatComponentTranslation("ghostblock.commands.gconfig.hint_toggle_suggest")
@@ -190,7 +199,7 @@ public class GhostConfigCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.examples.header")));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableAutoSave true"));
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig forcedBatchSize 500"));
-        sender.addChatMessage(new ChatComponentText(us + "  /gconfig translationTargetLang en"));
+        sender.addChatMessage(new ChatComponentText(us + "  /gconfig enableBuildGuess true")); // 更新示例
         sender.addChatMessage(new ChatComponentText(us + "  /gconfig autoMineMiningMode PACKET_NORMAL"));
 
         sender.addChatMessage(new ChatComponentText(tx + LangUtil.translate("ghostblock.commands.gconfig.help.aliases") + ": " + hl + String.join(", ", getCommandAliases())));
@@ -246,6 +255,9 @@ public class GhostConfigCommand extends CommandBase {
         return Collections.emptyList();
     }
 
+    /**
+     * 判断是否为布尔类型配置，用于提供 true/false 补全
+     */
     private boolean isBooleanCommand(String key) {
         return key.startsWith("enable") || key.startsWith("always") || key.startsWith("disable") ||
                key.startsWith("show") || key.startsWith("hide") ||
@@ -261,6 +273,9 @@ public class GhostConfigCommand extends CommandBase {
                key.equals("autominemithriloptimization") ||
                key.equals("automineenabletoolswitching") ||
                key.equals("autominestopontimeout") ||
-               key.equals("enabledungeonprofit");
+               key.equals("enabledungeonprofit") ||
+               // BuildGuess 相关
+               key.equals("enablebuildguess") || 
+               key.equals("enableafkmode");
     }
 }

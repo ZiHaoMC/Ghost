@@ -1,8 +1,8 @@
 package com.zihaomc.ghost.config;
 
 import com.zihaomc.ghost.LangUtil;
+import com.zihaomc.ghost.features.gameplay.BuildGuessWords; // 用于词库热更新
 import com.zihaomc.ghost.utils.LogUtil;
-import com.zihaomc.ghost.features.gameplay.BuildGuessWords;
 import net.minecraft.block.Block;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
@@ -164,6 +164,8 @@ public class GhostConfig {
 
     public static class BuildGuess {
         public static boolean enableBuildGuess;
+        // AFK 自动挂机收集模式
+        public static boolean enableAfkMode;
     }
 
     // --- 核心方法 ---
@@ -322,7 +324,9 @@ public class GhostConfig {
 
     private static void loadBuildGuessSettings() {
         BuildGuess.enableBuildGuess = loadBoolean(CATEGORY_BUILD_GUESS, "enableBuildGuess", false, "ghost.config.comment.buildGuess");
-        // 初始化题库
+        BuildGuess.enableAfkMode = loadBoolean(CATEGORY_BUILD_GUESS, "enableAfkMode", false, "ghost.config.comment.buildGuessAfk");
+        
+        // 【核心修改】加载配置时初始化词库。如果开启，则加载；如果未开启，则保持空列表。
         BuildGuessWords.init();
     }
 
@@ -641,8 +645,15 @@ public class GhostConfig {
     }
 
     public static void setEnableBuildGuess(boolean value) {
-        updateAndSave(CATEGORY_BUILD_GUESS, "enableBuildGuess", value, () -> BuildGuess.enableBuildGuess = value);
-        BuildGuessWords.init();
+        updateAndSave(CATEGORY_BUILD_GUESS, "enableBuildGuess", value, () -> {
+            BuildGuess.enableBuildGuess = value;
+            // 开关切换时，根据状态加载或清空词库
+            BuildGuessWords.init();
+        });
+    }
+
+    public static void setEnableAfkMode(boolean value) {
+        updateAndSave(CATEGORY_BUILD_GUESS, "enableAfkMode", value, () -> BuildGuess.enableAfkMode = value);
     }
 
     public static Configuration getConfig() {
@@ -716,6 +727,7 @@ public class GhostConfig {
         settingUpdaters.put("autocraftpickupstashwait", (k, v) -> setAutoCraftPickupStashWaitTicks(parseInt(v)));
         settingUpdaters.put("enabledungeonprofit", (k, v) -> setEnableDungeonProfit(parseBoolean(v)));
         settingUpdaters.put("enablebuildguess", (k, v) -> setEnableBuildGuess(parseBoolean(v)));
+        settingUpdaters.put("enableafkmode", (k, v) -> setEnableAfkMode(parseBoolean(v))); // AFK 模式注册
     }
     
     // --- 解析辅助方法 ---
