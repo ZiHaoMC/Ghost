@@ -174,11 +174,11 @@ public class BuildGuessHandler {
      * 效果：
      * 线索 "____" (无空格) -> 正则 "^\\S\\S\\S\\S$" -> 绝不会匹配 "A B" (含空格)
      * 线索 "_ _" (有空格) -> 正则 "^\\S \\S$" -> 绝不会匹配 "AB" (无空格)
+     * 不再使用 "§e" + word，而是使用标准的 ChatStyle 设置颜色。
      */
     private void processClue(String normalizedClue) {
         if (!normalizedClue.contains("_")) return;
 
-        // 【关键修改】：将 "_" 替换为 "\\S" (代表任何不是空格的字符)
         String regexPattern = "^" + normalizedClue.replace("_", "\\S") + "$";
         Pattern pattern = Pattern.compile(regexPattern, Pattern.CASE_INSENSITIVE);
 
@@ -198,16 +198,36 @@ public class BuildGuessHandler {
             }
         } 
         else if (matches.size() > 1 && matches.size() < 10) {
+            // 头部提示
             IChatComponent message = new ChatComponentText("§8[Ghost] §b潜在匹配: ");
+            
             for (int i = 0; i < matches.size(); i++) {
                 String word = matches.get(i);
-                ChatComponentText wordComp = new ChatComponentText("§e" + word);
-                wordComp.setChatStyle(new ChatStyle()
-                    .setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, word.toLowerCase()))
-                    .setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§7点击发送"))));
                 
+                // 创建纯净的文本组件，不带 §e
+                ChatComponentText wordComp = new ChatComponentText(word);
+                
+                // 使用 Style 设置颜色和点击事件，保证 Hitbox 精确
+                ChatStyle style = new ChatStyle();
+                style.setColor(EnumChatFormatting.YELLOW); // 设定为黄色
+            //    style.setBold(true); // 加粗，让点击更容易 可能会导致偏移，先禁用
+                
+                // 设置点击事件：直接发送小写单词
+                style.setChatClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, word.toLowerCase()));
+                // 设置悬停事件
+                style.setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText("§7点击发送: §f" + word)));
+                
+                wordComp.setChatStyle(style);
+                
+                // 添加单词组件
                 message.appendSibling(wordComp);
-                if (i < matches.size() - 1) message.appendSibling(new ChatComponentText("§7, "));
+                
+                // 添加逗号分隔符 (灰色，无点击事件)
+                if (i < matches.size() - 1) {
+                    ChatComponentText comma = new ChatComponentText(", ");
+                    comma.getChatStyle().setColor(EnumChatFormatting.GRAY);
+                    message.appendSibling(comma);
+                }
             }
             mc.thePlayer.addChatMessage(message);
         }
