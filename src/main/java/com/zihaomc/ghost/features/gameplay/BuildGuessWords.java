@@ -293,7 +293,9 @@ public class BuildGuessWords {
         "Witch", "Witch House", "Wither", "Wizard", "Wizard Hat", "Wolf", "Wool", "Workshop",
         "World", "Worm", "Wrecking Ball", "Wrapping Paper", "Wrench", "Wrestling", "Writing",
         "Xylophone", "Yacht", "Yellow Brick Road", "Yoghurt", "Youtube", "Yule Log", "Zebra",
-        "Zelda", "Zeus", "Zip Line", "Zipper", "Zombie", "Zombie Apocalypse", "Zoo"
+        "Zelda", "Zeus", "Zip Line", "Zipper", "Zombie", "Zombie Apocalypse", "ZooHard Hat",
+        "Lawn Games", "Baseball Glove", "Northern Lights", "Moth", "Fruit Punch", "Lucky Block",
+        "Parking Lot", "Door Knob", "Ice Cream Truck", "Antivirus", "Illusion", "Diploma"
     ));
 
         // 4. 加载自定义补充词库 (missing_words.txt)
