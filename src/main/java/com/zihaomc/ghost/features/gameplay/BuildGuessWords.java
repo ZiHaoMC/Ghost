@@ -295,7 +295,7 @@ public class BuildGuessWords {
         "Xylophone", "Yacht", "Yellow Brick Road", "Yoghurt", "Youtube", "Yule Log", "Zebra",
         "Zelda", "Zeus", "Zip Line", "Zipper", "Zombie", "Zombie Apocalypse", "ZooHard Hat",
         "Lawn Games", "Baseball Glove", "Northern Lights", "Moth", "Fruit Punch", "Lucky Block",
-        "Parking Lot", "Door Knob", "Ice Cream Truck", "Antivirus", "Illusion", "Diploma"
+        "Parking Lot", "Door Knob", "Ice Cream Truck", "Antivirus", "Illusion", "Diploma", "Bastion"
     ));
 
         // 4. 加载自定义补充词库 (missing_words.txt)
