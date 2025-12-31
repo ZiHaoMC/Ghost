@@ -1,4 +1,3 @@
-
 /*
  * This module is a derivative work of Baritone (https://github.com/cabaletta/baritone).
  * This module is licensed under the GNU LGPL v3.0.
@@ -71,12 +70,14 @@ public class PathfindingCommand extends CommandBase {
             List<String> options = getListOfStringsMatchingLastWord(args, "stop");
             // 如果输入不是 stop，尝试提供 X 坐标补全
             if (options.isEmpty() && pos != null) {
+                // 修复：换回 SRG 名称 func_175771_a，这是 Forge 1.8.9 的标准坐标补全方法
                 return func_175771_a(args, 0, pos);
             }
             return options;
         }
         // 提供 Y 和 Z 轴的坐标补全
         if (args.length > 1 && args.length <= 3 && pos != null) {
+            // 修复：换回 SRG 名称 func_175771_a
             return func_175771_a(args, 0, pos);
         }
         return null;

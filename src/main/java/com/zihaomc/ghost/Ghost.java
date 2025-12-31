@@ -1,178 +1,51 @@
 package com.zihaomc.ghost;
 
-import com.zihaomc.ghost.features.autocraft.AutoCraftCommand;
-import com.zihaomc.ghost.features.automine.AutoMineCommand;
-import com.zihaomc.ghost.features.ghostblock.GhostBlockCommand;
-import com.zihaomc.ghost.commands.GhostConfigCommand;
-import com.zihaomc.ghost.features.pathfinding.PathfindingCommand;
-import com.zihaomc.ghost.features.pathfinding.PathfindingHandler;
-import com.zihaomc.ghost.features.pathfinding.PathRenderer;
-import com.zihaomc.ghost.features.translation.TranslateCommand;
 import com.zihaomc.ghost.config.GhostConfig;
-import com.zihaomc.ghost.features.autocraft.AutoCraftHandler;
-import com.zihaomc.ghost.features.autocraft.AutoCraftRecipeManager;
-import com.zihaomc.ghost.features.automine.AutoMineHandler;
-import com.zihaomc.ghost.handlers.*;
-import com.zihaomc.ghost.features.ghostblock.GhostBlockEventHandler;
-import com.zihaomc.ghost.features.chat.ChatInputHandler;
-import com.zihaomc.ghost.features.chat.CommandSuggestionHandler;
-import com.zihaomc.ghost.features.translation.ChatTranslationHandler;
-import com.zihaomc.ghost.features.translation.CacheSavingHandler;
-import com.zihaomc.ghost.features.translation.ItemTooltipTranslationHandler;
-import com.zihaomc.ghost.features.translation.SignTranslationHandler;
-import com.zihaomc.ghost.features.autosneak.AutoSneakHandler;
-import com.zihaomc.ghost.features.automine.AutoMineTargetManager;
-import com.zihaomc.ghost.features.playeresp.PlayerESPHandler;
-import com.zihaomc.ghost.features.gameplay.FastPistonBreakingHandler;
-import com.zihaomc.ghost.features.gameplay.BuildGuessHandler;
-import com.zihaomc.ghost.features.visual.PlayerArrowRendererHandler;
 import com.zihaomc.ghost.proxy.CommonProxy;
 import com.zihaomc.ghost.utils.LogUtil;
-import net.minecraft.init.Blocks;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.SidedProxy;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.client.ClientCommandHandler;
-import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 
 /**
- * Ghost Mod 的主类。
- * 负责 Mod 的加载、初始化、事件注册和命令注册。
+ * Ghost Mod 主类 (优化版)
  */
-
-@Mod(modid = Ghost.MODID, name = Ghost.NAME, version = Ghost.VERSION, acceptableRemoteVersions = "*")
+@Mod(modid = Ghost.MODID, name = Ghost.NAME, version = Ghost.VERSION, clientSideOnly = true, acceptableRemoteVersions = "*")
 public class Ghost {
 
     public static final String MODID = "ghost";
-    public static final String VERSION = "0.1.1";
+    public static final String VERSION = "0.2.0";
     public static final String NAME = "Ghost";
     public static final Logger logger = LogManager.getLogger(MODID);
 
     @Mod.Instance(MODID)
     public static Ghost instance;
 
-    @SidedProxy(clientSide = "com.zihaomc.ghost.proxy.ClientProxy", serverSide = "com.zihaomc.ghost.proxy.ServerProxy")
+    // 依然保留 ServerProxy 指向 CommonProxy，防止在服务端误装时报错
+    @SidedProxy(clientSide = "com.zihaomc.ghost.proxy.ClientProxy", serverSide = "com.zihaomc.ghost.proxy.CommonProxy")
     public static CommonProxy proxy;
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         LogUtil.info("log.lifecycle.preinit", NAME);
-        Blocks.fire.toString();
 
+        // 配置文件初始化应尽早进行
         File configFile = event.getSuggestedConfigurationFile();
         GhostConfig.init(configFile);
 
         proxy.preInit(event);
-
-        if (event.getSide() == Side.CLIENT) {
-            ItemTooltipTranslationHandler.loadCacheFromFile();
-            
-            // --- 事件总线注册 ---
-            
-            // 1. 缓存保存
-            MinecraftForge.EVENT_BUS.register(new CacheSavingHandler());
-            LogUtil.debug("log.feature.cache.init");
-            
-            // 2. 聊天相关
-            MinecraftForge.EVENT_BUS.register(new ChatInputHandler());
-            MinecraftForge.EVENT_BUS.register(new CommandSuggestionHandler());
-            LogUtil.debug("log.handler.registered.chatSuggest");
-
-            // 3. 翻译相关
-            MinecraftForge.EVENT_BUS.register(new ChatTranslationHandler());
-            MinecraftForge.EVENT_BUS.register(new SignTranslationHandler());
-            MinecraftForge.EVENT_BUS.register(new ItemTooltipTranslationHandler());
-            LogUtil.debug("log.handler.registered.translation");
-
-            // 4. 其他功能
-            MinecraftForge.EVENT_BUS.register(new AutoSneakHandler());
-            LogUtil.debug("log.handler.registered.autoSneak");
-
-            MinecraftForge.EVENT_BUS.register(new PlayerESPHandler());
-            LogUtil.debug("log.handler.registered.playerEsp");
-            
-            MinecraftForge.EVENT_BUS.register(new FastPistonBreakingHandler());
-            LogUtil.debug("log.handler.registered.fastPiston");
-
-            MinecraftForge.EVENT_BUS.register(new PlayerArrowRendererHandler());
-            LogUtil.debug("log.handler.registered.playerArrow");
-
-            MinecraftForge.EVENT_BUS.register(new KeybindHandler());
-            LogUtil.debug("log.handler.registered.keybind");
-            
-            MinecraftForge.EVENT_BUS.register(new AutoMineHandler());
-            LogUtil.debug("log.handler.registered.autoMine");
-
-            MinecraftForge.EVENT_BUS.register(new AutoCraftHandler());
-            LogUtil.debug("log.handler.registered.autoCraft");
-            
-            MinecraftForge.EVENT_BUS.register(new GhostBlockEventHandler());
-            LogUtil.debug("log.handler.registered.ghostBlockCommand");
-
-            MinecraftForge.EVENT_BUS.register(new PathfindingHandler()); // 注册寻路事件
-            MinecraftForge.EVENT_BUS.register(new PathRenderer()); // 寻路渲染
-            LogUtil.debug("log.handler.registered.pathfinding");
-            
-            // 注册地牢结算处理器
-            MinecraftForge.EVENT_BUS.register(new com.zihaomc.ghost.features.skyblock.DungeonChestHandler());
-            LogUtil.debug("log.handler.registered.dungeonProfit");
-
-            // 注册 你建我猜 辅助
-            MinecraftForge.EVENT_BUS.register(new BuildGuessHandler());
-        }
     }
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         LogUtil.info("log.lifecycle.init", NAME);
-
         proxy.init(event);
-        
-        ItemTooltipTranslationHandler.loadCacheFromFile();
-        AutoMineTargetManager.loadTargets();
-        AutoCraftRecipeManager.initialize();
-        // 启动价格更新服务
-        com.zihaomc.ghost.features.skyblock.SkyblockPriceManager.startUpdating();
-
-        if (event.getSide() == Side.CLIENT) {
-            try {
-                AutoMineHandler.MiningMode mode = AutoMineHandler.MiningMode.valueOf(GhostConfig.AutoMine.miningMode.toUpperCase());
-                AutoMineHandler.setCurrentMiningMode_noMessage(mode);
-            } catch (IllegalArgumentException e) {
-                LogUtil.warn("log.config.invalid.automineMode", GhostConfig.AutoMine.miningMode);
-                AutoMineHandler.setCurrentMiningMode_noMessage(AutoMineHandler.MiningMode.SIMULATE);
-            }
-            
-            LogUtil.debug("log.command.registering.client");
-            
-            ClientCommandHandler.instance.registerCommand(new GhostBlockCommand());
-            LogUtil.debug("log.command.registered.cgb");
-            
-            ClientCommandHandler.instance.registerCommand(new GhostConfigCommand());
-            LogUtil.debug("log.command.registered.ghostConfig");
-
-            ClientCommandHandler.instance.registerCommand(new TranslateCommand());
-            LogUtil.debug("log.command.registered.gtranslate");
-
-            ClientCommandHandler.instance.registerCommand(new AutoMineCommand());
-            LogUtil.debug("log.command.registered.autoMine");
-
-            ClientCommandHandler.instance.registerCommand(new AutoCraftCommand());
-            LogUtil.debug("log.command.registered.autoCraft");
-
-            ClientCommandHandler.instance.registerCommand(new PathfindingCommand()); // 注册寻路命令
-            LogUtil.debug("log.command.registered.gpath");
-
-        } else {
-            LogUtil.debug("log.command.skipping.server");
-        }
     }
 
     @Mod.EventHandler

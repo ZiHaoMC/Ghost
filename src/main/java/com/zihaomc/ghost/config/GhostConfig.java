@@ -1,7 +1,7 @@
 package com.zihaomc.ghost.config;
 
 import com.zihaomc.ghost.LangUtil;
-import com.zihaomc.ghost.features.gameplay.BuildGuessWords; // 用于词库热更新
+import com.zihaomc.ghost.features.gameplay.BuildGuessWords;
 import com.zihaomc.ghost.utils.LogUtil;
 import net.minecraft.block.Block;
 import net.minecraft.command.CommandBase;
@@ -15,12 +15,6 @@ import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-/**
- * 重构后的配置类。
- * - 使用静态内部类对配置项进行分组。
- * - 简化了加载和保存逻辑，减少了重复代码。
- * - 为 GhostConfigCommand 提供了统一的更新接口。
- */
 public class GhostConfig {
 
     private static Configuration config = null;
@@ -164,7 +158,6 @@ public class GhostConfig {
 
     public static class BuildGuess {
         public static boolean enableBuildGuess;
-        // AFK 自动挂机收集模式
         public static boolean enableAfkMode;
     }
 
@@ -181,27 +174,34 @@ public class GhostConfig {
             LogUtil.error("log.config.notInitialized");
             return;
         }
-        config.load();
+        
+        try {
+            config.load();
 
-        loadFillCommandSettings();
-        loadSaveOptionsSettings();
-        loadChatFeaturesSettings();
-        loadAutoPlaceSettings();
-        loadAutoSneakSettings();
-        loadPlayerESPSettings();
-        loadBedrockMinerSettings();
-        loadGameplayTweaksSettings();
-        loadTranslationSettings();
-        loadNoteTakingSettings();
-        loadGuiTweaksSettings();
-        loadAutoMineSettings();
-        loadAutoCraftSettings();
-        loadSkyblockSettings();
-        loadBuildGuessSettings();
+            loadFillCommandSettings();
+            loadSaveOptionsSettings();
+            loadChatFeaturesSettings();
+            loadAutoPlaceSettings();
+            loadAutoSneakSettings();
+            loadPlayerESPSettings();
+            loadBedrockMinerSettings();
+            loadGameplayTweaksSettings();
+            loadTranslationSettings();
+            loadNoteTakingSettings();
+            loadGuiTweaksSettings();
+            loadAutoMineSettings();
+            loadAutoCraftSettings();
+            loadSkyblockSettings();
+            loadBuildGuessSettings();
 
-        if (config.hasChanged()) {
-            config.save();
-            LogUtil.info("log.config.loaded");
+        } catch (Exception e) {
+            LogUtil.error("Error loading config: " + e.getMessage());
+        } finally {
+            // 优化：无论加载过程是否抛出异常，只要配置有变动就保存一次
+            if (config.hasChanged()) {
+                config.save();
+                LogUtil.info("log.config.loaded");
+            }
         }
         
         initializeUpdaters();
@@ -325,8 +325,6 @@ public class GhostConfig {
     private static void loadBuildGuessSettings() {
         BuildGuess.enableBuildGuess = loadBoolean(CATEGORY_BUILD_GUESS, "enableBuildGuess", false, "ghost.config.comment.buildGuess");
         BuildGuess.enableAfkMode = loadBoolean(CATEGORY_BUILD_GUESS, "enableAfkMode", false, "ghost.config.comment.buildGuessAfk");
-        
-        // 【核心修改】加载配置时初始化词库。如果开启，则加载；如果未开启，则保持空列表。
         BuildGuessWords.init();
     }
 
@@ -351,7 +349,7 @@ public class GhostConfig {
         return config.getStringList(key, category, defaultValue, LangUtil.translate(commentKey));
     }
     
-    // --- Setter 方法 (用于命令修改配置) ---
+    // --- Setter 方法 ---
     private static void updateAndSave(String category, String key, Object value, Runnable fieldUpdater) {
         if (config == null) return;
         Property prop = config.get(category, key, "");
@@ -647,7 +645,6 @@ public class GhostConfig {
     public static void setEnableBuildGuess(boolean value) {
         updateAndSave(CATEGORY_BUILD_GUESS, "enableBuildGuess", value, () -> {
             BuildGuess.enableBuildGuess = value;
-            // 开关切换时，根据状态加载或清空词库
             BuildGuessWords.init();
         });
     }
@@ -727,7 +724,7 @@ public class GhostConfig {
         settingUpdaters.put("autocraftpickupstashwait", (k, v) -> setAutoCraftPickupStashWaitTicks(parseInt(v)));
         settingUpdaters.put("enabledungeonprofit", (k, v) -> setEnableDungeonProfit(parseBoolean(v)));
         settingUpdaters.put("enablebuildguess", (k, v) -> setEnableBuildGuess(parseBoolean(v)));
-        settingUpdaters.put("enableafkmode", (k, v) -> setEnableAfkMode(parseBoolean(v))); // AFK 模式注册
+        settingUpdaters.put("enableafkmode", (k, v) -> setEnableAfkMode(parseBoolean(v)));
     }
     
     // --- 解析辅助方法 ---

@@ -1,4 +1,3 @@
-
 /*
  * This module is a derivative work of Baritone (https://github.com/cabaletta/baritone).
  * This module is licensed under the GNU LGPL v3.0.
@@ -29,7 +28,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * /automine 命令的实现类 (重构优化版)。
+ * /automine 命令的实现类 (修复版)。
  */
 public class AutoMineCommand extends CommandBase {
 
@@ -294,9 +293,6 @@ public class AutoMineCommand extends CommandBase {
         }
     }
 
-    /**
-     * 处理恢复点坐标设置。
-     */
     private void handleSetRecovery(ICommandSender sender, String[] args) throws CommandException {
         BlockPos pos;
         if (args.length >= 4) {
@@ -306,7 +302,7 @@ public class AutoMineCommand extends CommandBase {
             pos = ((net.minecraft.entity.player.EntityPlayer)sender).getPosition();
         }
         
-        // 我们只保留一个主恢复点，或者你可以修改为 add()
+        // 我们只保留一个主恢复点
         AutoMineTargetManager.recoveryPoints.clear();
         AutoMineTargetManager.recoveryPoints.add(pos);
         AutoMineTargetManager.saveRecoveryPoints();
@@ -331,7 +327,6 @@ public class AutoMineCommand extends CommandBase {
             return;
         }
 
-        // 列表最后增加恢复点展示
         if (hasRecovery) {
             sender.addChatMessage(new ChatComponentText("§6--- 挖掘恢复点 (重启后自动寻路至此) ---"));
             for (BlockPos p : AutoMineTargetManager.recoveryPoints) {
@@ -419,7 +414,8 @@ public class AutoMineCommand extends CommandBase {
                 case "mode":
                     return getListOfStringsMatchingLastWord(args, Arrays.stream(AutoMineHandler.MiningMode.values()).map(Enum::name).collect(Collectors.toList()));
                 case "setrecovery":
-                    return func_175771_a(args, 1, pos); // 提供 X 坐标补全
+                    // 修复：换回 SRG 名称 func_175771_a，这是 Forge 1.8.9 的标准坐标补全方法
+                    return func_175771_a(args, 1, pos); 
             }
         }
         if (args.length > 2) {
@@ -427,6 +423,7 @@ public class AutoMineCommand extends CommandBase {
             String type = args[1].toLowerCase();
             switch (subCmd) {
                 case "add":
+                    // 修复：换回 SRG 名称 func_175771_a
                     if ("coord".equals(type) && args.length <= 5) return func_175771_a(args, 2, pos);
                     if ("block".equals(type) && args.length == 3) return getListOfStringsMatchingLastWord(args, Block.blockRegistry.getKeys());
                     if ("group".equals(type) && args.length == 3) return getListOfStringsMatchingLastWord(args, AutoMineTargetManager.customBlockGroups.keySet());
@@ -452,6 +449,7 @@ public class AutoMineCommand extends CommandBase {
                     if ("create".equals(type) && args.length >= 4) return getListOfStringsMatchingLastWord(args, Block.blockRegistry.getKeys());
                     break;
                 case "setrecovery":
+                    // 修复：换回 SRG 名称 func_175771_a
                     if (args.length <= 4) return func_175771_a(args, 1, pos); // 提供 Y, Z 坐标补全
                     break;
             }

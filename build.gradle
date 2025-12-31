@@ -15,7 +15,7 @@ buildscript {
 apply plugin: 'net.minecraftforge.gradle.forge'
 apply plugin: 'java'
 
-version = "0.1.1"
+version = "0.2.0"
 group = "com.zihaomc.ghost"
 archivesBaseName = "Ghost"
 
