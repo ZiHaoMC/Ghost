@@ -1,22 +1,25 @@
 Ghost Mod
 Copyright (c) 2025 ZiHaoMC
 
-[OVERVIEW]
-The majority of Ghost Mod is licensed under the MIT License. 
-However, specific modules that incorporate third-party code are licensed 
-under their respective original licenses (LGPL v3.0).
+[LICENSE OVERVIEW]
+This project is primarily licensed under the MIT License. 
+However, specific modules that incorporate third-party code are subject to 
+different license terms (GNU LGPL v3.0) as detailed below.
 
 -------------------------------------------------------------------------------
-[MODULES UNDER MIT LICENSE]
-- Core Framework (com.zihaomc.ghost.*)
+1. CORE COMPONENTS (MIT LICENSE)
+
+The following components are original works by ZiHaoMC and are licensed under 
+the MIT License:
+- Core Framework
 - GhostBlock Feature
 - Skyblock Features
 - Note Feature
 - Chat Features
+- Gameplay Features (e.g., FastBreakPiston)
+- All other code not explicitly listed in Section 2.
 
 MIT License Text:
-
-Copyright (c) 2025 ZiHaoMC
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,16 +39,25 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-
 -------------------------------------------------------------------------------
-[MODULES UNDER GNU LGPL v3.0]
-The following modules contain code derived from Baritone (https://github.com/cabaletta/baritone) 
-and are therefore subject to the LGPL v3.0:
+2. DERIVED MODULES (GNU LGPL v3.0)
+
+The following packages contain code derived from Baritone (https://github.com/cabaletta/baritone)
+and are strictly subject to the GNU Lesser General Public License v3.0 (LGPL-3.0):
+
 - com.zihaomc.ghost.features.automine.*
 - com.zihaomc.ghost.features.pathfinding.*
 
-LGPL v3.0 requires that any modifications to these modules must also be 
-released under the same license.
+Modifications to these specific modules must be released under the same LGPL v3.0 terms.
+Please refer to the LICENSE file located in the respective package directories for the 
+full text of the GNU LGPL v3.0.
+
 -------------------------------------------------------------------------------
-[THIRD-PARTY CREDITS]
-- BuildGuessWords.java contains data from GTB-Solver (MIT License).
+3. THIRD-PARTY DATA & ATTRIBUTION
+
+- BuildGuess Data:
+  The file `com/zihaomc/ghost/features/gameplay/BuildGuessWords.java` contains 
+  word bank data derived from GTB-Solver (https://github.com/oycyc/GTB-Solver).
+  This data is used under the MIT License (Copyright (c) 2023 oycyc).
+
+-------------------------------------------------------------------------------

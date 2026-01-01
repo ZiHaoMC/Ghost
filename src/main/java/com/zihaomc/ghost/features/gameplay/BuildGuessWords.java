@@ -1,3 +1,10 @@
+
+/*
+ * This file contains data derived from GTB-Solver (https://github.com/oycyc/GTB-Solver).
+ * Licensed under the MIT License. Copyright (c) 2023 oycyc.
+ */
+
+
 package com.zihaomc.ghost.features.gameplay;
 
 import com.zihaomc.ghost.config.GhostConfig;
